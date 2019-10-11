@@ -886,6 +886,14 @@ static inline void update_mmu_cache(struct vm_area_struct *vma,
  */
 #define arch_has_hw_pte_young		cpu_has_hw_af
 
+static inline bool arch_faults_on_old_pte(void)
+{
+	WARN_ON(preemptible());
+
+	return !cpu_has_hw_af();
+}
+#define arch_faults_on_old_pte arch_faults_on_old_pte
+
 #endif /* !__ASSEMBLY__ */
 
 #endif /* __ASM_PGTABLE_H */
