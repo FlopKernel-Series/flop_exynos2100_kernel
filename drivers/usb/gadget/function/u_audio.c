@@ -442,7 +442,6 @@ static int uac_pcm_null(struct snd_pcm_substream *substream)
 static const struct snd_pcm_ops uac_pcm_ops = {
 	.open = uac_pcm_open,
 	.close = uac_pcm_null,
-	.ioctl = snd_pcm_lib_ioctl,
 	.hw_params = uac_pcm_hw_params,
 	.hw_free = uac_pcm_hw_free,
 	.trigger = uac_pcm_trigger,
