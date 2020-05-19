@@ -472,6 +472,7 @@ static int fuse_flush(struct file *file, fl_owner_t id)
 	if (err)
 		return err;
 
+	err = 0;
 	if (fc->no_flush)
 		goto inval_attr_out;
 
