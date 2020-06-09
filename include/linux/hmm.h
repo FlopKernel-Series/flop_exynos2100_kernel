@@ -60,7 +60,7 @@
 #define LINUX_HMM_H
 
 #include <linux/kconfig.h>
-#include <asm/pgtable.h>
+#include <linux/pgtable.h>
 
 #ifdef CONFIG_HMM_MIRROR
 

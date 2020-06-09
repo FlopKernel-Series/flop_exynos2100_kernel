@@ -9,7 +9,7 @@
 #include <linux/kernel.h>
 #include <linux/sizes.h>
 #include <asm/page.h>
-#include <asm/pgtable.h>
+#include <linux/pgtable.h>
 
 /*
  * Here we define all the compile-time 'special' virtual addresses.

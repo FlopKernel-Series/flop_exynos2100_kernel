@@ -643,8 +643,6 @@ static inline pmd_t pmdp_huge_get_and_clear(struct mm_struct *mm,
 
 #define gup_fast_permitted(start, end)	(!cpu_has_dc_aliases)
 
-#include <asm-generic/pgtable.h>
-
 /*
  * uncached accelerated TLB map for video memory access
  */

@@ -18,7 +18,7 @@
 
 #include <linux/string.h>
 #include <asm/pgalloc.h>
-#include <asm/pgtable.h>
+#include <linux/pgtable.h>
 #include <asm/kup.h>
 
 static bool disable_kuep = !IS_ENABLED(CONFIG_PPC_KUEP);

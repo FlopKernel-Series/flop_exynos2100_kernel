@@ -974,7 +974,11 @@ static inline void iounmap(void __iomem *addr)
 #ifndef ioremap_nocache
 void __iomem *ioremap(phys_addr_t phys_addr, size_t size);
 #define ioremap_nocache ioremap_nocache
+
+#include <linux/pgtable.h>
+
 static inline void __iomem *ioremap_nocache(phys_addr_t offset, size_t size)
+
 {
 	return ioremap(offset, size);
 }

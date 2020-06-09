@@ -13,7 +13,7 @@
 
 #include <linux/types.h>
 #include <asm/mmiowb.h>
-#include <asm/pgtable.h>
+#include <linux/pgtable.h>
 
 extern void __iomem *ioremap(phys_addr_t offset, unsigned long size);
 
