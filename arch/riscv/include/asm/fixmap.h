@@ -8,8 +8,8 @@
 
 #include <linux/kernel.h>
 #include <linux/sizes.h>
-#include <asm/page.h>
 #include <linux/pgtable.h>
+#include <asm/page.h>
 
 /*
  * Here we define all the compile-time 'special' virtual addresses.

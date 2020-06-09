@@ -22,6 +22,7 @@
 #ifdef __KERNEL__
 
 #include <linux/interrupt.h>
+#include <linux/pgtable.h>
 #include <asm/vaddrs.h>
 #include <asm/kmap_types.h>
 #include <linux/pgtable.h>

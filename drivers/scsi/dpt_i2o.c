@@ -27,6 +27,7 @@
 /*#define UARTDELAY 1 */
 
 #include <linux/module.h>
+#include <linux/pgtable.h>
 
 MODULE_AUTHOR("Deanna Bonds, with _lots_ of help from Mark Salyzyn");
 MODULE_DESCRIPTION("Adaptec I2O RAID Driver");

@@ -3,11 +3,11 @@
 #define _ASM_X86_EFI_H
 
 #include <asm/fpu/api.h>
-#include <linux/pgtable.h>
 #include <asm/processor-flags.h>
 #include <asm/tlb.h>
 #include <asm/nospec-branch.h>
 #include <asm/mmu_context.h>
+#include <linux/pgtable.h>
 
 /*
  * We map the EFI regions needed for runtime services non-contiguously,

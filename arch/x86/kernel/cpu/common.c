@@ -22,6 +22,7 @@
 #include <linux/cpu.h>
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
+#include <linux/pgtable.h>
 
 #include <asm/stackprotector.h>
 #include <linux/utsname.h>
@@ -38,7 +39,6 @@
 #include <asm/vsyscall.h>
 #include <linux/topology.h>
 #include <linux/cpumask.h>
-#include <linux/pgtable.h>
 #include <linux/atomic.h>
 #include <asm/proto.h>
 #include <asm/setup.h>

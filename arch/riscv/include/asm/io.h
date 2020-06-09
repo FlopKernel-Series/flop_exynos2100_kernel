@@ -12,8 +12,8 @@
 #define _ASM_RISCV_IO_H
 
 #include <linux/types.h>
-#include <asm/mmiowb.h>
 #include <linux/pgtable.h>
+#include <asm/mmiowb.h>
 
 extern void __iomem *ioremap(phys_addr_t offset, unsigned long size);
 

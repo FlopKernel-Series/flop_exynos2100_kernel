@@ -10,13 +10,13 @@
 #include <linux/mm_types.h>
 #include <linux/sched.h>
 #include <linux/types.h>
+#include <linux/pgtable.h>
 
 #include <asm/cacheflush.h>
 #include <asm/fixmap.h>
 #include <asm/kernel-pgtable.h>
 #include <asm/memory.h>
 #include <asm/mmu.h>
-#include <linux/pgtable.h>
 #include <asm/sections.h>
 
 u64 __ro_after_init module_alloc_base;
