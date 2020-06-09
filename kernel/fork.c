@@ -97,7 +97,6 @@
 #include <linux/stackleak.h>
 #include <linux/scs.h>
 
-#include <asm/pgtable.h>
 #include <asm/pgalloc.h>
 #include <linux/uaccess.h>
 #include <asm/mmu_context.h>

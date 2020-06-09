@@ -19,7 +19,6 @@
 
 #include <asm/setup.h>
 #include <asm/sections.h>
-#include <asm/pgtable.h>
 #include <asm/smp.h>
 #include <asm/tlbflush.h>
 #include <asm/thread_info.h>
