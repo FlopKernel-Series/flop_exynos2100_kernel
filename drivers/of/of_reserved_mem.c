@@ -137,8 +137,8 @@ void __init fdt_reserved_mem_save_node(unsigned long node, const char *uname,
 }
 
 /**
- * res_mem_alloc_size() - allocate reserved memory described by 'size', 'align'
- *			  and 'alloc-ranges' properties
+ * res_mem_alloc_size() - allocate reserved memory described by
+ * 'size', 'alignment' and 'alloc-ranges' properties
  */
 static int __init __reserved_mem_alloc_size(unsigned long node,
 	const char *uname, phys_addr_t *res_base, phys_addr_t *res_size)
@@ -148,8 +148,7 @@ static int __init __reserved_mem_alloc_size(unsigned long node,
 	phys_addr_t base = 0, align = 0, size;
 	int len;
 	const __be32 *prop;
-	int nomap;
-	int ret;
+	bool nomap, ret;
 #if IS_ENABLED(CONFIG_SND_SOC_SAMSUNG_ABOX_CHANGE_RMEM_SIZE)
 	int change_size = 0;
 	phys_addr_t size_min = MAGIC_ABOX_RMEM_SIZE;
@@ -196,8 +195,6 @@ static int __init __reserved_mem_alloc_size(unsigned long node,
 	}
 #endif
 
-	nomap = of_get_flat_dt_prop(node, "no-map", NULL) != NULL;
-
 	prop = of_get_flat_dt_prop(node, "alignment", &len);
 	if (prop) {
 		if (len != dt_root_addr_cells * sizeof(__be32)) {
@@ -208,11 +205,13 @@ static int __init __reserved_mem_alloc_size(unsigned long node,
 		align = dt_mem_next_cell(dt_root_addr_cells, &prop);
 	}
 
+	nomap = of_get_flat_dt_prop(node, "no-map", NULL) != NULL;
+
 	/* Need adjust the alignment to satisfy the CMA requirement */
 	if (IS_ENABLED(CONFIG_CMA)
 	    && of_flat_dt_is_compatible(node, "shared-dma-pool")
 	    && of_get_flat_dt_prop(node, "reusable", NULL)
-	    && !of_get_flat_dt_prop(node, "no-map", NULL)) {
+	    && !nomap) {
 		unsigned long order =
 			max_t(unsigned long, MAX_ORDER - 1, pageblock_order);
 
@@ -360,7 +359,7 @@ void __init fdt_init_reserved_mem(void)
 		int len;
 		const __be32 *prop;
 		int err = 0;
-		int nomap, reusable;
+		bool nomap, reusable;
 
 		nomap = of_get_flat_dt_prop(node, "no-map", NULL) != NULL;
 		reusable = of_get_flat_dt_prop(node, "reusable", NULL) != NULL;
