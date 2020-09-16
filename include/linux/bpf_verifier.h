@@ -370,6 +370,7 @@ struct bpf_subprog_info {
 	bool has_tail_call;
 
 	ANDROID_KABI_RESERVE(1);
+	bool tail_call_reachable;
 };
 
 /* single container for all structs
