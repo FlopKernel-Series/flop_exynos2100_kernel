@@ -1070,6 +1070,9 @@ static int __mfc_enc_ext_info(struct mfc_ctx *ctx)
 	if (core->core_pdata->gdc_votf_base)
 		val |= ENC_SET_GDC_VOTF;
 
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->average_qp))
+		val |= ENC_SET_AVERAGE_QP;
+
 	mfc_debug(5, "[CTRLS] ext info val: %#x\n", val);
 
 	return val;
@@ -1102,6 +1105,7 @@ static int __mfc_enc_get_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	case V4L2_CID_MPEG_MFC51_VIDEO_FRAME_STATUS:
 	case V4L2_CID_MPEG_VIDEO_SRC_BUF_FLAG:
 	case V4L2_CID_MPEG_VIDEO_DST_BUF_FLAG:
+	case V4L2_CID_MPEG_VIDEO_AVERAGE_QP:
 		list_for_each_entry(ctx_ctrl, &ctx->ctrls, list) {
 			if (!(ctx_ctrl->type & MFC_CTRL_TYPE_GET))
 				continue;
