@@ -830,6 +830,7 @@ struct mfc_platdata {
 	struct mfc_feature wait_nalq_status;
 	struct mfc_feature drm_switch_predict;
 	struct mfc_feature sbwc_enc_src_ctrl;
+	struct mfc_feature average_qp;
 	struct mfc_feature enc_idr_flag;
 	struct mfc_feature min_quality_mode;
 	struct mfc_feature enc_ts_delta;
