@@ -809,6 +809,7 @@ struct mfc_platdata {
 	unsigned int max_hdr_win;
 	/* error type for sync_point display */
 	unsigned int display_err_type;
+	unsigned int security_ctrl;
 	/* output buffer Q framerate */
 	unsigned int display_framerate;
 	/* NAL-Q size */
