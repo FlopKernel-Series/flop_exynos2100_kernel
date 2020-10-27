@@ -856,6 +856,9 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 	/* HDR10+ num max window */
 	of_property_read_u32(np, "display_err_type", &pdata->display_err_type);
 
+	/* security ctrl */
+	of_property_read_u32(np, "security_ctrl", &pdata->security_ctrl);
+
 	/* output buffer Q framerate */
 	of_property_read_u32(np, "display_framerate", &pdata->display_framerate);
 
