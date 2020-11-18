@@ -832,6 +832,7 @@ struct mfc_platdata {
 	struct mfc_feature drm_switch_predict;
 	struct mfc_feature sbwc_enc_src_ctrl;
 	struct mfc_feature average_qp;
+	struct mfc_feature mv_search_mode;
 	struct mfc_feature enc_idr_flag;
 	struct mfc_feature min_quality_mode;
 	struct mfc_feature enc_ts_delta;
@@ -1695,6 +1696,12 @@ struct mfc_enc_params {
 	u32 display_primaries_2;
 	u32 chroma_qp_offset_cb; /* H.264, HEVC */
 	u32 chroma_qp_offset_cr; /* H.264, HEVC */
+
+	u32 mv_search_mode;
+	u32 mv_hor_pos_l0;
+	u32 mv_hor_pos_l1;
+	u32 mv_ver_pos_l0;
+	u32 mv_ver_pos_l1;
 
 	union {
 		struct mfc_h264_enc_params h264;
