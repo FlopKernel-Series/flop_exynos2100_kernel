@@ -24,6 +24,7 @@
 #include <typedefs.h>
 #include <linuxver.h>
 #include <linux/kernel.h>
+#include <linux/workarounds.h>
 
 #include <bcmutils.h>
 #include <bcmstdlib_s.h>
@@ -1246,7 +1247,9 @@ static const rsn_akm_wpa_auth_entry_t rsn_akm_wpa_auth_lookup_tbl[] = {
 #define _S(x) #x
 #define S(x) _S(x)
 
-#define SOFT_AP_IF_NAME         "swlan0"
+#define SOFT_AP_IF_NAME_ONEUI   "swlan0"
+#define SOFT_AP_IF_NAME_AOSP    "wlan1"
+#define SOFT_AP_IF_NAME         SOFT_AP_IF_NAME_ONEUI
 
 /* watchdog timer for disconnecting when fw is not associated for FW_ASSOC_WATCHDOG_TIME ms */
 uint32 fw_assoc_watchdog_ms = 0;
@@ -2352,6 +2355,7 @@ wl_cfg80211_add_if(struct bcm_cfg80211 *cfg,
 	s32 wl_mode;
 	dhd_pub_t *dhd;
 	wl_iftype_t macaddr_iftype = wl_iftype;
+	const char *ap_if_name = is_aosp_mode() ? SOFT_AP_IF_NAME_AOSP : SOFT_AP_IF_NAME_ONEUI;
 
 	WL_INFORM_MEM(("if name: %s, wl_iftype:%d \n",
 		name ? name : "NULL", wl_iftype));
@@ -2410,7 +2414,7 @@ wl_cfg80211_add_if(struct bcm_cfg80211 *cfg,
 	wl_cfg80211_iface_state_ops(primary_ndev->ieee80211_ptr, WL_IF_CREATE_REQ,
 		wl_iftype, wl_mode);
 
-	if (strnicmp(name, SOFT_AP_IF_NAME, strlen(SOFT_AP_IF_NAME)) == 0) {
+	if (strnicmp(name, ap_if_name, strlen(ap_if_name)) == 0) {
 		macaddr_iftype = WL_IF_TYPE_AP;
 	}
 
@@ -15008,6 +15012,9 @@ s32
 wl_cfg80211_net_attach(struct net_device *primary_ndev)
 {
 	struct bcm_cfg80211 *cfg = wl_get_cfg(primary_ndev);
+#ifdef WL_STATIC_IF
+	char *static_if_prefix;
+#endif
 
 	if (!cfg) {
 		WL_ERR(("cfg null\n"));
@@ -15015,8 +15022,9 @@ wl_cfg80211_net_attach(struct net_device *primary_ndev)
 	}
 #ifdef WL_STATIC_IF
 	/* Register dummy n/w iface. FW init will happen only from dev_open */
+	static_if_prefix = is_aosp_mode() ? "wlan1" : WL_STATIC_IFNAME_PREFIX;
 	if (wl_cfg80211_register_static_if(cfg, NL80211_IFTYPE_STATION,
-		WL_STATIC_IFNAME_PREFIX) == NULL) {
+		static_if_prefix) == NULL) {
 		WL_ERR(("static i/f registration failed!\n"));
 		return BCME_ERROR;
 	}
