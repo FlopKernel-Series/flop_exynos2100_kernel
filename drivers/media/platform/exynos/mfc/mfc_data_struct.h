@@ -651,6 +651,7 @@ struct mfc_debugfs {
 	struct dentry *d_feature_option;
 	struct dentry *d_core_balance;
 	struct dentry *d_sbwc_disable;
+	struct dentry *d_sscd_report;
 
 	unsigned int debug_level;
 	unsigned int debug_ts;
@@ -673,6 +674,7 @@ struct mfc_debugfs {
 	unsigned int regression_option;
 	unsigned int core_balance;
 	unsigned int sbwc_disable;
+	unsigned int sscd_report;
 };
 
 /**

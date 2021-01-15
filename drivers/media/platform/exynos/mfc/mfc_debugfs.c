@@ -175,6 +175,8 @@ static int __mfc_debug_info_show(struct seq_file *s, void *unused)
 	seq_puts(s, "2   (1 << 1): memlog printf\n");
 	seq_puts(s, "4   (1 << 2): memlog sfr dump\n");
 
+	seq_puts(s, "-----Forcely run sscordump\n");
+	seq_puts(s, "ex) echo 1 > /d/mfc/sscd_report\n");
 	return 0;
 }
 
@@ -510,4 +512,6 @@ void mfc_init_debugfs(struct mfc_dev *dev)
 			0644, debugfs->root, &dev->debugfs.logging_option);
 	debugfs->d_sbwc_disable = debugfs_create_u32("sbwc_disable",
 			0644, debugfs->root, &dev->debugfs.sbwc_disable);
+	debugfs->d_sscd_report = debugfs_create_u32("sscd_report",
+			0644, debugfs->root, &dev->debugfs.sscd_report);
 }
