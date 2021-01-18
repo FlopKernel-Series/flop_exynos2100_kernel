@@ -48,8 +48,6 @@
 #define MFC_SURPLUS_CORE	1
 #define MFC_MAX_CORE_BALANCE	99
 
-/* MFC base address */
-#define MFC_BASE_ADDR		0x10000000
 /* Interrupt timeout */
 #define MFC_INT_TIMEOUT		4000
 /* Interrupt short timeout */
