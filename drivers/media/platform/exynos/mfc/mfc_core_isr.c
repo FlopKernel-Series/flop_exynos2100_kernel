@@ -648,6 +648,46 @@ static struct mfc_buf *__mfc_handle_frame_output(struct mfc_core *core,
 	return __mfc_handle_frame_output_del(core, ctx, err);
 }
 
+static void __mfc_handle_error_state(struct mfc_ctx *ctx, struct mfc_core_ctx *core_ctx)
+{
+	mfc_err("[MSR] It's Error state: cleanup queue\n");
+	MFC_TRACE_CORE_CTX("*** ERROR state\n");
+
+	mfc_change_state(core_ctx, MFCINST_ERROR);
+
+	/* Mark all dst buffers as having an error */
+	mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->dst_buf_queue);
+	if (ctx->type == MFCINST_DECODER)
+		mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->dst_buf_err_queue);
+	/* Mark all src buffers as having an error */
+	mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->src_buf_ready_queue);
+	mfc_cleanup_queue(&ctx->buf_queue_lock, &core_ctx->src_buf_queue);
+	if (ctx->type == MFCINST_ENCODER)
+		mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->ref_buf_queue);
+	/* Mark all NAL_Q buffers as having an error */
+	mfc_cleanup_nal_queue(core_ctx);
+}
+
+void mfc_core_handle_error(struct mfc_core *core)
+{
+	struct mfc_dev *dev = core->dev;
+	struct mfc_core_ctx *core_ctx;
+	int i;
+
+	mfc_core_err("[MSR] >>>>>>>> MFC CORE is Error state <<<<<<<<\n");
+	mfc_core_change_state(core, MFCCORE_ERROR);
+
+	mutex_lock(&dev->mfc_mutex);
+	for (i = 0; i < MFC_NUM_CONTEXTS; i++) {
+		if (!core->core_ctx[i])
+			continue;
+		/* TODO: need to check two core mode */
+		core_ctx = core->core_ctx[i];
+		__mfc_handle_error_state(core_ctx->ctx, core_ctx);
+	}
+	mutex_unlock(&dev->mfc_mutex);
+}
+
 /* Error handling for interrupt */
 static inline void __mfc_handle_error(struct mfc_core *core, struct mfc_ctx *ctx,
 	unsigned int reason, unsigned int error_code)

@@ -108,6 +108,7 @@ int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 {
 	struct mfc_core *core = (struct mfc_core *)param;
 	unsigned int trans_info;
+	int ret;
 
 	if (core->core_pdata->trans_info_offset)
 		trans_info = core->core_pdata->trans_info_offset;
@@ -154,12 +155,26 @@ int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 	}
 	core->logging_data->fault_addr = (unsigned int)(fault->event.addr);
 
-	mfc_core_err("MFC-%d SysMMU PAGE FAULT at %#lx\n",
-			core->id, (unsigned int)(fault->event.addr));
+	mfc_core_err("MFC-%d SysMMU PAGE FAULT at %#lx (AxID: %#x)\n",
+			core->id, (unsigned int)(fault->event.addr), trans_info);
+	MFC_TRACE_CORE("MFC-%d SysMMU PAGE FAULT at %#lx (AxID: %#x)\n",
+			core->id, (unsigned int)(fault->event.addr), trans_info);
 
-	call_dop(core, dump_and_stop_always, core);
+	call_dop(core, dump_and_stop_debug_mode, core);
 
-	return 0;
+	/*
+	 * if return 0, sysmmu occurs kernel panic for debugging
+	 * if -EAGAIN, sysmmu doesn't occur kernel panic (but need async-fault in dt).
+	 */
+	if (!core->dev->pdata->debug_mode &&
+			!core->dev->debugfs.debug_mode_en) {
+		mfc_core_handle_error(core);
+		ret = -EAGAIN;
+	} else {
+		ret = 0;
+	}
+
+	return ret;
 }
 
 static int __mfc_core_parse_dt(struct device_node *np, struct mfc_core *core)
