@@ -23,6 +23,7 @@
 
 irqreturn_t mfc_core_top_half_irq(int irq, void *priv);
 irqreturn_t mfc_core_irq(int irq, void *priv);
+void mfc_core_handle_error(struct mfc_core *core);
 
 static inline enum vb2_buffer_state __mfc_get_buf_state(unsigned int err)
 {
