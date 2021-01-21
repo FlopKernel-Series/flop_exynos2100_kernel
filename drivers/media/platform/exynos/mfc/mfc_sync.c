@@ -56,12 +56,11 @@ void mfc_get_corelock_ctx(struct mfc_ctx *ctx)
 		ret = wait_event_timeout(ctx->corelock.migrate_wq,
 				(ctx->corelock.migrate == 0),
 				msecs_to_jiffies(timeout));
-		if (ret == 0) {
+		if (ret == 0)
 			mfc_ctx_err("[CORELOCK] waiting corelock for migration timed out\n");
-			call_dop(ctx->dev, dump_and_stop_debug_mode, ctx->dev);
-		}
+		else
+			mfc_debug(2, "[CORELOCK] finished waiting corelock for migration\n");
 
-		mfc_debug(2, "[CORELOCK] finished waiting corelock for migration\n");
 		spin_lock_irqsave(&ctx->corelock.lock, flags);
 	}
 
@@ -77,12 +76,10 @@ void mfc_release_corelock_ctx(struct mfc_ctx *ctx)
 	spin_lock_irqsave(&ctx->corelock.lock, flags);
 
 	ctx->corelock.cnt--;
-	if (ctx->corelock.cnt == 0) {
+	if (ctx->corelock.cnt == 0)
 		wake_up(&ctx->corelock.wq);
-	} else if (ctx->corelock.cnt < 0) {
+	else if (ctx->corelock.cnt < 0)
 		mfc_ctx_err("[CORELOCK] wrong corelock cnt %d\n", ctx->corelock.cnt);
-		call_dop(ctx->dev, dump_and_stop_debug_mode, ctx->dev);
-	}
 
 	mfc_debug(3, "[CORELOCK] release_corelock: cnt %d, migrate %d\n",
 			ctx->corelock.cnt, ctx->corelock.migrate);
@@ -113,10 +110,8 @@ int mfc_get_corelock_migrate(struct mfc_ctx *ctx)
 			spin_unlock_irqrestore(&ctx->corelock.lock, flags);
 			mfc_ctx_err("[CORELOCK] waiting corelock timed out (%d)\n",
 					ctx->corelock.cnt);
-			call_dop(ctx->dev, dump_and_stop_debug_mode, ctx->dev);
 			return -EBUSY;
 		}
-
 		mfc_debug(2, "[CORELOCK] finished waiting corelock\n");
 		spin_lock_irqsave(&ctx->corelock.lock, flags);
 	}
