@@ -1488,6 +1488,7 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 	struct mfc_dec *dec = ctx->dec_priv;
 	struct mfc_buf *src_mb;
 	int i, is_interlace;
+	int is_hdr10_sbwc_off = 0;
 	unsigned int bytesused, fps, num_sbwc_inst = 0;
 
 	if (ctx->src_fmt->fourcc != V4L2_PIX_FMT_FIMV1) {
@@ -1530,6 +1531,13 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 		}
 	}
 
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->color_aspect_dec)
+			&& dev->pdata->sbwc_dec_hdr10_off)
+		if (mfc_core_get_video_signal_type() && mfc_core_get_colour_description())
+			is_hdr10_sbwc_off = IS_HDR10(ctx, mfc_core_get_primaries(),
+					mfc_core_get_transfer(),
+					mfc_core_get_matrix_coeff());
+
 	if (ctx->img_width == 0 || ctx->img_height == 0) {
 		mfc_change_state(core_ctx, MFCINST_ERROR);
 	} else {
@@ -1551,6 +1559,10 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				mfc_debug(2, "[SBWC] disable sbwc, (%dx%d) > (%dx%d)\n",
 					ctx->img_width, ctx->img_height,
 					dev->pdata->sbwc_dec_max_width, dev->pdata->sbwc_dec_max_height);
+			} else if (ctx->is_sbwc && is_hdr10_sbwc_off) {
+				ctx->is_sbwc = 0;
+				ctx->sbwc_disabled = 1;
+				mfc_debug(2, "[SBWC] disable sbwc, HDR10\n");
 			} else if (ctx->is_sbwc && dev->debugfs.sbwc_disable) {
 				ctx->is_sbwc = 0;
 				ctx->sbwc_disabled = 1;
