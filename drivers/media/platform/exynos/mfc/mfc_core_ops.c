@@ -348,10 +348,43 @@ static int __mfc_force_close_inst(struct mfc_core *core, struct mfc_ctx *ctx)
 	return 0;
 }
 
+int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
+{
+	struct mfc_core_ctx *core_ctx = NULL;
+
+	core->num_inst++;
+	if (ctx->is_drm)
+		core->num_drm_inst++;
+
+	/* Allocate memory for core context */
+	core_ctx = kzalloc(sizeof(*core_ctx), GFP_KERNEL);
+	if (!core_ctx) {
+		mfc_core_err("Not enough memory\n");
+		return -ENOMEM;
+	}
+
+	core_ctx->core = core;
+	core_ctx->ctx = ctx;
+	core_ctx->num = ctx->num;
+	core_ctx->is_drm = ctx->is_drm;
+	core_ctx->inst_no = MFC_NO_INSTANCE_SET;
+	core->core_ctx[core_ctx->num] = core_ctx;
+
+	init_waitqueue_head(&core_ctx->drc_wq);
+	init_waitqueue_head(&core_ctx->cmd_wq);
+	mfc_core_init_listable_wq_ctx(core_ctx);
+	spin_lock_init(&core_ctx->buf_queue_lock);
+	mfc_clear_bit(core_ctx->num, &core->work_bits);
+	INIT_LIST_HEAD(&core_ctx->qos_list);
+
+	mfc_create_queue(&core_ctx->src_buf_queue);
+
+	return 0;
+}
+
 int mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 {
 	struct mfc_dev *dev = core->dev;
-	struct mfc_core_ctx *core_ctx = NULL;
 	int ret = 0;
 
 	mfc_core_debug_enter();
@@ -370,33 +403,9 @@ int mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 		goto err_hw_lock;
 	}
 
-	core->num_inst++;
-	if (ctx->is_drm)
-		core->num_drm_inst++;
-
-	/* Allocate memory for core context */
-	core_ctx = kzalloc(sizeof(*core_ctx), GFP_KERNEL);
-	if (!core_ctx) {
-		mfc_core_err("Not enough memory\n");
-		ret = -ENOMEM;
+	ret = __mfc_core_instance_init(core, ctx);
+	if (ret)
 		goto err_core_ctx_alloc;
-	}
-
-	core_ctx->core = core;
-	core_ctx->ctx = ctx;
-	core_ctx->num = ctx->num;
-	core_ctx->is_drm = ctx->is_drm;
-	core_ctx->inst_no = MFC_NO_INSTANCE_SET;
-	core->core_ctx[core_ctx->num] = core_ctx;
-
-	init_waitqueue_head(&core_ctx->drc_wq);
-	init_waitqueue_head(&core_ctx->cmd_wq);
-	mfc_core_init_listable_wq_ctx(core_ctx);
-	spin_lock_init(&core_ctx->buf_queue_lock);
-	mfc_clear_bit(core_ctx->num, &core->work_bits);
-	INIT_LIST_HEAD(&core_ctx->qos_list);
-
-	mfc_create_queue(&core_ctx->src_buf_queue);
 
 	if (core->num_inst == 1) {
 		ret = __mfc_core_init(core, ctx);
@@ -420,8 +429,8 @@ int mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 	return ret;
 
 err_init_inst:
-	core->core_ctx[core_ctx->num] = 0;
-	kfree(core_ctx);
+	core->core_ctx[ctx->num] = 0;
+	kfree(core->core_ctx[ctx->num]);
 err_core_ctx_alloc:
 	core->num_inst--;
 	if (ctx->is_drm)
@@ -651,35 +660,11 @@ void mfc_core_instance_cache_flush(struct mfc_core *core, struct mfc_ctx *ctx)
 int mfc_core_instance_move_to(struct mfc_core *core, struct mfc_ctx *ctx)
 {
 	struct mfc_dev *dev = core->dev;
-	struct mfc_core_ctx *core_ctx = NULL;
 	int ret;
 
-	core->num_inst++;
-	if (ctx->is_drm)
-		core->num_drm_inst++;
-
-	/* Allocate memory for core context */
-	core_ctx = kzalloc(sizeof(*core_ctx), GFP_KERNEL);
-	if (!core_ctx) {
-		mfc_core_err("Not enough memory\n");
-		ret = -ENOMEM;
+	ret = __mfc_core_instance_init(core, ctx);
+	if (ret)
 		goto err_core_ctx_alloc;
-	}
-
-	core_ctx->core = core;
-	core_ctx->ctx = ctx;
-	core_ctx->num = ctx->num;
-	core_ctx->is_drm = ctx->is_drm;
-	core_ctx->inst_no = MFC_NO_INSTANCE_SET;
-	core->core_ctx[core_ctx->num] = core_ctx;
-
-	init_waitqueue_head(&core_ctx->cmd_wq);
-	mfc_core_init_listable_wq_ctx(core_ctx);
-	spin_lock_init(&core_ctx->buf_queue_lock);
-	mfc_clear_bit(core_ctx->num, &core->work_bits);
-	INIT_LIST_HEAD(&core_ctx->qos_list);
-
-	mfc_create_queue(&core_ctx->src_buf_queue);
 
 	if (core->num_inst == 1) {
 		mfc_debug(2, "it is first instance in to core-%d\n", core->id);
@@ -706,8 +691,8 @@ int mfc_core_instance_move_to(struct mfc_core *core, struct mfc_ctx *ctx)
 	return 0;
 
 err_init_inst:
-	core->core_ctx[core_ctx->num] = 0;
-	kfree(core_ctx);
+	core->core_ctx[ctx->num] = 0;
+	kfree(core->core_ctx[ctx->num]);
 err_core_ctx_alloc:
 	core->num_inst--;
 	if (ctx->is_drm)
