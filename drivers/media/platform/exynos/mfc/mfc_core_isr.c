@@ -820,6 +820,9 @@ static void __mfc_handle_frame_error(struct mfc_core *core, struct mfc_ctx *ctx,
 		vb2_buffer_done(&src_mb->vb.vb2_buf, vb2_state);
 	}
 
+	if (mfc_get_err(err) == MFC_REG_ERR_UNDEFINED_EXCEPTION)
+		mfc_core_handle_error(core);
+
 	mfc_debug(2, "Assesing whether this context should be run again\n");
 }
 
