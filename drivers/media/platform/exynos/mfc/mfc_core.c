@@ -156,9 +156,9 @@ int mfc_core_sysmmu_fault_handler(struct iommu_fault *fault, void *param)
 	core->logging_data->fault_addr = (unsigned int)(fault->event.addr);
 
 	mfc_core_err("MFC-%d SysMMU PAGE FAULT at %#lx (AxID: %#x)\n",
-			core->id, (unsigned int)(fault->event.addr), trans_info);
+			core->id, (unsigned int)(fault->event.addr), core->logging_data->fault_trans_info);
 	MFC_TRACE_CORE("MFC-%d SysMMU PAGE FAULT at %#lx (AxID: %#x)\n",
-			core->id, (unsigned int)(fault->event.addr), trans_info);
+			core->id, (unsigned int)(fault->event.addr), core->logging_data->fault_trans_info);
 
 	call_dop(core, dump_and_stop_debug_mode, core);
 
