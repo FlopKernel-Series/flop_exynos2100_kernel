@@ -636,7 +636,7 @@ extern int alloc_contig_range(unsigned long start, unsigned long end,
 extern int alloc_contig_range_fast(unsigned long start, unsigned long end,
 			           unsigned migratetype);
 #endif
-void free_contig_range(unsigned long pfn, unsigned int nr_pages);
+void free_contig_range(unsigned long pfn, unsigned long nr_pages);
 
 #ifdef CONFIG_CMA
 /* CMA stuff */

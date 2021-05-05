@@ -11,14 +11,14 @@
 TRACE_EVENT(cma_alloc,
 
 	TP_PROTO(unsigned long pfn, const struct page *page,
-		 unsigned int count, unsigned int align),
+		 unsigned long count, unsigned int align),
 
 	TP_ARGS(pfn, page, count, align),
 
 	TP_STRUCT__entry(
 		__field(unsigned long, pfn)
 		__field(const struct page *, page)
-		__field(unsigned int, count)
+		__field(unsigned long, count)
 		__field(unsigned int, align)
 	),
 
@@ -29,7 +29,7 @@ TRACE_EVENT(cma_alloc,
 		__entry->align = align;
 	),
 
-	TP_printk("pfn=%lx page=%p count=%u align=%u",
+	TP_printk("pfn=%lx page=%p count=%lu align=%u",
 		  __entry->pfn,
 		  __entry->page,
 		  __entry->count,
@@ -39,14 +39,14 @@ TRACE_EVENT(cma_alloc,
 TRACE_EVENT(cma_release,
 
 	TP_PROTO(unsigned long pfn, const struct page *page,
-		 unsigned int count),
+		 unsigned long count),
 
 	TP_ARGS(pfn, page, count),
 
 	TP_STRUCT__entry(
 		__field(unsigned long, pfn)
 		__field(const struct page *, page)
-		__field(unsigned int, count)
+		__field(unsigned long, count)
 	),
 
 	TP_fast_assign(
@@ -55,12 +55,11 @@ TRACE_EVENT(cma_release,
 		__entry->count = count;
 	),
 
-	TP_printk("pfn=%lx page=%p count=%u",
+	TP_printk("pfn=%lx page=%p count=%lu",
 		  __entry->pfn,
 		  __entry->page,
 		  __entry->count)
 );
-
 #endif /* _TRACE_CMA_H */
 
 /* This part must be outside protection */
