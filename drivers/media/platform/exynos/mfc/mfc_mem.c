@@ -141,8 +141,11 @@ err_reserved_mem_lookup:
 
 }
 
-static void mfc_mem_fw_free(struct mfc_special_buf *special_buf)
+static void mfc_mem_fw_free(struct mfc_dev *dev, struct mfc_special_buf *special_buf)
 {
+	if (dev->fw_rmem_offset >= special_buf->size)
+		dev->fw_rmem_offset -= special_buf->size;
+
 	if (special_buf->sgt) {
 		sg_free_table(special_buf->sgt);
 		kfree(special_buf->sgt);
@@ -150,7 +153,6 @@ static void mfc_mem_fw_free(struct mfc_special_buf *special_buf)
 	special_buf->sgt = NULL;
 	special_buf->dma_buf = NULL;
 	special_buf->attachment = NULL;
-	special_buf->daddr = 0;
 	special_buf->vaddr = NULL;
 }
 
@@ -286,11 +288,11 @@ int mfc_mem_special_buf_alloc(struct mfc_dev *dev,
 	return ret;
 }
 
-void mfc_mem_special_buf_free(struct mfc_special_buf *special_buf)
+void mfc_mem_special_buf_free(struct mfc_dev *dev, struct mfc_special_buf *special_buf)
 {
 	switch (special_buf->buftype) {
 	case MFCBUF_DRM_FW:
-		mfc_mem_fw_free(special_buf);
+		mfc_mem_fw_free(dev, special_buf);
 		break;
 	case MFCBUF_NORMAL_FW:
 	case MFCBUF_DRM:
