@@ -9,6 +9,10 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
+
+#ifndef __MFC_CORE_OPS_H
+#define __MFC_CORE_OPS_H __FILE__
+
 #include "mfc_common.h"
 
 int mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx);
@@ -24,3 +28,10 @@ void mfc_core_instance_q_flush(struct mfc_core *core, struct mfc_ctx *ctx);
 void mfc_core_instance_finishing(struct mfc_core *core, struct mfc_ctx *ctx);
 int mfc_core_request_work(struct mfc_core *core, enum mfc_request_work work,
 		struct mfc_ctx *ctx);
+#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
+int mfc_release_verify_fw(struct mfc_core *core);
+#else
+static inline int mfc_release_verify_fw(struct mfc_core *core) {return 0;}
+#endif
+
+#endif /* __MFC_CORE_OPS_H */
