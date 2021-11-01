@@ -99,6 +99,7 @@ static int __mfc_core_prot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 		}
 	}
 
+	mfc_core_change_fw_state(core, 1, MFC_FW_VERIFIED, 1);
 	mfc_core_debug_leave();
 
 	return 0;
@@ -135,6 +136,7 @@ static void __mfc_core_unprot_firmware(struct mfc_core *core, struct mfc_ctx *ct
 
 	kfree(core->drm_fw_prot);
 	core->drm_fw_prot = NULL;
+	mfc_core_change_fw_state(core, 1, MFC_FW_VERIFIED, 0);
 
 	mfc_core_debug_leave();
 }
@@ -433,6 +435,7 @@ int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 			goto err_verify_fw;
 #endif
 #endif
+		mfc_core_change_fw_state(core, 0, MFC_FW_VERIFIED, 1);
 
 		ret = __mfc_core_init(core, ctx);
 		if (ret)
@@ -1255,6 +1258,7 @@ int mfc_imgloader_shutdown(struct imgloader_desc *desc)
 	struct mfc_core *core = (struct mfc_core *)desc->dev->driver_data;
 
 	mfc_core_debug(2, "[F/W] release verify fw\n");
+	mfc_core_change_fw_state(core, 0, MFC_FW_VERIFIED, 0);
 
 	return 0;
 }
@@ -1276,6 +1280,7 @@ int mfc_release_verify_fw(struct mfc_core *core)
 	/* release the permission for fw region */
 	desc = &core->mfc_imgloader_desc;
 	exynos_release_subsystem_fw_stage2_ap(core->name, desc->fw_id);
+	mfc_core_change_fw_state(core, 0, MFC_FW_VERIFIED, 0);
 
 	mfc_core_debug(2, "[F/W] release verify fw\n");
 

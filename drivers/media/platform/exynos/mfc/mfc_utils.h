@@ -55,6 +55,39 @@ static inline void mfc_change_op_mode(struct mfc_ctx *ctx, enum mfc_op_mode op_m
 	ctx->op_mode = op_mode;
 }
 
+static inline void mfc_core_change_state(struct mfc_core *core, enum mfc_core_state state)
+{
+	MFC_TRACE_CORE("** core state : %d\n", state);
+	core->state = state;
+}
+
+static inline void mfc_core_change_fw_state(struct mfc_core *core, int is_drm,
+		enum mfc_fw_status state, int set)
+{
+	enum mfc_fw_status prev_stat;
+
+	if (is_drm) {
+		prev_stat = core->fw.drm_status;
+		if (set)
+			core->fw.drm_status |= state;
+		else
+			core->fw.drm_status &= ~state;
+		MFC_TRACE_CORE("** DRM FW status %#x -> %#x (%s: %#x)\n",
+				prev_stat, core->fw.drm_status, set ? "set" : "clear", state);
+		mfc_core_debug(2, "[F/W] DRM status: %#x -> %#x (%s: %#x)\n",
+				prev_stat, core->fw.drm_status, set ? "set" : "clear", state);
+	} else {
+		prev_stat = core->fw.status;
+		if (set)
+			core->fw.status |= state;
+		else
+			core->fw.status &= ~state;
+		MFC_TRACE_CORE("** normal FW status %#x -> %#x (%s: %#x)\n",
+				prev_stat, core->fw.status, set ? "set" : "clear", state);
+		mfc_core_debug(2, "[F/W] normal status: %#x -> %#x (%s: %#x)\n",
+				prev_stat, core->fw.status, set ? "set" : "clear", state);
+	}
+}
 static inline enum mfc_node_type mfc_get_node_type(struct file *file)
 {
 	struct video_device *vdev = video_devdata(file);

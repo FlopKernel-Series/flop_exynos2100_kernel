@@ -137,6 +137,14 @@ enum mfc_node_type {
 };
 
 /**
+ * enum mfc_core_state - The type of MFC core device.
+ */
+enum mfc_core_state {
+	MFCCORE_INIT	= 0,
+	MFCCORE_ERROR	= 1,
+};
+
+/**
  * enum mfc_inst_type - The type of an MFC instance.
  */
 enum mfc_inst_type {
@@ -525,12 +533,20 @@ struct mfc_pm {
 	enum mfc_buf_usage_type base_type;
 };
 
+enum mfc_fw_status {
+	MFC_FW_NONE		= 0,
+	MFC_FW_ALLOC		= (1 << 0),	// 0x1
+	MFC_CTX_ALLOC		= (1 << 1),	// 0x2
+	MFC_FW_LOADED		= (1 << 2),	// 0x4
+	MFC_FW_VERIFIED		= (1 << 3),	// 0x8
+};
+
 struct mfc_fw {
-	int		date;
-	int		fimv_info;
-	size_t		fw_size;
-	int		status;
-	int		drm_status;
+	int			date;
+	int			fimv_info;
+	size_t			fw_size;
+	enum mfc_fw_status	status;
+	enum mfc_fw_status	drm_status;
 };
 
 struct mfc_ctx_buf_size {
@@ -1354,6 +1370,8 @@ struct mfc_core {
 
 	struct mfc_variant	*variant;
 	struct mfc_core_platdata *core_pdata;
+
+	enum mfc_core_state state;
 
 	bool has_2sysmmu;
 	bool has_hwfc;
