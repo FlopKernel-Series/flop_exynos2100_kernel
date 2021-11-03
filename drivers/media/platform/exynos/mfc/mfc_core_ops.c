@@ -162,10 +162,9 @@ int __mfc_verify_fw(struct mfc_core *core, unsigned int fw_id,
 }
 #endif
 
-static int __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
+static void __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 {
 	struct mfc_dev *dev = core->dev;
-	int ret = 0;
 
 	/* set meerkat timer */
 	mod_timer(&core->meerkat_timer, jiffies + msecs_to_jiffies(MEERKAT_TICK_INTERVAL));
@@ -173,19 +172,6 @@ static int __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 	/* set MFC idle timer */
 	atomic_set(&core->hw_run_bits, 0);
 	mfc_core_change_idle_mode(core, MFC_IDLE_MODE_NONE);
-
-	if (dev->debugfs.dbg_enable)
-		mfc_alloc_dbg_info_buffer(core);
-
-	core->curr_core_ctx = ctx->num;
-	core->preempt_core_ctx = MFC_NO_INSTANCE_SET;
-	core->curr_core_ctx_is_drm = ctx->is_drm;
-
-	ret = mfc_core_run_init_hw(core);
-	if (ret) {
-		mfc_core_err("Failed to init mfc h/w\n");
-		goto err_hw_init;
-	}
 
 	if (core->has_llc && (core->llc_on_status == 0))
 		mfc_llc_enable(core);
@@ -196,14 +182,15 @@ static int __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_core_err("[NALQ] Can't create nal q\n");
 	}
 
-	return ret;
+	if (core->dev->debugfs.perf_boost_mode)
+		mfc_core_perf_boost_enable(core);
 
-err_hw_init:
-	del_timer(&core->meerkat_timer);
-	del_timer(&core->mfc_idle_timer);
+	if (!dev->fw_date)
+		dev->fw_date = core->fw.date;
+	else if (dev->fw_date > core->fw.date)
+		dev->fw_date = core->fw.date;
 
-	mfc_core_err("failed to init first instance\n");
-	return ret;
+	mfc_perf_init(core);
 }
 
 static int __mfc_wait_close_inst(struct mfc_core *core, struct mfc_ctx *ctx)
@@ -278,6 +265,7 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	/* Last normal instance */
 	if (!ctx->is_drm && (core->num_inst - core->num_drm_inst) == 0) {
+		mfc_core_change_fw_state(core, 0, MFC_FW_INITIALIZED, 0);
 #if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 		imgloader_shutdown(&core->mfc_imgloader_desc);
 #else
@@ -288,6 +276,7 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 
 	/* Last DRM instance */
 	if (ctx->is_drm && (core->num_drm_inst == 0)) {
+		mfc_core_change_fw_state(core, 1, MFC_FW_INITIALIZED, 0);
 		mfc_core_protection_off(core);
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
@@ -379,7 +368,6 @@ static int __mfc_force_close_inst(struct mfc_core *core, struct mfc_ctx *ctx)
 
 int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 {
-	struct mfc_dev *dev = core->dev;
 	struct mfc_core_ctx *core_ctx = NULL;
 	int ret = 0;
 	enum mfc_fw_status fw_status;
@@ -422,6 +410,9 @@ int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_core_err("Failed block power on, ret=%d\n", ret);
 			goto err_power_on;
 		}
+
+		if (core->dev->debugfs.dbg_enable)
+			mfc_alloc_dbg_info_buffer(core);
 	}
 
 	/* Load and verify the FW */
@@ -458,25 +449,22 @@ int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 #endif
 #endif
 
-	if (core->num_inst == 1) {
-		ret = __mfc_core_init(core, ctx);
+
+	if (!(fw_status & MFC_FW_INITIALIZED)) {
+		core->curr_core_ctx = ctx->num;
+		core->preempt_core_ctx = MFC_NO_INSTANCE_SET;
+
+		ret = mfc_core_run_init_hw(core, ctx->is_drm ? MFCBUF_DRM : MFCBUF_NORMAL);
 		if (ret)
-			goto err_init_core;
-
-		if (dev->debugfs.perf_boost_mode)
-			mfc_core_perf_boost_enable(core);
-
-		if (!dev->fw_date)
-			dev->fw_date = core->fw.date;
-		else if (dev->fw_date > core->fw.date)
-			dev->fw_date = core->fw.date;
-
-		mfc_perf_init(core);
+			goto err_init_hw;
 	}
+
+	if (core->num_inst == 1)
+		__mfc_core_init(core, ctx);
 
 	return 0;
 
-err_init_core:
+err_init_hw:
 #if !IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 #if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
 	mfc_release_verify_fw(core);
@@ -497,6 +485,8 @@ err_fw_prot:
 	mfc_core_change_fw_state(core, ctx->is_drm, MFC_FW_LOADED, 0);
 
 err_fw_load:
+	if (core->dev->debugfs.dbg_enable)
+		mfc_release_dbg_info_buffer(core);
 	mfc_core_pm_power_off(core);
 
 err_power_on:
