@@ -80,8 +80,8 @@ struct snd_uac_chip {
 	struct snd_pcm *pcm;
 
 	/* pre-calculated values for playback iso completion */
-	unsigned long long p_interval_mil;
 	unsigned long long p_residue_mil;
+	unsigned int p_interval;
 	unsigned int p_framesize;
 };
 
@@ -200,7 +200,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 
 		pitched_rate_mil = (unsigned long long) prm->srate * prm->pitch;
 		div_result = pitched_rate_mil;
-		do_div(div_result, uac->p_interval_mil);
+		do_div(div_result, uac->p_interval);
 		frames = (unsigned int) div_result;
 
 		pr_debug("p_srate %d, pitch %d, interval_mil %llu, frames %d\n",
@@ -211,7 +211,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 					ep->maxpacket);
 
 		if (p_pktsize < ep->maxpacket) {
-			residue_frames_mil = pitched_rate_mil - frames * uac->p_interval_mil;
+			residue_frames_mil = pitched_rate_mil - frames * uac->p_interval;
 			p_pktsize_residue_mil = uac->p_framesize * residue_frames_mil;
 		} else
 			p_pktsize_residue_mil = 0;
@@ -225,11 +225,10 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 		 * size and decrease the accumulator.
 		 */
 		div_result = uac->p_residue_mil;
-		do_div(div_result, uac->p_interval_mil);
+		do_div(div_result, uac->p_interval);
 		if ((unsigned int) div_result >= uac->p_framesize) {
 			req->length += uac->p_framesize;
-			uac->p_residue_mil -= uac->p_framesize *
-					   uac->p_interval_mil;
+			uac->p_residue_mil -= uac->p_framesize * p_interval_mil;
 			pr_debug("increased req length to %d\n", req->length);
 		}
 		pr_debug("remains uac->p_residue_mil %llu\n", uac->p_residue_mil);
@@ -359,6 +358,25 @@ static snd_pcm_uframes_t uac_pcm_pointer(struct snd_pcm_substream *substream)
 		prm = &uac->c_prm;
 
 	return bytes_to_frames(substream->runtime, prm->hw_ptr);
+}
+
+static u64 uac_ssize_to_fmt(int ssize)
+{
+	u64 ret;
+
+	switch (ssize) {
+	case 3:
+		ret = SNDRV_PCM_FMTBIT_S24_3LE;
+		break;
+	case 4:
+		ret = SNDRV_PCM_FMTBIT_S32_LE;
+		break;
+	default:
+		ret = SNDRV_PCM_FMTBIT_S16_LE;
+		break;
+	}
+
+	return ret;
 }
 
 static int uac_pcm_hw_params(struct snd_pcm_substream *substream,
@@ -634,10 +652,10 @@ int u_audio_start_playback(struct g_audio *audio_dev)
 	struct usb_ep *ep;
 	struct uac_rtd_params *prm;
 	struct uac_params *params = &audio_dev->params;
-	unsigned int factor, rate;
+	unsigned int factor;
 	const struct usb_endpoint_descriptor *ep_desc;
 	int req_len, i;
-	unsigned int p_interval, p_pktsize;
+	unsigned int p_pktsize;
 
 	prm = &uac->p_prm;
 	dev_dbg(dev, "start playback with rate %d\n", prm->srate);
@@ -659,8 +677,7 @@ int u_audio_start_playback(struct g_audio *audio_dev)
 	/* pre-compute some values for iso_complete() */
 	uac->p_framesize = params->p_ssize *
 			    num_channels(params->p_chmask);
-	p_interval = factor / (1 << (ep_desc->bInterval - 1));
-	uac->p_interval_mil = (unsigned long long) p_interval * 1000000;
+	uac->p_interval = factor / (1 << (ep_desc->bInterval - 1));
 	p_pktsize = min_t(unsigned int,
 				uac->p_framesize *
 					(prm->srate / uac->p_interval),
