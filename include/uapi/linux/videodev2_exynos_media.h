@@ -82,68 +82,150 @@
 #define V4L2_PIX_FMT_NV12N_SBWCL_8B	v4l2_fourcc('N', '1', 'L', '8')
 #define V4L2_PIX_FMT_NV12N_SBWCL_10B	v4l2_fourcc('N', '1', 'L', '1')
 
+/* 12 Y/CbCr 4:2:0 AFBC */
+#define V4L2_PIX_FMT_NV12M_AFBC_8B	v4l2_fourcc('M', '1', 'A', '8')
+#define V4L2_PIX_FMT_NV12M_AFBC_10B	v4l2_fourcc('M', '1', 'A', '1')
+
 /* helper macros */
 #ifndef __ALIGN_UP
 #define __ALIGN_UP(x, a)		(((x) + ((a) - 1)) & ~((a) - 1))
 #endif
 
-#define NV12N_Y_SIZE(w, h)		(__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) + 256)
-#define NV12N_CBCR_SIZE(w, h)		(__ALIGN_UP((__ALIGN_UP((w), 16) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
-#define NV12N_CBCR_BASE(base, w, h)	((base) + NV12N_Y_SIZE((w), (h)))
-#define NV12N_10B_Y_8B_SIZE(w, h)	(__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) + 256)
-#define NV12N_10B_Y_2B_SIZE(w, h)	((__ALIGN_UP((w) / 4, 16) * __ALIGN_UP((h), 16) + 64))
-#define NV12N_10B_CBCR_8B_SIZE(w, h)	(__ALIGN_UP((__ALIGN_UP((w), 64) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
-#define NV12N_10B_CBCR_2B_SIZE(w, h)	((__ALIGN_UP((w) / 4, 16) * (__ALIGN_UP((h), 16) / 2) + 64))
-#define NV12N_10B_CBCR_BASE(base, w, h)	((base) + NV12N_10B_Y_8B_SIZE((w), (h)) + NV12N_10B_Y_2B_SIZE((w), (h)))
+#define NV12N_Y_SIZE(w, h)			\
+	(__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) + 256)
+#define NV12N_CBCR_SIZE(w, h)			\
+(__ALIGN_UP((__ALIGN_UP((w), 16) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
+#define NV12N_CBCR_BASE(base, w, h)		\
+	((base) + NV12N_Y_SIZE((w), (h)))
+#define NV12N_10B_Y_8B_SIZE(w, h)		\
+	(__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) + 256)
+#define NV12N_10B_Y_2B_SIZE(w, h)		\
+	((__ALIGN_UP((w) / 4, 16) * __ALIGN_UP((h), 16) + 64))
+#define NV12N_10B_CBCR_8B_SIZE(w, h)		\
+(__ALIGN_UP((__ALIGN_UP((w), 64) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
+#define NV12N_10B_CBCR_2B_SIZE(w, h)		\
+	((__ALIGN_UP((w) / 4, 16) * (__ALIGN_UP((h), 16) / 2) + 64))
+#define NV12N_10B_CBCR_BASE(base, w, h)		\
+	((base) + NV12N_10B_Y_8B_SIZE((w), (h)) + NV12N_10B_Y_2B_SIZE((w), (h)))
 
-#define YUV420N_Y_SIZE(w, h)		(__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) + 256)
-#define YUV420N_CB_SIZE(w, h)		(__ALIGN_UP((__ALIGN_UP((w) / 2, 16) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
-#define YUV420N_CR_SIZE(w, h)		(__ALIGN_UP((__ALIGN_UP((w) / 2, 16) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
+#define YUV420N_Y_SIZE(w, h)			\
+	(__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) + 256)
+#define YUV420N_CB_SIZE(w, h)			\
+(__ALIGN_UP((__ALIGN_UP((w) / 2, 16) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
+#define YUV420N_CR_SIZE(w, h)			\
+(__ALIGN_UP((__ALIGN_UP((w) / 2, 16) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
 #define YUV420N_CB_BASE(base, w, h)	((base) + YUV420N_Y_SIZE((w), (h)))
-#define YUV420N_CR_BASE(base, w, h)	(YUV420N_CB_BASE((base), (w), (h)) + YUV420N_CB_SIZE((w), (h)))
+#define YUV420N_CR_BASE(base, w, h)		\
+	(YUV420N_CB_BASE((base), (w), (h)) + YUV420N_CB_SIZE((w), (h)))
 
-#define NV12M_Y_SIZE(w, h)		(__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) + 256)
-#define NV12M_CBCR_SIZE(w, h)		((__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) / 2) + 256)
-#define NV12M_Y_2B_SIZE(w, h)		(__ALIGN_UP((w / 4), 16) * __ALIGN_UP((h), 16) + 256)
-#define NV12M_CBCR_2B_SIZE(w, h)	((__ALIGN_UP((w / 4), 16) * __ALIGN_UP((h), 16) / 2) + 256)
+#define NV12M_Y_SIZE(w, h)			\
+	(__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) + 256)
+#define NV12M_CBCR_SIZE(w, h)			\
+	((__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) / 2) + 256)
+#define NV12M_Y_2B_SIZE(w, h)			\
+	(__ALIGN_UP((w / 4), 16) * __ALIGN_UP((h), 16) + 256)
+#define NV12M_CBCR_2B_SIZE(w, h)		\
+	((__ALIGN_UP((w / 4), 16) * __ALIGN_UP((h), 16) / 2) + 256)
 
-#define NV16M_Y_SIZE(w, h)		(__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) + 256)
-#define NV16M_CBCR_SIZE(w, h)		(__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) + 256)
-#define NV16M_Y_2B_SIZE(w, h)		(__ALIGN_UP((w / 4), 16) * __ALIGN_UP((h), 16) + 256)
-#define NV16M_CBCR_2B_SIZE(w, h)	(__ALIGN_UP((w / 4), 16) * __ALIGN_UP((h), 16) + 256)
+#define NV16M_Y_SIZE(w, h)			\
+	(__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) + 256)
+#define NV16M_CBCR_SIZE(w, h)			\
+	(__ALIGN_UP((w), 64) * __ALIGN_UP((h), 16) + 256)
+#define NV16M_Y_2B_SIZE(w, h)			\
+	(__ALIGN_UP((w / 4), 16) * __ALIGN_UP((h), 16) + 256)
+#define NV16M_CBCR_2B_SIZE(w, h)		\
+	(__ALIGN_UP((w / 4), 16) * __ALIGN_UP((h), 16) + 256)
 
 #define S10B_8B_STRIDE(w)		(__ALIGN_UP((w), 64))
-#define S10B_2B_STRIDE(w)		(__ALIGN_UP(((w + 3)/ 4), 16))
+#define S10B_2B_STRIDE(w)		(__ALIGN_UP(((w + 3) / 4), 16))
+
+/* Compress format */
 
 /* SBWC */
-#define SBWC_8B_STRIDE(w)		(128 * (((w) + 31) / 32))
-#define SBWC_10B_STRIDE(w)		(160 * (((w) + 31) / 32))
-#define SBWC_HEADER_STRIDE(w)		((((((w) + 63) / 64) + 15) / 16) * 16)
+#define __COUNT_BLOCKS(x, a)		(((x) + ((a) - 1)) / (a))
 
-#define SBWC_8B_Y_SIZE(w, h)		((SBWC_8B_STRIDE(w) * ((__ALIGN_UP((h), 16) + 3) / 4)) + 64)
-#define SBWC_8B_Y_HEADER_SIZE(w, h)	__ALIGN_UP(((SBWC_HEADER_STRIDE(w) * ((__ALIGN_UP((h), 16) + 3) / 4)) + 256), 32)
-#define SBWC_8B_CBCR_SIZE(w, h)		((SBWC_8B_STRIDE(w) * (((__ALIGN_UP((h), 16) / 2) + 3) / 4)) + 64)
-#define SBWC_8B_CBCR_HEADER_SIZE(w, h)	((SBWC_HEADER_STRIDE(w) * (((__ALIGN_UP((h), 16) / 2) + 3) / 4)) + 128)
+#define SBWC_HEADER_STRIDE_ALIGN	16
+#define SBWC_PAYLOAD_STRIDE_ALIGN	64
 
-#define SBWC_10B_Y_SIZE(w, h)		((SBWC_10B_STRIDE(w) * ((__ALIGN_UP((h), 16) + 3) / 4)) + 64)
-#define SBWC_10B_Y_HEADER_SIZE(w, h)	__ALIGN_UP((((__ALIGN_UP((w), 32) * __ALIGN_UP((h), 16) * 2) + 256) - SBWC_10B_Y_SIZE(w, h)), 32)
-#define SBWC_10B_CBCR_SIZE(w, h)	((SBWC_10B_STRIDE(w) * (((__ALIGN_UP((h), 16) / 2) + 3) / 4)) + 64)
-#define SBWC_10B_CBCR_HEADER_SIZE(w, h)	(((__ALIGN_UP((w), 32) * __ALIGN_UP((h), 16)) + 256) - SBWC_10B_CBCR_SIZE(w, h))
+#define SBWC_BLOCK_WIDTH		32
+#define SBWC_BLOCK_HEIGHT		4
+
+#define SBWC_ALIGNED_H(h, a)		__ALIGN_UP((h), a)
+
+#define SBWC_H_BLOCKS(w)		__COUNT_BLOCKS((w), SBWC_BLOCK_WIDTH)
+
+#define SBWC_8B_STRIDE(w)		(__ALIGN_UP((8 / 2) *			\
+						SBWC_BLOCK_WIDTH,		\
+						SBWC_PAYLOAD_STRIDE_ALIGN) *	\
+						SBWC_H_BLOCKS(w))
+#define SBWC_10B_STRIDE(w)		(__ALIGN_UP((10 / 2) *			\
+						SBWC_BLOCK_WIDTH,		\
+						SBWC_PAYLOAD_STRIDE_ALIGN) *	\
+						SBWC_H_BLOCKS(w))
+#define SBWC_HEADER_STRIDE(w)		(__ALIGN_UP(__COUNT_BLOCKS(w,		\
+						SBWC_BLOCK_WIDTH * 2),		\
+						SBWC_HEADER_STRIDE_ALIGN))
+
+#define SBWC_Y_VSTRIDE_BLOCKS(h, a)	__COUNT_BLOCKS(SBWC_ALIGNED_H(h, a),	\
+						SBWC_BLOCK_HEIGHT)
+#define SBWC_CBCR_VSTRIDE_BLOCKS(h, a)	__COUNT_BLOCKS(SBWC_ALIGNED_H(h, a) / 2,\
+						SBWC_BLOCK_HEIGHT)
+
+/* Height aligned to 16 for H.264 */
+#define SBWC_8B_Y_SIZE(w, h)		((SBWC_8B_STRIDE(w) *			\
+					  SBWC_Y_VSTRIDE_BLOCKS(h, 16)) + 64)
+#define SBWC_8B_CBCR_SIZE(w, h)		((SBWC_8B_STRIDE(w) *			\
+					  SBWC_CBCR_VSTRIDE_BLOCKS(h, 16)) + 64)
+
+#define SBWC_8B_Y_HEADER_SIZE(w, h)	((SBWC_HEADER_STRIDE(w) *		\
+					  SBWC_Y_VSTRIDE_BLOCKS(h, 16)) + 256)
+
+#define SBWC_8B_CBCR_HEADER_SIZE(w, h)	((SBWC_HEADER_STRIDE(w) *		\
+					  SBWC_CBCR_VSTRIDE_BLOCKS(h, 16)) + 128)
+
+/* Height aligned to 8 for H.265 and VP9 */
+#define SBWC_10B_Y_SIZE(w, h)		((SBWC_10B_STRIDE(w) *			\
+					  SBWC_Y_VSTRIDE_BLOCKS(h, 8)) + 64)
+#define SBWC_10B_CBCR_SIZE(w, h)	((SBWC_10B_STRIDE(w) *			\
+					  SBWC_CBCR_VSTRIDE_BLOCKS(h, 8)) + 64)
+#define SBWC_10B_Y_HEADER_SIZE(w, h)	((SBWC_HEADER_STRIDE(w) *		\
+					  SBWC_Y_VSTRIDE_BLOCKS(h, 8)) + 256)
+#define SBWC_10B_CBCR_HEADER_SIZE(w, h)	((SBWC_HEADER_STRIDE(w) *		\
+					  SBWC_CBCR_VSTRIDE_BLOCKS(h, 8)) + 128)
 
 /* SBWC - single fd */
-#define SBWC_8B_CBCR_BASE(base, w, h)	((base) + SBWC_8B_Y_SIZE(w, h) + SBWC_8B_Y_HEADER_SIZE(w, h))
-#define SBWC_10B_CBCR_BASE(base, w, h)	((base) + SBWC_10B_Y_SIZE(w, h) + SBWC_10B_Y_HEADER_SIZE(w, h))
+#define SBWC_8B_CBCR_BASE(base, w, h)					\
+	((base) + SBWC_8B_Y_SIZE(w, h) + SBWC_8B_Y_HEADER_SIZE(w, h))
+#define SBWC_10B_CBCR_BASE(base, w, h)					\
+	((base) + SBWC_10B_Y_SIZE(w, h) + SBWC_10B_Y_HEADER_SIZE(w, h))
 
 /* SBWC Lossy */
-#define SBWCL_8B_STRIDE(w, r)		(((128 * (r)) / 100) * (((w) + 31) / 32))
-#define SBWCL_10B_STRIDE(w, r)		(((160 * (r)) / 100) * (((w) + 31) / 32))
+#define SBWCL_8B_STRIDE(w, r)	(((128 * (r)) / 100) * (((w) + 31) / 32))
+#define SBWCL_10B_STRIDE(w, r)	(((160 * (r)) / 100) * (((w) + 31) / 32))
 
-#define SBWCL_8B_Y_SIZE(w, h, r)	((SBWCL_8B_STRIDE(w, r) * ((__ALIGN_UP((h), 16) + 3) / 4)) + 64)
-#define SBWCL_8B_CBCR_SIZE(w, h, r)	((SBWCL_8B_STRIDE(w, r) * (((__ALIGN_UP((h), 16) / 2) + 3) / 4)) + 64)
+#define SBWCL_8B_Y_SIZE(w, h, r)					\
+	((SBWCL_8B_STRIDE(w, r) * ((__ALIGN_UP((h), 16) + 3) / 4)) + 64)
+#define SBWCL_8B_CBCR_SIZE(w, h, r)					\
+	((SBWCL_8B_STRIDE(w, r) * (((__ALIGN_UP((h), 16) / 2) + 3) / 4)) + 64)
 
-#define SBWCL_10B_Y_SIZE(w, h, r)	((SBWCL_10B_STRIDE(w, r) * ((__ALIGN_UP((h), 16) + 3) / 4)) + 64)
-#define SBWCL_10B_CBCR_SIZE(w, h, r)	((SBWCL_10B_STRIDE(w, r) * (((__ALIGN_UP((h), 16) / 2) + 3) / 4)) + 64)
+#define SBWCL_10B_Y_SIZE(w, h, r)					\
+	((SBWCL_10B_STRIDE(w, r) * ((__ALIGN_UP((h), 16) + 3) / 4)) + 64)
+#define SBWCL_10B_CBCR_SIZE(w, h, r)					\
+	((SBWCL_10B_STRIDE(w, r) * (((__ALIGN_UP((h), 16) / 2) + 3) / 4)) + 64)
 
-#define SBWCL_8B_CBCR_BASE(base, w, h, r)	((base) + SBWCL_8B_Y_SIZE(w, h, r))
-#define SBWCL_10B_CBCR_BASE(base, w, h, r)	((base) + SBWCL_10B_Y_SIZE(w, h, r))
+#define SBWCL_8B_CBCR_BASE(base, w, h, r)				\
+	((base) + SBWCL_8B_Y_SIZE(w, h, r))
+#define SBWCL_10B_CBCR_BASE(base, w, h, r)				\
+	((base) + SBWCL_10B_Y_SIZE(w, h, r))
+
+/* AFBC */
+#define AFBC_8B_STRIDE(w)		__ALIGN_UP(w, 16)
+#define AFBC_10B_STRIDE(w)		__ALIGN_UP(w * 2, 16)
+
+#define AFBC_8B_Y_SIZE(w, h)							\
+	((((((w) + 31) / 32) * (((h) + 7) / 8) * 16 + 127) / 128) * 128 +	\
+	(((w) + 31) / 32) * (((h) + 7) / 8) * 384)
+#define AFBC_10B_Y_SIZE(w, h)							\
+	((((((w) + 31) / 32) * (((h) + 7) / 8) * 16 + 127) / 128) * 128 +	\
+	(((w) + 31) / 32) * (((h) + 7) / 8) * 512)
 #endif /* __LINUX_VIDEODEV2_EXYNOS_MEDIA_H */
