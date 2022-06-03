@@ -580,6 +580,7 @@ static int mfc_enc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	struct mfc_fmt *fmt = NULL;
 	unsigned int fps;
 	int ret = 0;
+	int i;
 
 	mfc_debug_enter();
 
@@ -611,11 +612,13 @@ static int mfc_enc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	ctx->raw_buf.num_planes = ctx->src_fmt->num_planes;
 	ctx->img_width = pix_fmt_mp->width;
 	ctx->img_height = pix_fmt_mp->height;
-	ctx->buf_stride = pix_fmt_mp->plane_fmt[0].bytesperline;
 	ctx->mb_width = WIDTH_MB(ctx->img_width);
 	ctx->mb_height = HEIGHT_MB(ctx->img_height);
 	fps = MFC_MIN_FPS / 1000;
 	ctx->weighted_mb = ctx->mb_width * ctx->mb_height * fps;
+
+	for (i = 0; i < ctx->src_fmt->mem_planes; i++)
+		ctx->bytesperline[i] = pix_fmt_mp->plane_fmt[i].bytesperline;
 
 	__mfc_enc_check_format(ctx);
 
@@ -649,8 +652,9 @@ static int mfc_enc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	}
 
 	mfc_ctx_info("[FRAME] enc src pixelformat : %s\n", ctx->src_fmt->name);
-	mfc_ctx_info("[FRAME] resolution w: %d, h: %d, stride: %d (mb: %lld)\n",
-			pix_fmt_mp->width, pix_fmt_mp->height, ctx->buf_stride, ctx->weighted_mb);
+	mfc_ctx_info("[FRAME] resolution w: %d, h: %d, Y stride: %d, C stride: %d (mb: %ld)\n",
+			pix_fmt_mp->width, pix_fmt_mp->height,
+			ctx->bytesperline[0], ctx->bytesperline[1], ctx->weighted_mb);
 
 	/*
 	 * It should be keep till buffer size and stride was calculated.
