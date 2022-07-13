@@ -502,6 +502,7 @@ int mfc_core_cmd_dec_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	struct mfc_dec *dec = ctx->dec_priv;
 	u32 reg = 0;
 	int ret = 0;
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug(2, "[MFC-%d][DPB] set dpb: %#lx, used: %#lx\n",
 			core->id, core_ctx->dynamic_set, dec->dynamic_used);
@@ -546,13 +547,17 @@ int mfc_core_cmd_dec_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	MFC_CORE_WRITEL(reg, MFC_REG_D_NAL_START_OPTIONS);
 	mfc_debug(3, "NAL_START_OPTIONS: %#x, op_mode: %d\n", reg, ctx->op_mode);
 
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "Last MFC Freq: %d, Timeout Value: %d\n", core->last_mfc_freq, timeout_value);
+
 	MFC_CORE_WRITEL(mfc_get_lower(core_ctx->dynamic_set), MFC_REG_D_DYNAMIC_DPB_FLAG_LOWER);
 	MFC_CORE_WRITEL(mfc_get_upper(core_ctx->dynamic_set), MFC_REG_D_DYNAMIC_DPB_FLAG_UPPER);
 	MFC_CORE_WRITEL(mfc_get_lower(core_ctx->dynamic_set), MFC_REG_D_AVAILABLE_DPB_FLAG_LOWER);
 	MFC_CORE_WRITEL(mfc_get_upper(core_ctx->dynamic_set), MFC_REG_D_AVAILABLE_DPB_FLAG_UPPER);
 
 	MFC_CORE_WRITEL(dec->slice_enable, MFC_REG_D_SLICE_IF_ENABLE);
-	MFC_CORE_WRITEL(MFC_TIMEOUT_VALUE, MFC_REG_TIMEOUT_VALUE);
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
 	MFC_CORE_WRITEL(core_ctx->inst_no, MFC_REG_INSTANCE_ID);
 
 	if ((core->dev->debugfs.sfr_dump & MFC_DUMP_DEC_FIRST_NAL_START) &&
@@ -598,10 +603,15 @@ void mfc_core_cmd_enc_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 		int last_frame)
 {
 	struct mfc_core_ctx *core_ctx = core->core_ctx[ctx->num];
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug(2, "++\n");
 
-	MFC_CORE_WRITEL(MFC_TIMEOUT_VALUE, MFC_REG_TIMEOUT_VALUE);
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "Last MFC Freq: %d, Timeout Value: %d\n", core->last_mfc_freq, timeout_value);
+
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
 	MFC_CORE_WRITEL(core_ctx->inst_no, MFC_REG_INSTANCE_ID);
 
 	if ((core->dev->debugfs.sfr_dump & MFC_DUMP_ENC_FIRST_NAL_START) &&

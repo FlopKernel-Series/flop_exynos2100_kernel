@@ -466,7 +466,6 @@ void mfc_core_nal_q_start(struct mfc_core *core, nal_queue_handle *nal_q_handle)
 	MFC_TRACE_CORE("** NAL Q state : %d\n", nal_q_handle->nal_q_state);
 	mfc_core_debug(2, "[NALQ] started, state = %d\n", nal_q_handle->nal_q_state);
 
-	MFC_CORE_WRITEL(MFC_TIMEOUT_VALUE, MFC_REG_TIMEOUT_VALUE);
 	mfc_core_cmd_host2risc(core, MFC_REG_H2R_CMD_NAL_QUEUE);
 
 	mfc_core_debug_leave();
@@ -997,6 +996,7 @@ static int __mfc_core_nal_q_run_in_buf_enc(struct mfc_core *core, struct mfc_cor
 	dma_addr_t addr_2bit[2] = {0, 0};
 	unsigned int index, i;
 	int is_uncomp = 0;
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug_enter();
 
@@ -1170,6 +1170,12 @@ static int __mfc_core_nal_q_run_in_buf_enc(struct mfc_core *core, struct mfc_cor
 	__mfc_core_nal_q_set_enc_config_qp(ctx, pInStr);
 	__mfc_core_nal_q_set_enc_ts_delta(ctx, pInStr);
 
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "[NALQ] Last MFC Freq: %d, Timeout Value: %d\n",
+			core->last_mfc_freq, timeout_value);
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
+
 	mfc_debug_leave();
 
 	return 0;
@@ -1189,6 +1195,7 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	struct vb2_buffer *vb;
 	int src_index, dst_index;
 	int i;
+	u32 timeout_value = MFC_TIMEOUT_VALUE;
 
 	mfc_debug_enter();
 
@@ -1287,6 +1294,12 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	MFC_TRACE_CTX("Set dst[%d] fd: %d, %#llx / used %#lx\n",
 			dst_index, dst_mb->vb.vb2_buf.planes[0].m.fd,
 			dst_mb->addr[0][0], dec->dynamic_used);
+
+	if (core->last_mfc_freq)
+		timeout_value = (core->last_mfc_freq * MFC_TIMEOUT_VALUE_IN_MSEC);
+	mfc_debug(2, "[NALQ] Last MFC Freq: %d, Timeout Value: %d\n",
+			core->last_mfc_freq, timeout_value);
+	MFC_CORE_WRITEL(timeout_value, MFC_REG_TIMEOUT_VALUE);
 
 	mfc_debug_leave();
 

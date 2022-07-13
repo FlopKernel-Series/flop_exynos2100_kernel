@@ -73,6 +73,8 @@
  * releated with MFC_REG_TIMEOUT_VALUE
  */
 #define MFC_TIMEOUT_VALUE	200000000
+/* 250ms is the mfc firmware timeout value */
+#define MFC_TIMEOUT_VALUE_IN_MSEC	250
 
 #define NUM_MPEG4_LF_BUF	2
 
