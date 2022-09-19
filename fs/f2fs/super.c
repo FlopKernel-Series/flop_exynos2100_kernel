@@ -4481,6 +4481,7 @@ reset_checkpoint:
 	f2fs_update_time(sbi, CP_TIME);
 	f2fs_update_time(sbi, REQ_TIME);
 	clear_sbi_flag(sbi, SBI_CP_DISABLED_QUICK);
+
 	cleancache_init_fs(sbi->sb);
 	return 0;
 
