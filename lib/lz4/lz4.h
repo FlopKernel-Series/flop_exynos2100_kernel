@@ -178,7 +178,7 @@ LZ4LIB_API const char *LZ4_versionString(
  * Default value is 14, for 16KB, which nicely fits into most L1 caches.
  */
 #ifndef LZ4_MEMORY_USAGE
-#define LZ4_MEMORY_USAGE LZ4_MEMORY_USAGE_DEFAULT
+#define LZ4_MEMORY_USAGE 10
 #endif
 
 /* These are absolute limits, they should not be changed by users */
