@@ -1189,7 +1189,7 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	struct mfc_dec *dec = ctx->dec_priv;
 	struct mfc_raw_info *raw = &ctx->raw_buf;
 	dma_addr_t buf_addr;
-	unsigned int strm_size;
+	unsigned int strm_size, offset;
 	unsigned int cpb_buf_size;
 	size_t dbuf_size;
 	struct vb2_buffer *vb;
@@ -1233,7 +1233,8 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	vb = &src_mb->vb.vb2_buf;
 	src_index = vb->index;
 	buf_addr = src_mb->addr[0][0];
-	strm_size = vb->planes[0].bytesused;
+	strm_size = mfc_dec_get_strm_size(ctx, src_mb);
+	offset = mfc_dec_get_strm_offset(ctx, src_mb);
 	dbuf_size = vb->planes[0].dbuf->size;
 	cpb_buf_size = ALIGN(strm_size + 511, STREAM_BUF_ALIGN);
 
@@ -1245,8 +1246,8 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 
 	mfc_debug(2, "[NALQ][BUFINFO] ctx[%d] set src index: %d, addr: 0x%08llx\n",
 			ctx->num, src_index, buf_addr);
-	mfc_debug(2, "[NALQ][STREAM] strm_size: %#x(%d), buf_size: %u\n",
-			strm_size, strm_size, cpb_buf_size);
+	mfc_debug(2, "[NALQ][STREAM] strm_size: %#x(%d), offset: %d, buf_size: %u\n",
+			strm_size, strm_size, offset, cpb_buf_size);
 
 	if (strm_size == 0)
 		mfc_ctx_info("stream size is 0\n");
@@ -1254,7 +1255,7 @@ static int __mfc_core_nal_q_run_in_buf_dec(struct mfc_core *core, struct mfc_cor
 	pInStr->StreamDataSize = strm_size;
 	pInStr->CpbBufferAddr = buf_addr;
 	pInStr->CpbBufferSize = cpb_buf_size;
-	pInStr->CpbBufferOffset = 0;
+	pInStr->CpbBufferOffset = offset;
 	ctx->last_src_addr = buf_addr;
 
 	/* dst buffer setting */
@@ -2156,7 +2157,7 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 	struct mfc_buf *src_mb;
 	unsigned int index;
 	int deleted = 0;
-	unsigned long consumed;
+	unsigned int consumed;
 	unsigned int dst_frame_status;
 
 	/* If there is consumed byte, it is abnormal status,
@@ -2189,15 +2190,14 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 		if (CODEC_MULTIFRAME(ctx))
 			dec->y_addr_for_pb = (dma_addr_t)pOutStr->DecodedAddr[0];
 
-		dec->consumed = consumed;
-		dec->remained_size = src_mb->vb.vb2_buf.planes[0].bytesused
-			- dec->consumed;
+		dec->consumed += consumed;
+		dec->remained_size = mfc_dec_get_strm_size(ctx, src_mb);
 		dec->has_multiframe = 1;
 		dec->is_multiframe = 1;
 		core->nal_q_stop_cause |= (1 << NALQ_EXCEPTION_MULTI_FRAME);
 		core->nal_q_handle->nal_q_exception = 1;
 
-		MFC_TRACE_CTX("** consumed:%ld, remained:%ld, addr:0x%08llx\n",
+		MFC_TRACE_CTX("** consumed:%d, remained:%d, addr:0x%08llx\n",
 			dec->consumed, dec->remained_size, dec->y_addr_for_pb);
 		/* Do not move src buffer to done_list */
 		return;
@@ -2328,7 +2328,7 @@ void __mfc_core_nal_q_handle_frame(struct mfc_core *core, struct mfc_core_ctx *c
 		goto leave_handle_frame;
 	}
 	if (need_empty_dpb) {
-		mfc_debug(2, "[NALQ][MULTIFRAME] There is multi-frame. consumed:%ld\n", dec->consumed);
+		mfc_debug(2, "[NALQ][MULTIFRAME] There is multi-frame. consumed:%d\n", dec->consumed);
 		dec->has_multiframe = 1;
 		core->nal_q_stop_cause |= (1 << NALQ_EXCEPTION_NEED_DPB);
 		core->nal_q_handle->nal_q_exception = 1;
