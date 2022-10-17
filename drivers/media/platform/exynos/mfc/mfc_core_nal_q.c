@@ -2191,14 +2191,13 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 			dec->y_addr_for_pb = (dma_addr_t)pOutStr->DecodedAddr[0];
 
 		dec->consumed += consumed;
-		dec->remained_size = mfc_dec_get_strm_size(ctx, src_mb);
 		dec->has_multiframe = 1;
 		dec->is_multiframe = 1;
 		core->nal_q_stop_cause |= (1 << NALQ_EXCEPTION_MULTI_FRAME);
 		core->nal_q_handle->nal_q_exception = 1;
 
 		MFC_TRACE_CTX("** consumed:%d, remained:%d, addr:0x%08llx\n",
-			dec->consumed, dec->remained_size, dec->y_addr_for_pb);
+			dec->consumed, mfc_dec_get_strm_size(ctx, src_mb), dec->y_addr_for_pb);
 		/* Do not move src buffer to done_list */
 		return;
 	}
@@ -2260,7 +2259,6 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 	dec->consumed = 0;
 	if (IS_VP9_DEC(ctx) || IS_AV1_DEC(ctx))
 		dec->has_multiframe = 0;
-	dec->remained_size = 0;
 
 	vb2_buffer_done(&src_mb->vb.vb2_buf, VB2_BUF_STATE_DONE);
 }

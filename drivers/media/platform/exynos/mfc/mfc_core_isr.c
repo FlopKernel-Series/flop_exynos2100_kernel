@@ -777,7 +777,6 @@ static void __mfc_handle_frame_error(struct mfc_core *core, struct mfc_ctx *ctx,
 
 		mfc_debug(2, "MFC needs next buffer\n");
 		dec->consumed = 0;
-		dec->remained_size = 0;
 		mfc_clear_mb_flag(src_mb);
 		mfc_set_mb_flag(src_mb, MFC_FLAG_CONSUMED_ONLY);
 
@@ -836,12 +835,11 @@ static void __mfc_handle_frame_input(struct mfc_core *core,
 			dec->y_addr_for_pb = (dma_addr_t)mfc_core_get_dec_y_addr();
 
 		dec->consumed += consumed;
-		dec->remained_size = mfc_dec_get_strm_size(ctx, src_mb);
 		dec->has_multiframe = 1;
 		dec->is_multiframe = 1;
 
 		MFC_TRACE_CORE_CTX("** consumed:%d, remained:%d, addr:0x%08llx\n",
-			dec->consumed, dec->remained_size, dec->y_addr_for_pb);
+			dec->consumed, mfc_dec_get_strm_size(ctx, src_mb), dec->y_addr_for_pb);
 		/* Do not move src buffer to done_list */
 		return;
 	}
@@ -905,7 +903,6 @@ static void __mfc_handle_frame_input(struct mfc_core *core,
 	dec->consumed = 0;
 	if (IS_VP9_DEC(ctx) || IS_AV1_DEC(ctx))
 		dec->has_multiframe = 0;
-	dec->remained_size = 0;
 
 	vb2_buffer_done(&src_mb->vb.vb2_buf, VB2_BUF_STATE_DONE);
 }
@@ -1604,12 +1601,10 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				strm_size, consumed);
 		if ((consumed > 0) && (strm_size > consumed)) {
 			dec->consumed += consumed;
-			dec->remained_size = strm_size - consumed;
 			mfc_debug(2, "[STREAM] there is remained bytes(%d) after header parsing\n",
 				(strm_size - consumed));
 		} else {
 			dec->consumed = 0;
-			dec->remained_size = 0;
 		}
 	}
 

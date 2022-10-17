@@ -2089,7 +2089,6 @@ struct mfc_dec {
 	int crc_chroma1;
 
 	unsigned int consumed;
-	unsigned int remained_size;
 	dma_addr_t y_addr_for_pb;
 
 	int sei_parse;

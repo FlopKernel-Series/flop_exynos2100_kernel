@@ -397,7 +397,6 @@ int mfc_core_run_dec_frame(struct mfc_core *core, struct mfc_ctx *ctx)
 	if (dec->consumed && IS_TWO_MODE2(ctx)) {
 		mfc_debug(2, "[STREAM][2CORE] clear consumed for next core\n");
 		dec->consumed = 0;
-		dec->remained_size = 0;
 	}
 	return ret;
 }

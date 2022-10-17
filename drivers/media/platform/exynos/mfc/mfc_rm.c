@@ -1658,7 +1658,6 @@ int mfc_rm_instance_setup(struct mfc_dev *dev, struct mfc_ctx *ctx)
 	if (ctx->dec_priv->consumed) {
 		mfc_debug(2, "[STREAM][2CORE] src should be without consumed\n");
 		ctx->dec_priv->consumed = 0;
-		ctx->dec_priv->remained_size = 0;
 	}
 
 	if (mfc_ctx_ready_set_bit(core_ctx, &core->work_bits))
