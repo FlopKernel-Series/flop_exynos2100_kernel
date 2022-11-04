@@ -9,7 +9,6 @@
  */
 
 #include <crypto/skcipher.h>
-#include <linux/key.h>
 #include <linux/random.h>
 
 #include "fscrypt_private.h"
@@ -162,6 +161,7 @@ void fscrypt_destroy_prepared_key(struct fscrypt_prepared_key *prep_key)
 {
 	crypto_free_skcipher(prep_key->tfm);
 	fscrypt_destroy_inline_crypt_key(prep_key);
+	memzero_explicit(prep_key, sizeof(*prep_key));
 }
 
 /* Given a per-file encryption key, set up the file's crypto transform object */
@@ -466,20 +466,18 @@ static bool fscrypt_valid_master_key_size(const struct fscrypt_master_key *mk,
 /*
  * Find the master key, then set up the inode's actual encryption key.
  *
- * If the master key is found in the filesystem-level keyring, then the
- * corresponding 'struct key' is returned in *master_key_ret with its semaphore
- * read-locked.  This is needed to ensure that only one task links the
- * fscrypt_info into ->mk_decrypted_inodes (as multiple tasks may race to create
- * an fscrypt_info for the same inode), and to synchronize the master key being
- * removed with a new inode starting to use it.
+ * If the master key is found in the filesystem-level keyring, then it is
+ * returned in *mk_ret with its semaphore read-locked.  This is needed to ensure
+ * that only one task links the fscrypt_info into ->mk_decrypted_inodes (as
+ * multiple tasks may race to create an fscrypt_info for the same inode), and to
+ * synchronize the master key being removed with a new inode starting to use it.
  */
 static int setup_file_encryption_key(struct fscrypt_info *ci,
 				     bool need_dirhash_key,
-				     struct key **master_key_ret)
+				     struct fscrypt_master_key **mk_ret)
 {
-	struct key *key;
-	struct fscrypt_master_key *mk = NULL;
 	struct fscrypt_key_specifier mk_spec;
+	struct fscrypt_master_key *mk;
 	int err;
 
 	switch (ci->ci_policy.version) {
@@ -500,15 +498,10 @@ static int setup_file_encryption_key(struct fscrypt_info *ci,
 		return -EINVAL;
 	}
 
-	key = fscrypt_find_master_key(ci->ci_inode->i_sb, &mk_spec);
-	if (IS_ERR(key)) {
-		if (key != ERR_PTR(-ENOKEY) ||
-		    ci->ci_policy.version != FSCRYPT_POLICY_V1)
-			return PTR_ERR(key);
-
-		err = fscrypt_select_encryption_impl(ci, false);
-		if (err)
-			return err;
+	mk = fscrypt_find_master_key(ci->ci_inode->i_sb, &mk_spec);
+	if (!mk) {
+		if (ci->ci_policy.version != FSCRYPT_POLICY_V1)
+			return -ENOKEY;
 
 		/*
 		 * As a legacy fallback for v1 policies, search for the key in
@@ -519,8 +512,7 @@ static int setup_file_encryption_key(struct fscrypt_info *ci,
 		return fscrypt_setup_v1_file_key_via_subscribed_keyrings(ci);
 	}
 
-	mk = key->payload.data[0];
-	down_read(&key->sem);
+	down_read(&mk->mk_sem);
 
 	/* Has the secret been removed (via FS_IOC_REMOVE_ENCRYPTION_KEY)? */
 	if (!is_master_key_secret_present(&mk->mk_secret)) {
@@ -552,18 +544,18 @@ static int setup_file_encryption_key(struct fscrypt_info *ci,
 	if (err)
 		goto out_release_key;
 
-	*master_key_ret = key;
+	*mk_ret = mk;
 	return 0;
 
 out_release_key:
-	up_read(&key->sem);
-	key_put(key);
+	up_read(&mk->mk_sem);
+	fscrypt_put_master_key(mk);
 	return err;
 }
 
 static void put_crypt_info(struct fscrypt_info *ci)
 {
-	struct key *key;
+	struct fscrypt_master_key *mk;
 
 	if (!ci)
 		return;
@@ -581,24 +573,18 @@ static void put_crypt_info(struct fscrypt_info *ci)
 	else if (ci->ci_owns_key)
 		fscrypt_destroy_prepared_key(&ci->ci_enc_key);
 
-	key = ci->ci_master_key;
-	if (key) {
-		struct fscrypt_master_key *mk = key->payload.data[0];
-
+	mk = ci->ci_master_key;
+	if (mk) {
 		/*
 		 * Remove this inode from the list of inodes that were unlocked
-		 * with the master key.
-		 *
-		 * In addition, if we're removing the last inode from a key that
-		 * already had its secret removed, invalidate the key so that it
-		 * gets removed from ->s_master_keys.
+		 * with the master key.  In addition, if we're removing the last
+		 * inode from a master key struct that already had its secret
+		 * removed, then complete the full removal of the struct.
 		 */
 		spin_lock(&mk->mk_decrypted_inodes_lock);
 		list_del(&ci->ci_master_key_link);
 		spin_unlock(&mk->mk_decrypted_inodes_lock);
-		if (refcount_dec_and_test(&mk->mk_refcount))
-			key_invalidate(key);
-		key_put(key);
+		fscrypt_put_master_key_activeref(mk);
 	}
 	memzero_explicit(ci, sizeof(*ci));
 	kmem_cache_free(fscrypt_info_cachep, ci);
@@ -613,7 +599,7 @@ fscrypt_setup_encryption_info(struct inode *inode,
 	union fscrypt_context ctx;
 	struct fscrypt_info *crypt_info;
 	struct fscrypt_mode *mode;
-	struct key *master_key = NULL;
+	struct fscrypt_master_key *mk = NULL;
 	bool have_ctx = false;
 	int res;
 
@@ -697,8 +683,7 @@ fscrypt_setup_encryption_info(struct inode *inode,
 	}
 #endif
 
-	res = setup_file_encryption_key(crypt_info, need_dirhash_key,
-					&master_key);
+	res = setup_file_encryption_key(crypt_info, need_dirhash_key, &mk);
 	if (res)
 		goto out;
 
@@ -720,12 +705,9 @@ fscrypt_setup_encryption_info(struct inode *inode,
 		 * We won the race and set ->i_crypt_info to our crypt_info.
 		 * Now link it into the master key's inode list.
 		 */
-		if (master_key) {
-			struct fscrypt_master_key *mk =
-				master_key->payload.data[0];
-
-			refcount_inc(&mk->mk_refcount);
-			crypt_info->ci_master_key = key_get(master_key);
+		if (mk) {
+			crypt_info->ci_master_key = mk;
+			refcount_inc(&mk->mk_active_refs);
 			spin_lock(&mk->mk_decrypted_inodes_lock);
 			list_add(&crypt_info->ci_master_key_link,
 				 &mk->mk_decrypted_inodes);
@@ -746,9 +728,9 @@ fscrypt_setup_encryption_info(struct inode *inode,
 #endif
 	res = 0;
 out:
-	if (master_key) {
-		up_read(&master_key->sem);
-		key_put(master_key);
+	if (mk) {
+		up_read(&mk->mk_sem);
+		fscrypt_put_master_key(mk);
 	}
 	put_crypt_info(crypt_info);
 	return res;
@@ -941,7 +923,6 @@ EXPORT_SYMBOL(fscrypt_free_inode);
 int fscrypt_drop_inode(struct inode *inode)
 {
 	const struct fscrypt_info *ci = fscrypt_get_info(inode);
-	const struct fscrypt_master_key *mk;
 
 	/*
 	 * If ci is NULL, then the inode doesn't have an encryption key set up
@@ -951,7 +932,6 @@ int fscrypt_drop_inode(struct inode *inode)
 	 */
 	if (!ci || !ci->ci_master_key)
 		return 0;
-	mk = ci->ci_master_key->payload.data[0];
 
 	/*
 	 * With proper, non-racy use of FS_IOC_REMOVE_ENCRYPTION_KEY, all inodes
@@ -970,7 +950,7 @@ int fscrypt_drop_inode(struct inode *inode)
 	 * then the thread removing the key will either evict the inode itself
 	 * or will correctly detect that it wasn't evicted due to the race.
 	 */
-	return !is_master_key_secret_present(&mk->mk_secret);
+	return !is_master_key_secret_present(&ci->ci_master_key->mk_secret);
 }
 EXPORT_SYMBOL_GPL(fscrypt_drop_inode);
 
