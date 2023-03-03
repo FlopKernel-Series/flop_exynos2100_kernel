@@ -160,6 +160,8 @@ struct bcm_spi_priv {
 	atomic_t irq_enabled;
 	spinlock_t irq_lock;
 
+	bool irq_wakeup_enabled;
+
 	/* Work */
 	struct bcm_rxtx_work tx_work;
 	struct bcm_rxtx_work rx_work;

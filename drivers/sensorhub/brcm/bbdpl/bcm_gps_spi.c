@@ -246,7 +246,7 @@ static int bcm_spi_open(struct inode *inode, struct file *filp)
 
 	spin_unlock_irqrestore(&priv->irq_lock, flags);
 
-	enable_irq_wake(priv->spi->irq);
+	priv->irq_wakeup_enabled = (enable_irq_wake(priv->spi->irq) == 0);
 
 	filp->private_data = priv;
 #ifdef DEBUG_1HZ_STAT
@@ -349,7 +349,6 @@ static int bcm_spi_release(struct inode *inode, struct file *filp)
 	bcm_ssi_print_trans_stat(priv);
 #endif
 
-
 #ifdef DEBUG_1HZ_STAT
 	bbd_disable_stat();
 #endif
@@ -360,7 +359,8 @@ static int bcm_spi_release(struct inode *inode, struct file *filp)
 
 	spin_unlock_irqrestore(&priv->irq_lock, flags);
 
-	disable_irq_wake(priv->spi->irq);
+	if (priv->irq_wakeup_enabled)
+		disable_irq_wake(priv->spi->irq);
 
 	pr_info("%s--\n", __func__);
 	return 0;
@@ -1292,17 +1292,6 @@ static int bcm_spi_probe(struct spi_device *spi)
 		goto free_mem;
 	}
 
-	/* Request IRQ */
-	ret = request_irq(spi->irq, bcm_irq_handler, IRQF_TRIGGER_HIGH, "ttyBCM", priv);
-	if (ret) {
-		pr_err("[SSPBBD]: Failed to register BCM477x SPI TTY IRQ %d.\n", spi->irq);
-		goto free_wq;
-	}
-
-	disable_irq(spi->irq);
-
-	pr_notice("[SSPBBD]: Probe OK. ssp-host-req=%d, irq=%d, priv=0x%pK\n", host_req, spi->irq, priv);
-
 	/* Register misc device */
 	priv->misc.minor = MISC_DYNAMIC_MINOR;
 	priv->misc.name = "ttyBCM";
@@ -1311,7 +1300,7 @@ static int bcm_spi_probe(struct spi_device *spi)
 	ret = misc_register(&priv->misc);
 	if (ret) {
 		pr_err("[SSPBBD]: Failed to register bcm_gps_spi's misc dev. err=%d\n", ret);
-		goto free_irq;
+		goto free_wq;
 	}
 
 	/* Set driver data */
@@ -1346,14 +1335,22 @@ static int bcm_spi_probe(struct spi_device *spi)
 	wake_lock_init(priv->bcm_wake_lock, NULL, "bcm_spi_wake_lock");
 
 	g_bcm_gps = priv;
+
 	/* Init BBD & SSP */
 	bbd_init(&spi->dev);
 
+	/* Request IRQ */
+	ret = devm_request_irq(&spi->dev, spi->irq, bcm_irq_handler,
+			IRQF_TRIGGER_HIGH | IRQF_NO_AUTOEN, "ttyBCM", priv);
+	if (ret) {
+		pr_err("[SSPBBD]: Failed to register BCM477x SPI TTY IRQ %d.\n", spi->irq);
+		goto free_wq;
+	}
+
+	pr_notice("[SSPBBD]: Probe OK. ssp-host-req=%d, irq=%d, priv=0x%pK\n", host_req, spi->irq, priv);
+
 	return 0;
 
-free_irq:
-	if (spi->irq)
-		free_irq(spi->irq, priv);
 free_wq:
 	if (priv->serial_wq) {
 		// SWGNSSAND-1735 : flush_workqueue(priv->serial_wq);
