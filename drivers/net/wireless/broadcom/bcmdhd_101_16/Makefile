@@ -123,8 +123,7 @@ endif
 	# Enable Load Balancing support by default.
 	# DHD_LB_RXP - Perform RX Packet processing in parallel
 	# DHD_LB_STATS - To display the Load Blancing statistics
-	DHDCFLAGS += -DDHD_LB -DDHD_LB_RXP -DDHD_LB_TXP -DDHD_LB_STATS \
-		     -DDHD_LB_TXP_DEFAULT_ENAB
+	DHDCFLAGS += -DDHD_LB -DDHD_LB_RXP -DDHD_LB_STATS
 	DHDCFLAGS += -DWAKEUP_KSOFTIRQD_POST_NAPI_SCHEDULE
 	# GRO (Generic Receive Offload) feature
 	DHDCFLAGS += -DENABLE_DHD_GRO
