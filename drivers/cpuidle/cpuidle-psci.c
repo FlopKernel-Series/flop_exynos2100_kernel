@@ -29,9 +29,12 @@ static int psci_enter_idle_state(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv, int idx)
 {
 	u32 *state = __this_cpu_read(psci_power_state);
+	int ret;
 
-	return CPU_PM_CPU_IDLE_ENTER_PARAM(psci_cpu_suspend_enter,
-					   idx, state[idx - 1]);
+	ret = CPU_PM_CPU_IDLE_ENTER_PARAM(psci_cpu_suspend_enter,
+						idx, state[idx - 1]);
+	cpuidle_clear_idle_cpu(dev->cpu);
+	return ret;
 }
 
 static struct cpuidle_driver psci_idle_driver __initdata = {
