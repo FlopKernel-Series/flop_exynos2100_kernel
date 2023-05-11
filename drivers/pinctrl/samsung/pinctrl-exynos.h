@@ -166,6 +166,7 @@
  * @bank: bank responsible for this interrupt
  */
 struct exynos_weint_data {
+	unsigned int idx;
 	unsigned int irq;
 	struct samsung_pin_bank *bank;
 };

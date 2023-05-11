@@ -208,6 +208,18 @@ static void exynos_irq_release_resources(struct irq_data *irqd)
 	gpiochip_unlock_as_irq(&bank->gpio_chip, irqd->hwirq);
 }
 
+static int exynos_eint_irq_set_affinity(struct irq_data *irqd,
+					const struct cpumask *dest, bool force)
+{
+	struct samsung_pin_bank *bank = irq_data_get_irq_chip_data(irqd);
+	struct irq_data *parent = irq_get_irq_data(bank->drvdata->irq);
+
+	if (parent && parent->chip->irq_set_affinity)
+		return parent->chip->irq_set_affinity(parent, dest, force);
+
+	return -EINVAL;
+}
+
 /*
  * irq_chip for gpio interrupts.
  * For normal interrupt action, interrupt mask / unmask must be paired.
@@ -226,6 +238,7 @@ static struct exynos_irq_chip exynos_gpio_irq_chip = {
 		.irq_set_type = exynos_irq_set_type,
 		.irq_request_resources = exynos_irq_request_resources,
 		.irq_release_resources = exynos_irq_release_resources,
+		.irq_set_affinity = exynos_eint_irq_set_affinity,
 	},
 	.eint_con = EXYNOS_GPIO_ECON_OFFSET,
 	.eint_mask = EXYNOS_GPIO_EMASK_OFFSET,
@@ -471,6 +484,23 @@ s5pv210_pinctrl_set_eint_wakeup_mask(struct samsung_pinctrl_drv_data *drvdata,
 		     clk_base + irq_chip->eint_wake_mask_reg);
 }
 
+static int exynos_wkup_irq_set_affinity(struct irq_data *irqd,
+					const struct cpumask *dest, bool force)
+{
+	struct samsung_pin_bank *bank = irq_data_get_irq_chip_data(irqd);
+	struct exynos_weint_data *eintd = bank->weint_data;
+
+	if (eintd) {
+		struct irq_data *parent = irq_get_irq_data(eintd->irq);
+
+		if (parent && parent->chip->irq_set_affinity)
+			return parent->chip->irq_set_affinity(parent, dest,
+							      force);
+	}
+
+	return -EINVAL;
+}
+
 /*
  * irq_chip for wakeup interrupts
  */
@@ -484,6 +514,7 @@ static const struct exynos_irq_chip s5pv210_wkup_irq_chip __initconst = {
 		.irq_set_wake = exynos_wkup_irq_set_wake,
 		.irq_request_resources = exynos_irq_request_resources,
 		.irq_release_resources = exynos_irq_release_resources,
+		.irq_set_affinity = exynos_wkup_irq_set_affinity,
 	},
 	.eint_con = EXYNOS_WKUP_ECON_OFFSET,
 	.eint_mask = EXYNOS_WKUP_EMASK_OFFSET,
@@ -504,6 +535,7 @@ static const struct exynos_irq_chip exynos4210_wkup_irq_chip __initconst = {
 		.irq_set_wake = exynos_wkup_irq_set_wake,
 		.irq_request_resources = exynos_irq_request_resources,
 		.irq_release_resources = exynos_irq_release_resources,
+		.irq_set_affinity = exynos_wkup_irq_set_affinity,
 	},
 	.eint_con = EXYNOS_WKUP_ECON_OFFSET,
 	.eint_mask = EXYNOS_WKUP_EMASK_OFFSET,
@@ -523,6 +555,7 @@ static const struct exynos_irq_chip exynos7_wkup_irq_chip __initconst = {
 		.irq_set_wake = exynos_wkup_irq_set_wake,
 		.irq_request_resources = exynos_irq_request_resources,
 		.irq_release_resources = exynos_irq_release_resources,
+		.irq_set_affinity = exynos_wkup_irq_set_affinity,
 	},
 	.eint_con = EXYNOS7_WKUP_ECON_OFFSET,
 	.eint_mask = EXYNOS7_WKUP_EMASK_OFFSET,
@@ -574,7 +607,7 @@ static void exynos_irq_eint0_15(struct irq_desc *desc)
 
 	chained_irq_enter(chip, desc);
 
-	eint_irq = irq_linear_revmap(bank->irq_domain, eintd->irq);
+	eint_irq = irq_linear_revmap(bank->irq_domain, eintd->idx);
 	generic_handle_irq(eint_irq);
 
 	chained_irq_exit(chip, desc);
@@ -693,6 +726,7 @@ int exynos_eint_wkup_init(struct samsung_pinctrl_drv_data *d)
 		interrupts_size = of_property_read_variable_u32_array(bank->of_node,
 				"interrupts-index", interrupts_index, 0, bank->nr_pins);
 
+		bank->weint_data = weint_data;
 		if (interrupts_size > 0) {
 			for (idx = 0; idx < interrupts_size; ++idx) {
 				interrupt_idx = interrupts_index[idx];
@@ -702,7 +736,8 @@ int exynos_eint_wkup_init(struct samsung_pinctrl_drv_data *d)
 								bank->name, interrupt_idx);
 					continue;
 				}
-				weint_data[interrupt_idx].irq = interrupt_idx;
+				weint_data[interrupt_idx].idx = interrupt_idx;
+				weint_data[interrupt_idx].irq = irq;
 				weint_data[interrupt_idx].bank = bank;
 				irq_set_chained_handler_and_data(irq,
 								 exynos_irq_eint0_15,
@@ -716,7 +751,8 @@ int exynos_eint_wkup_init(struct samsung_pinctrl_drv_data *d)
 								bank->name, idx);
 					continue;
 				}
-				weint_data[idx].irq = idx;
+				weint_data[idx].idx = idx;
+				weint_data[idx].irq = irq;
 				weint_data[idx].bank = bank;
 				irq_set_chained_handler_and_data(irq,
 								 exynos_irq_eint0_15,
