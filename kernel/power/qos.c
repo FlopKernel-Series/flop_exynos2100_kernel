@@ -202,11 +202,16 @@ out:
 
 DEFINE_SHOW_ATTRIBUTE(pm_qos_debug);
 
+static bool pm_qos_is_cpu_latency(struct pm_qos_constraints *c);
 static inline void pm_qos_set_value_for_cpus(struct pm_qos_constraints *c)
 {
 	struct pm_qos_request *req = NULL;
 	int cpu;
 	s32 qos_val[NR_CPUS] = { [0 ... (NR_CPUS - 1)] = c->default_value };
+
+	/* This request might not be for CPU latency */
+	if (!pm_qos_is_cpu_latency(c))
+		return;
 
 	plist_for_each_entry(req, &c->list, node) {
 		for_each_cpu(cpu, &req->cpus_affine) {
@@ -773,6 +778,11 @@ static int __init pm_qos_power_init(void)
 }
 
 late_initcall(pm_qos_power_init);
+
+static bool pm_qos_is_cpu_latency(struct pm_qos_constraints *c)
+{
+	return c == pm_qos_array[PM_QOS_CPU_DMA_LATENCY]->constraints;
+}
 
 /* Definitions related to the frequency QoS below. */
 
