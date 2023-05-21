@@ -516,7 +516,6 @@ static s32 wl_inform_bss(struct bcm_cfg80211 *cfg)
 #ifdef ESCAN_CHANNEL_CACHE
 	reset_roam_cache(cfg);
 #endif /* ESCAN_CHANNEL_CACHE */
-	preempt_disable();
 	bi = next_bss(bss_list, bi);
 	for_each_bss(bss_list, bi, i)
 	{
@@ -528,7 +527,6 @@ static s32 wl_inform_bss(struct bcm_cfg80211 *cfg)
 			WL_ERR(("bss inform failed\n"));
 		}
 	}
-	preempt_enable();
 	WL_MEM(("cfg80211 scan cache updated\n"));
 #ifdef ROAM_CHANNEL_CACHE
 	/* print_roam_cache(); */
