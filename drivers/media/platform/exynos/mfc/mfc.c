@@ -1513,6 +1513,7 @@ static struct platform_driver mfc_driver = {
 };
 
 module_platform_driver(mfc_driver);
+MODULE_SOFTDEP("pre: samsung_dma_heap");
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Kamil Debski <k.debski@samsung.com>");
