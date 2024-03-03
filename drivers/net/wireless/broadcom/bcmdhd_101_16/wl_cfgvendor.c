@@ -7002,6 +7002,8 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	uint32 cca_busy_time = 0;
 	int cur_chansp, cur_band;
 	chanspec_t cur_chanspec;
+	struct sk_buff *skb;
+	int mem_needed;
 
 	COMPAT_STRUCT_IFACE(wifi_iface_stat, iface);
 
@@ -7434,10 +7436,28 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 		err = BCME_BADLEN;
 		goto exit;
 	}
-	err =  wl_cfgvendor_send_cmd_reply(wiphy, outdata, total_len);
+	mem_needed = VENDOR_REPLY_OVERHEAD + (ATTRIBUTE_U32_LEN) + total_len;
+	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
+	if (unlikely(!skb)) {
+		WL_ERR(("skb alloc failed"));
+		err = -ENOMEM;
+		goto exit;
+	}
+	err = nla_put_u32(skb, ANDR_WIFI_STATS_ATTRIBUTE_NUM_RADIO, 1);
+	if (unlikely(err)) {
+		kfree_skb(skb);
+		goto exit;
+	}
+	err = nla_put(skb, ANDR_WIFI_STATS_ATTRIBUTE_STATS_INFO, total_len, outdata);
+	if (unlikely(err)) {
+		kfree_skb(skb);
+		goto exit;
+	}
 
-	if (unlikely(err))
-		WL_ERR(("Vendor Command reply failed ret:%d \n", err));
+	err = cfg80211_vendor_cmd_reply(skb);
+	if (unlikely(err)) {
+		WL_ERR(("Vendor command reply failed ret:%d\n", err));
+	}
 
 exit:
 	if (outdata) {
