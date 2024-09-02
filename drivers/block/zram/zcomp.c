@@ -44,18 +44,20 @@ static const struct zcomp_ops *backends[] = {
 
 static void zcomp_strm_free(struct zcomp *comp, struct zcomp_strm *zstrm)
 {
-	if (zstrm->ctx)
-		comp->ops->destroy_ctx(zstrm->ctx);
+	comp->ops->destroy_ctx(&zstrm->ctx);
 	vfree(zstrm->buffer);
 	vfree(zstrm->tmpbuf);
-	zstrm->ctx = NULL;
 	zstrm->buffer = NULL;
 	zstrm->tmpbuf = NULL;
 }
 
 static int zcomp_strm_init(struct zcomp *comp, struct zcomp_strm *zstrm)
 {
-	zstrm->ctx = comp->ops->create_ctx(comp->params);
+	int ret;
+
+	ret = comp->ops->create_ctx(comp->params, &zstrm->ctx);
+	if (ret)
+		return ret;
 
 	/*
 	 * allocate 2 pages. 1 for compressed data, plus 1 extra for the
@@ -63,7 +65,7 @@ static int zcomp_strm_init(struct zcomp *comp, struct zcomp_strm *zstrm)
 	 */
 	zstrm->buffer = vzalloc(2 * PAGE_SIZE);
 	zstrm->tmpbuf = vzalloc(2 * PAGE_SIZE);
-	if (!zstrm->ctx || !zstrm->buffer || !zstrm->tmpbuf) {
+	if (!zstrm->buffer || !zstrm->tmpbuf) {
 		zcomp_strm_free(comp, zstrm);
 		return -ENOMEM;
 	}
@@ -129,7 +131,7 @@ int zcomp_compress(struct zcomp *comp, struct zcomp_strm *zstrm,
 	};
 	int ret;
 
-	ret = comp->ops->compress(zstrm->ctx, &req);
+	ret = comp->ops->compress(&zstrm->ctx, &req);
 	if (!ret)
 		*dst_len = req.dst_len;
 	return ret;
@@ -145,7 +147,7 @@ int zcomp_decompress(struct zcomp *comp, struct zcomp_strm *zstrm,
 		.dst_len = PAGE_SIZE,
 	};
 
-	return comp->ops->decompress(zstrm->ctx, &req);
+	return comp->ops->decompress(&zstrm->ctx, &req);
 }
 
 int zcomp_cpu_up_prepare(unsigned int cpu, struct hlist_node *node)
