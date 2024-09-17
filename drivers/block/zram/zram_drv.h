@@ -238,5 +238,6 @@ struct zram {
 	unsigned long *read_req_bitmap;
 	struct zram_writeback_buffer *buf;
 #endif
+	atomic_t pp_in_progress;
 };
 #endif
