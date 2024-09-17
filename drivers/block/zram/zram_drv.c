@@ -400,10 +400,7 @@ static void mark_idle(struct zram *zram, ktime_t cutoff)
 
 	for (index = 0; index < nr_pages; index++) {
 		/*
-		 * Do not mark ZRAM_UNDER_WB slot as ZRAM_IDLE to close race.
-		 * See the comment in writeback_store.
-		 *
-		 * Also do not mark ZRAM_SAME slots as ZRAM_IDLE, because no
+		 * Do not mark ZRAM_SAME slots as ZRAM_IDLE, because no
 		 * post-processing (recompress, writeback) happens to the
 		 * ZRAM_SAME slot.
 		 *
@@ -412,7 +409,6 @@ static void mark_idle(struct zram *zram, ktime_t cutoff)
 		zram_slot_lock(zram, index);
 		if (!zram_allocated(zram, index) ||
 		    zram_test_flag(zram, index, ZRAM_WB) ||
-		    zram_test_flag(zram, index, ZRAM_UNDER_WB) ||
 		    zram_test_flag(zram, index, ZRAM_SAME)) {
 			zram_slot_unlock(zram, index);
 			continue;
@@ -2036,29 +2032,17 @@ static ssize_t writeback_store(struct device *dev,
 
 		index = pps->index;
 		zram_slot_lock(zram, index);
+		/*
+		 * scan_slots() sets ZRAM_PP_SLOT and relases slot lock, so
+		 * slots can change in the meantime. If slots are accessed or
+		 * freed they lose ZRAM_PP_SLOT flag and hence we don't
+		 * post-process them.
+		 */
 		if (!zram_test_flag(zram, index, ZRAM_PP_SLOT))
 			goto next;
-		/*
-		 * Clearing ZRAM_UNDER_WB is duty of caller.
-		 * IOW, zram_free_page never clear it.
-		 */
-		zram_set_flag(zram, index, ZRAM_UNDER_WB);
-		/*
-		 * For hugepage writeback, we also need to set ZRAM_IDLE bit
-		 * to prevent race window between writing the huge page and
-		 * populating new allocated hugepage in the same slot.
-		 * In that case, new slot will not have ZRAM_IDLE bit so
-		 * we could prevent the race.  Please find the detail below
-		 * comments.
-		 */
-		zram_set_flag(zram, index, ZRAM_IDLE);
 		zram_slot_unlock(zram, index);
-		if (zram_read_page(zram, page, index, NULL)) {
-			zram_slot_lock(zram, index);
-			zram_clear_flag(zram, index, ZRAM_UNDER_WB);
-			zram_clear_flag(zram, index, ZRAM_IDLE);
-			zram_slot_unlock(zram, index);
 
+		if (zram_read_page(zram, page, index, NULL)) {
 			release_pp_slot(zram, pps);
 			continue;
 		}
@@ -2074,11 +2058,6 @@ static ssize_t writeback_store(struct device *dev,
 		 */
 		err = submit_bio_wait(&bio);
 		if (err) {
-			zram_slot_lock(zram, index);
-			zram_clear_flag(zram, index, ZRAM_UNDER_WB);
-			zram_clear_flag(zram, index, ZRAM_IDLE);
-			zram_slot_unlock(zram, index);
-
 			release_pp_slot(zram, pps);
 			/*
 			 * BIO errors are not fatal, we continue and simply
@@ -2093,28 +2072,19 @@ static ssize_t writeback_store(struct device *dev,
 		}
 
 		atomic64_inc(&zram->stats.bd_writes);
-		/*
-		 * We released zram_slot_lock so need to verify if the slot was
-		 * changed under us. If slot was freed, we can catch it by
-		 * zram_allocated below.
-		 * A subtle case is the slot was freed/reallocated/marked as
-		 * ZRAM_IDLE again so we just wrote stale data but has freed
-		 * fresh data in the slot so user will see stale data in upcoming
-		 * access. To close the race, idle_store doesn't allow to mark
-		 * ZRAM_IDLE on the slot with ZRAM_UNDER_WB. Thus, newl populated
-		 * page will not have ZRAM_IDLE bit any longer so we can catch it
-		 * by checking ZRAM_IDLE bit.
-		 */
 		zram_slot_lock(zram, index);
-		if (!zram_allocated(zram, index) ||
-			  !zram_test_flag(zram, index, ZRAM_IDLE)) {
-			zram_clear_flag(zram, index, ZRAM_UNDER_WB);
-			zram_clear_flag(zram, index, ZRAM_IDLE);
+		/*
+		 * Same as above, we release slot lock during writeback so
+		 * slot can change under us: slot_free() or slot_free() and
+		 * reallocation (zram_write_page()). In both cases slot loses
+		 * ZRAM_PP_SLOT flag. No concurrent post-processing can set
+		 * ZRAM_PP_SLOT on such slots until current post-processing
+		 * finishes.
+		 */
+		if (!zram_test_flag(zram, index, ZRAM_PP_SLOT))
 			goto next;
-		}
 
 		zram_free_page(zram, index);
-		zram_clear_flag(zram, index, ZRAM_UNDER_WB);
 		zram_set_flag(zram, index, ZRAM_WB);
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
 		zram_set_element(zram, index, blk_idx << (PAGE_SHIFT * 2));
@@ -3193,7 +3163,6 @@ out:
 	}
 	spin_unlock_irqrestore(&zram->list_lock, flags);
 #endif
-	WARN_ON_ONCE(zram->table[index].flags & ~(1UL << ZRAM_UNDER_WB));
 }
 
 /*
