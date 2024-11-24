@@ -12,6 +12,7 @@
  */
 
 #include "fingerprint.h"
+#include "fingerprint_common.h"
 #include "qbt2000_common.h"
 
 /*
