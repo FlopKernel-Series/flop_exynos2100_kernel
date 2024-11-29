@@ -32,7 +32,9 @@ int exynos_acpm_set_rate(unsigned int id, unsigned long rate)
 	config.cmd[2] = FREQ_REQ;
 	config.cmd[3] = 0;
 
+#if defined(CONFIG_EXYNOS_DEBUG_FREQ)
 	secdbg_freq_check(id, rate);
+#endif
 	before = sched_clock();
 	ret = acpm_ipc_send_data_lazy(acpm_dvfs.ch_num, &config);
 	after = sched_clock();
