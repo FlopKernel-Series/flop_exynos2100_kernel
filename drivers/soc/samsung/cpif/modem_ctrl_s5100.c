@@ -67,8 +67,6 @@ static int s5100_lcd_notifier(struct notifier_block *notifier,
 
 #define msecs_to_loops(t) (loops_per_jiffy / 1000 * HZ * t)
 
-#define RUNTIME_PM_AFFINITY_CORE 2
-
 static struct modem_ctl *g_mc;
 
 static int register_phone_active_interrupt(struct modem_ctl *mc);
@@ -244,8 +242,7 @@ static irqreturn_t ap_wakeup_handler(int irq, void *data)
 		(gpio_val == 1 ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH));
 	mif_enable_irq(&mc->s5100_irq_ap_wakeup);
 
-	queue_work_on(RUNTIME_PM_AFFINITY_CORE, mc->wakeup_wq,
-			(gpio_val == 1 ? &mc->wakeup_work : &mc->suspend_work));
+	queue_work(mc->wakeup_wq, gpio_val == 1 ? &mc->wakeup_work : &mc->suspend_work);
 
 	return IRQ_HANDLED;
 }
@@ -1266,8 +1263,7 @@ static int s5100_pm_notifier(struct notifier_block *notifier,
 				(gpio_val == 1 ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH));
 			mif_enable_irq(&mc->s5100_irq_ap_wakeup);
 
-			queue_work_on(RUNTIME_PM_AFFINITY_CORE, mc->wakeup_wq,
-				(gpio_val == 1 ? &mc->wakeup_work : &mc->suspend_work));
+			queue_work(mc->wakeup_wq, gpio_val == 1 ? &mc->wakeup_work : &mc->suspend_work);
 		}
 		spin_unlock_irqrestore(&mc->pcie_pm_lock, flags);
 		break;
@@ -1459,13 +1455,11 @@ static int s5100_abox_call_state_notifier(struct notifier_block *nb,
 	switch (action) {
 	case ABOX_CALL_EVENT_OFF:
 		mc->pcie_voice_call_on = false;
-		queue_work_on(RUNTIME_PM_AFFINITY_CORE, mc->wakeup_wq,
-			&mc->call_off_work);
+		queue_work(mc->wakeup_wq, &mc->call_off_work);
 		break;
 	case ABOX_CALL_EVENT_ON:
 		mc->pcie_voice_call_on = true;
-		queue_work_on(RUNTIME_PM_AFFINITY_CORE, mc->wakeup_wq,
-			&mc->call_on_work);
+		queue_work(mc->wakeup_wq, &mc->call_on_work);
 		break;
 	default:
 		mif_err("undefined call event = %lu\n", action);
