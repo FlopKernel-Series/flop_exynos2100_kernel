@@ -3170,55 +3170,50 @@ out:
 #endif
 }
 
-/*
- * Reads (decompresses if needed) a page from zspool (zsmalloc).
- * Corresponding ZRAM slot should be locked.
- */
-static int zram_read_from_zspool(struct zram *zram, struct page *page,
+static int read_same_filled_page(struct zram *zram, struct page *page,
 				 u32 index)
+{
+	void *mem;
+
+	mem = kmap_local_page(page);
+	zram_fill_page(mem, PAGE_SIZE, zram_get_handle(zram, index));
+	kunmap_local(mem);
+	return 0;
+}
+
+static int read_incompressible_page(struct zram *zram, struct page *page,
+				    u32 index)
+{
+	unsigned long handle;
+	void *src, *dst;
+
+	handle = zram_get_handle(zram, index);
+	src = zs_map_object(zram->mem_pool, handle, ZS_MM_RO);
+	dst = kmap_local_page(page);
+	copy_page(dst, src);
+	kunmap_local(dst);
+	zs_unmap_object(zram->mem_pool, handle);
+
+	return 0;
+}
+
+static int read_compressed_page(struct zram *zram, struct page *page, u32 index)
 {
 	struct zcomp_strm *zstrm;
 	unsigned long handle;
 	unsigned int size;
 	void *src, *dst;
-#ifdef CONFIG_ZRAM_LRU_WRITEBACK
-	unsigned long flags;
-	unsigned long blk_idx;
-	bool ppr;
-#endif
-	u32 prio;
-	int ret;
+	int ret, prio;
 
 	handle = zram_get_handle(zram, index);
-	if (!handle || zram_test_flag(zram, index, ZRAM_SAME)) {
-		void *mem;
-
-		mem = kmap_local_page(page);
-		zram_fill_page(mem, PAGE_SIZE, handle);
-		kunmap_local(mem);
-		return 0;
-	}
-
 	size = zram_get_obj_size(zram, index);
+	prio = zram_get_priority(zram, index);
 
-	if (size != PAGE_SIZE) {
-		prio = zram_get_priority(zram, index);
-		zstrm = zcomp_stream_get(zram->comps[prio]);
-	}
-
+	zstrm = zcomp_stream_get(zram->comps[prio]);
 	src = zs_map_object(zram->mem_pool, handle, ZS_MM_RO);
-	if (size == PAGE_SIZE) {
-		dst = kmap_local_page(page);
-		copy_page(dst, src);
-		kunmap_local(dst);
-		ret = 0;
-	} else {
-		dst = kmap_local_page(page);
-		ret = zcomp_decompress(zram->comps[prio], zstrm,
-				       src, size, dst);
-		kunmap_local(dst);
-		zcomp_stream_put(zram->comps[prio]);
-	}
+	dst = kmap_local_page(page);
+	ret = zcomp_decompress(zram->comps[prio], zstrm, src, size, dst);
+	kunmap_local(dst);
 
 	/* Should NEVER happen. BUG() if it does. */
 	if (WARN_ON(ret)) {
@@ -3229,18 +3224,43 @@ static int zram_read_from_zspool(struct zram *zram, struct page *page,
 	}
 
 	zs_unmap_object(zram->mem_pool, handle);
+	zcomp_stream_put(zram->comps[prio]);
+
+	return ret;
+}
+
+/*
+ * Reads (decompresses if needed) a page from zspool (zsmalloc).
+ * Corresponding ZRAM slot should be locked.
+ */
+static int zram_read_from_zspool(struct zram *zram, struct page *page,
+				 u32 index)
+{
+	int ret;
+
+	if (zram_test_flag(zram, index, ZRAM_SAME) ||
+	    !zram_get_handle(zram, index))
+		ret = read_same_filled_page(zram, page, index);
+	else if (!zram_test_flag(zram, index, ZRAM_HUGE))
+		ret = read_compressed_page(zram, page, index);
+	else
+		ret = read_incompressible_page(zram, page, index);
+
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
 	if (zram_test_flag(zram, index, ZRAM_UNDER_PPR))
 		zram_clear_flag(zram, index, ZRAM_UNDER_PPR);
-	spin_lock_irqsave(&zram->list_lock, flags);
-	if (!list_empty(&zram->table[index].lru_list)) {
-		list_del_init(&zram->table[index].lru_list);
-		if (zram_test_flag(zram, index, ZRAM_LRU)) {
-			zram_clear_flag(zram, index, ZRAM_LRU);
-			atomic64_dec(&zram->stats.lru_pages);
+	{
+		unsigned long lru_flags;
+		spin_lock_irqsave(&zram->list_lock, lru_flags);
+		if (!list_empty(&zram->table[index].lru_list)) {
+			list_del_init(&zram->table[index].lru_list);
+			if (zram_test_flag(zram, index, ZRAM_LRU)) {
+				zram_clear_flag(zram, index, ZRAM_LRU);
+				atomic64_dec(&zram->stats.lru_pages);
+			}
 		}
+		spin_unlock_irqrestore(&zram->list_lock, lru_flags);
 	}
-	spin_unlock_irqrestore(&zram->list_lock, flags);
 #endif
 	return ret;
 }
