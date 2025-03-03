@@ -45,6 +45,7 @@ static const struct zcomp_ops *backends[] = {
 static void zcomp_strm_free(struct zcomp *comp, struct zcomp_strm *zstrm)
 {
 	comp->ops->destroy_ctx(&zstrm->ctx);
+	vfree(zstrm->local_copy);
 	vfree(zstrm->buffer);
 	vfree(zstrm->tmpbuf);
 	zstrm->buffer = NULL;
@@ -59,13 +60,14 @@ static int zcomp_strm_init(struct zcomp *comp, struct zcomp_strm *zstrm)
 	if (ret)
 		return ret;
 
+	zstrm->local_copy = vzalloc(PAGE_SIZE);
 	/*
 	 * allocate 2 pages. 1 for compressed data, plus 1 extra for the
 	 * case when compressed size is larger than the original one
 	 */
 	zstrm->buffer = vzalloc(2 * PAGE_SIZE);
 	zstrm->tmpbuf = vzalloc(2 * PAGE_SIZE);
-	if (!zstrm->buffer || !zstrm->tmpbuf) {
+	if (!zstrm->buffer || !zstrm->local_copy || !zstrm->tmpbuf) {
 		zcomp_strm_free(comp, zstrm);
 		return -ENOMEM;
 	}
