@@ -36,7 +36,7 @@
 static const int read_expire = HZ * 128 / 1000;	/* max time before a read is submitted. */
 static const int write_expire = HZ;		/* ditto for writes, these limits are SOFT! */
 static const int max_write_starvation = 2;	/* max times reads can starve a write */
-static const int congestion_threshold = 90;	/* percentage of congestion threshold */
+static const int congestion_threshold = 85;	/* percentage of congestion threshold */
 static const int max_tgroup_io_ratio = 50;	/* maximum service ratio for each thread group */
 static const int max_async_write_ratio = 25;	/* maximum service ratio for async write */
 
