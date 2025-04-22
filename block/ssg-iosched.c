@@ -457,8 +457,8 @@ static void ssg_completed_request(struct request *rq, u64 now)
 
 static void ssg_set_shallow_depth(struct ssg_data *ssg, struct blk_mq_tags *tags)
 {
-	unsigned int depth = tags->bitmap_tags->sb.depth;
-	unsigned int map_nr = tags->bitmap_tags->sb.map_nr;
+	unsigned int depth = tags->bitmap_tags.sb.depth;
+	unsigned int map_nr = tags->bitmap_tags.sb.map_nr;
 
 	ssg->max_async_write_rqs = depth * max_async_write_ratio / 100U;
 	ssg->max_async_write_rqs =
@@ -476,7 +476,7 @@ static void ssg_depth_updated(struct blk_mq_hw_ctx *hctx)
 	struct request_queue *q = hctx->queue;
 	struct ssg_data *ssg = q->elevator->elevator_data;
 	struct blk_mq_tags *tags = hctx->sched_tags;
-	unsigned int depth = tags->bitmap_tags->sb.depth;
+	unsigned int depth = tags->bitmap_tags.sb.depth;
 
 	ssg->congestion_threshold_rqs = depth * congestion_threshold / 100U;
 
@@ -487,7 +487,7 @@ static void ssg_depth_updated(struct blk_mq_hw_ctx *hctx)
 		ssg->rq_info = NULL;
 
 	ssg_set_shallow_depth(ssg, tags);
-	sbitmap_queue_min_shallow_depth(tags->bitmap_tags,
+	sbitmap_queue_min_shallow_depth(&tags->bitmap_tags,
 			ssg->async_write_shallow_depth);
 
 	ssg_blkcg_depth_updated(hctx);
@@ -554,7 +554,7 @@ static int ssg_init_hctx(struct blk_mq_hw_ctx *hctx, unsigned int hctx_idx)
 	struct blk_mq_tags *tags = hctx->sched_tags;
 
 	ssg_set_shallow_depth(ssg, tags);
-	sbitmap_queue_min_shallow_depth(tags->bitmap_tags,
+	sbitmap_queue_min_shallow_depth(&tags->bitmap_tags,
 			ssg->async_write_shallow_depth);
 
 	return 0;
@@ -729,7 +729,7 @@ static void ssg_insert_requests(struct blk_mq_hw_ctx *hctx,
  * Nothing to do here. This is defined only to ensure that .finish_request
  * method is called upon request completion.
  */
-static void ssg_prepare_request(struct request *rq)
+static void ssg_prepare_request(struct request *rq, struct bio *bio)
 {
 	struct ssg_data *ssg = rq->q->elevator->elevator_data;
 	struct ssg_request_info *rqi;
@@ -748,6 +748,8 @@ static void ssg_prepare_request(struct request *rq)
 
 	if (ssg_op_is_async_write(rq->cmd_flags))
 		atomic_inc(&ssg->async_write_rqs);
+
+	(void)bio;
 }
 
 /*
