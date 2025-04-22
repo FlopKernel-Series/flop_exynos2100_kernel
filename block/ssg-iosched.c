@@ -27,17 +27,9 @@
 #include "blk-mq-sched.h"
 #include "ssg-cgroup.h"
 
-#if IS_ENABLED(CONFIG_BLK_SEC_STATS)
-extern void blk_sec_stats_account_init(struct request_queue *q);
-extern void blk_sec_stats_account_exit(struct elevator_queue *eq);
-extern void blk_sec_stats_account_io_done(
-		struct request *rq, unsigned int data_size,
-		pid_t tgid, const char *tg_name, u64 tg_start_time);
-#else
 #define blk_sec_stats_account_init(q)	do {} while(0)
 #define blk_sec_stats_account_exit(eq)	do {} while(0)
 #define blk_sec_stats_account_io_done(rq, size, tgid, name, time) do {} while(0)
-#endif
 
 #define MAX_ASYNC_WRITE_RQS	8
 
