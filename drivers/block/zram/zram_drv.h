@@ -53,6 +53,7 @@ enum zram_pageflags {
 	ZRAM_EXPIRE,
 	ZRAM_READ_BDEV,
 	ZRAM_PPR,
+	ZRAM_UNDER_WB,
 	ZRAM_UNDER_PPR,
 	ZRAM_LRU,
 	ZRAM_INCOMPRESSIBLE, /* none of the algorithms could compress it */

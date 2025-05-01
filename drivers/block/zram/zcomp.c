@@ -72,6 +72,7 @@ static int zcomp_strm_init(struct zcomp *comp, struct zcomp_strm *zstrm)
 		return -ENOMEM;
 	}
 	return 0;
+}
 
 
 static const struct zcomp_ops *lookup_backend_ops(const char *comp)
@@ -103,7 +104,6 @@ ssize_t zcomp_available_show(const char *comp, char *buf)
 					"[%s] ", backends[i]->name);
 		} else {
 			sz += scnprintf(buf + sz, PAGE_SIZE - sz - 2,
-}
 					"%s ", backends[i]->name);
 		}
 	}
