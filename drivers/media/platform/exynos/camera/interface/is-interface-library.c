@@ -1063,7 +1063,7 @@ int is_lib_logdump(void)
 
 void is_assert(bool en_s2d)
 {
-	is_debug_s2d(en_s2d, "DDK/RTA ASSERT");
+	// is_debug_s2d(en_s2d, "DDK/RTA ASSERT");
 }
 
 /*
