@@ -708,7 +708,7 @@ static struct spi_driver qbtspi_spi_driver = {
 
 /*-------------------------------------------------------------------------*/
 
-static int __init qbtspi_init(void)
+int qbtspi_init(void)
 {
 	int status = 0;
 #if !defined(ENABLE_SENSORS_FPRINT_SECURE)
@@ -741,15 +741,13 @@ static int __init qbtspi_init(void)
 #endif
 	return status;
 }
-module_init(qbtspi_init);
 
-static void __exit qbtspi_exit(void)
+void qbtspi_exit(void)
 {
 	spi_unregister_driver(&qbtspi_spi_driver);
 	class_destroy(qbtspi_class);
 	unregister_chrdev(QBTSPI_MAJOR, qbtspi_spi_driver.driver.name);
 }
-module_exit(qbtspi_exit);
 
 MODULE_AUTHOR("Kangwook.Her");
 MODULE_DESCRIPTION("Samsung Electronics Inc. QBT2000 spi driver");

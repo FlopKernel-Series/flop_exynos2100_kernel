@@ -1309,6 +1309,9 @@ static struct platform_driver qbt2000_plat_driver = {
 	},
 };
 
+extern int qbtspi_init(void);
+extern void qbtspi_exit(void);
+
 static int __init qbt2000_init(void)
 {
 	int rc = 0;
@@ -1316,13 +1319,19 @@ static int __init qbt2000_init(void)
 	rc = platform_driver_register(&qbt2000_plat_driver);
 	pr_info("ret : %d\n", rc);
 
+	qbtspi_init();
+
 	return rc;
 }
 
 static void __exit qbt2000_exit(void)
 {
 	pr_info("entry\n");
-	return platform_driver_unregister(&qbt2000_plat_driver);
+	platform_driver_unregister(&qbt2000_plat_driver);
+
+	qbtspi_exit();
+
+	return;
 }
 
 late_initcall(qbt2000_init);
