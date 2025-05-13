@@ -1929,7 +1929,7 @@ int panel_probe(struct panel_device *panel)
 	ret = copr_probe(panel, info->copr_data);
 	if (unlikely(ret)) {
 		panel_err("failed to probe copr driver\n");
-		BUG();
+		// BUG();
 		return -ENODEV;
 	}
 #endif
@@ -1938,7 +1938,7 @@ int panel_probe(struct panel_device *panel)
 	ret = aod_drv_probe(panel, info->aod_tune);
 	if (unlikely(ret)) {
 		panel_err("failed to probe aod driver\n");
-		BUG();
+		// BUG();
 		return -ENODEV;
 	}
 #endif
@@ -2292,7 +2292,7 @@ static int panel_sleep_out(struct panel_device *panel)
 				goto do_exit;
 			}
 			panel_err("failed to panel init seq\n");
-			BUG();
+			// BUG();
 		}
 		retry = 3;
 		break;
