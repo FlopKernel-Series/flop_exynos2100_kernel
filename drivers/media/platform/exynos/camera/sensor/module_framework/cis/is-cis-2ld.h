@@ -44,7 +44,7 @@
 #define USE_GROUP_PARAM_HOLD	(0)
 
 #ifdef USE_CAMERA_2LD_4000X3000
-enum sensor_2ld_mode_enum {
+enum sensor_2ld_mode_enum_4x {
 	/* MODE 3 */
 	SENSOR_2LD_4000X3000_30FPS = 0,
 	SENSOR_2LD_4000X3000_60FPS = 1,
@@ -56,25 +56,11 @@ enum sensor_2ld_mode_enum {
 	/* MODE 3 - 24fps LIVE FOCUS */
 	SENSOR_2LD_4000X3000_24FPS = 6,
 	SENSOR_2LD_4000X2252_24FPS = 7,
-	/* MODE 3 - SM */
-	SENSOR_2LD_2016X1134_480FPS = 8,
-	SENSOR_2LD_2016X1134_240FPS = 9,
-	/* MODE 2 */
-	SENSOR_2LD_1008X756_120FPS_MODE2 = 10,
-	/* MODE 2 SSM */
-	SENSOR_2LD_2016X1134_60FPS_MODE2_SSM_960 = 11,
-	SENSOR_2LD_2016X1134_60FPS_MODE2_SSM_480 = 12,
-	SENSOR_2LD_1280X720_60FPS_MODE2_SSM_960 = 13,
-	SENSOR_2LD_1280X720_60FPS_MODE2_SSM_960_SDC_OFF = 14,
 	/* MODE 3 PRO VIDEO */
 	SENSOR_2LD_4000X2252_120FPS = 15,
-	SENSOR_2LD_3328X1872_120FPS = 16,
-	/* MODE 3 SUB CROP */
-	SENSOR_2LD_2800X2100_30FPS = 17,
-	SENSOR_2LD_MODE_MAX,
 };
 
-static bool sensor_2ld_support_wdr[] = {
+static bool sensor_2ld_support_wdr_4x[] = {
 	/* MODE 3 */
 	true, //SENSOR_2LD_4000x3000_30FPS = 0,
 	true, //SENSOR_2LD_4000x3000_60FPS = 1,
@@ -102,7 +88,7 @@ static bool sensor_2ld_support_wdr[] = {
 	true, //SENSOR_2LD_2800X2100_30FPS = 17,
 };
 
-static bool sensor_2ld_support_aeb[] = {
+static bool sensor_2ld_support_aeb_4x[] = {
 	/* MODE 3 */
 	true, //SENSOR_2LD_4000x3000_30FPS = 0,
 	false, //SENSOR_2LD_4000x3000_60FPS = 1,
@@ -130,15 +116,15 @@ static bool sensor_2ld_support_aeb[] = {
 	false, //SENSOR_2LD_2800X2100_30FPS = 17,
 };
 
-enum sensor_2ld_load_sram_mode {
+enum sensor_2ld_load_sram_mode_4x {
 	SENSOR_2LD_4000x3000_30FPS_LOAD_SRAM = 0,
 	SENSOR_2LD_4000x2252_30FPS_LOAD_SRAM,
 	SENSOR_2LD_4000x3000_24FPS_LOAD_SRAM,
 	SENSOR_2LD_4000x2252_24FPS_LOAD_SRAM,
 	SENSOR_2LD_4000x2252_60FPS_LOAD_SRAM,
-	SENSOR_2LD_1008x756_120FPS_LOAD_SRAM,
 };
-#else
+#endif
+// #else
 enum sensor_2ld_mode_enum {
 	/* MODE 3 */
 	SENSOR_2LD_4032X3024_30FPS = 0,
@@ -233,7 +219,6 @@ enum sensor_2ld_load_sram_mode {
 	SENSOR_2LD_4032x2268_60FPS_LOAD_SRAM,
 	SENSOR_2LD_1008x756_120FPS_LOAD_SRAM,
 };
-#endif
 
 static const u32 sensor_2ld_cis_LTE_settings_1[] = {
 	0x6000, 0x0005, 0x02,

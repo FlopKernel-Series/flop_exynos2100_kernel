@@ -65,4 +65,10 @@
 
 #define PDP_FAST_VVALID_THRESHOLD_TIME 1000000 /* 1s */
 
+// Device-specific
+#include "is-vendor-fragment_rsu.h"
+
+// Differing configurations
+#include "is-vendor-fragment_rsu_usu_diff.h"
+
 #endif /* IS_VENDOR_CONFIG_COMMON_BASE_H */

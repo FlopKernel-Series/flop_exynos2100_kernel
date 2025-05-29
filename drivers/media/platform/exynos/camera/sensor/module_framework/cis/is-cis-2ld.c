@@ -37,10 +37,14 @@
 #include "is-resourcemgr.h"
 #include "is-dt.h"
 #include "is-cis-2ld.h"
+// #ifdef USE_CAMERA_2LD_4000X3000
+// #include "is-cis-2ld-4000x3000-setA.h"
+// #else
+// #include "is-cis-2ld-setA.h"
+// #endif
+#include "is-cis-2ld-setA.h"
 #ifdef USE_CAMERA_2LD_4000X3000
 #include "is-cis-2ld-4000x3000-setA.h"
-#else
-#include "is-cis-2ld-setA.h"
 #endif
 #include "is-helper-i2c.h"
 
@@ -99,7 +103,10 @@ static bool sensor_2ld_cis_is_wdr_mode_on(cis_shared_data *cis_data)
 		return false;
 	}
 
-	return sensor_2ld_support_wdr[mode];
+	if (sec_has_mcd_type_rsu())
+		return sensor_2ld_support_wdr_4x[mode];
+	else 
+		return sensor_2ld_support_wdr[mode];
 }
 
 static bool sensor_2ld_cis_get_aeb_supported(cis_shared_data *cis_data)
@@ -111,7 +118,10 @@ static bool sensor_2ld_cis_get_aeb_supported(cis_shared_data *cis_data)
 		return false;
 	}
 
-	return sensor_2ld_support_aeb[mode];
+	if (sec_has_mcd_type_rsu())
+		return sensor_2ld_support_aeb_4x[mode];
+	else
+		return sensor_2ld_support_aeb[mode];
 }
 
 
@@ -431,57 +441,113 @@ int sensor_2ld_cis_select_setfile(struct v4l2_subdev *subdev)
 	case 0xA201:
 	case 0xA202:
 		info("2ld sensor revision(%#x)\n", rev);
-		sensor_2ld_global = sensor_2ld_setfile_A_Global_A2;
-		sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A2);
-		sensor_2ld_setfiles = sensor_2ld_setfiles_A;
-		sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
-		sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
-		sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+		if (sec_has_mcd_type_rsu()) {
+			sensor_2ld_global = sensor_2ld_setfile_A_4x_Global_A2;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_A2);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A_4x;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_4x_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A_4x;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x);
 #ifdef USE_CAMERA_SENSOR_RETENTION
-		sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
-		sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
-		sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
-		sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
-		sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
-		sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
-		sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_4x_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_4x_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_4x_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_4x_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_4x_sizes_load_sram;
 #endif
+		} else {
+			sensor_2ld_global = sensor_2ld_setfile_A_Global_A2;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A2);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+#ifdef USE_CAMERA_SENSOR_RETENTION
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+#endif
+		}
 		break;
 	case 0xA301:
-		info("2ld sensor revision(%#x)\n", rev);
-		sensor_2ld_global = sensor_2ld_setfile_A_Global_A3;
-		sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A3);
-		sensor_2ld_setfiles = sensor_2ld_setfiles_A;
-		sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
-		sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
-		sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+		if (sec_has_mcd_type_rsu()) {
+			info("2ld sensor revision(%#x)\n", rev);
+			sensor_2ld_global = sensor_2ld_setfile_A_4x_Global_A3;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_A3);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A_4x;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_4x_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A_4x;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x);
 #ifdef USE_CAMERA_SENSOR_RETENTION
-		sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
-		sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
-		sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
-		sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
-		sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
-		sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
-		sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_4x_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_4x_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_4x_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_4x_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_4x_sizes_load_sram;
 #endif
+		} else {
+			info("2ld sensor revision(%#x)\n", rev);
+			sensor_2ld_global = sensor_2ld_setfile_A_Global_A3;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A3);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+#ifdef USE_CAMERA_SENSOR_RETENTION
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+#endif
+		}
 		break;
 	default:
-		info("2ld sensor revision(%#x)\n", rev);
-		sensor_2ld_global = sensor_2ld_setfile_A_Global_A2;
-		sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A2);
-		sensor_2ld_setfiles = sensor_2ld_setfiles_A;
-		sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
-		sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
-		sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+		if (sec_has_mcd_type_rsu()) {
+			info("2ld sensor revision(%#x)\n", rev);
+			sensor_2ld_global = sensor_2ld_setfile_A_4x_Global_A2;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_A2);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A_4x;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_4x_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A_4x;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x);
 #ifdef USE_CAMERA_SENSOR_RETENTION
-		sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
-		sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
-		sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
-		sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
-		sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
-		sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
-		sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_4x_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_4x_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_4x_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_4x_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_4x_sizes_load_sram;
 #endif
+		} else {
+			info("2ld sensor revision(%#x)\n", rev);
+			sensor_2ld_global = sensor_2ld_setfile_A_Global_A2;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A2);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+#ifdef USE_CAMERA_SENSOR_RETENTION
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+#endif
+		}
 		break;
 	}
 
@@ -4284,49 +4350,96 @@ static int cis_2ld_probe(struct i2c_client *client,
 		setfile = "default";
 	}
 
-	if (strcmp(setfile, "default") == 0 ||
-			strcmp(setfile, "setA") == 0) {
-		probe_info("%s setfile_A\n", __func__);
-		sensor_2ld_global = sensor_2ld_setfile_A_Global_A2;
-		sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A2);
-		sensor_2ld_setfiles = sensor_2ld_setfiles_A;
-		sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
-		sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
-		sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+	if (sec_has_mcd_type_rsu()) {
+		if (strcmp(setfile, "default") == 0 ||
+				strcmp(setfile, "setA") == 0) {
+			probe_info("%s setfile_A\n", __func__);
+			sensor_2ld_global = sensor_2ld_setfile_A_4x_Global_A2;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_A2);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A_4x;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_4x_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A_4x;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x);
 #ifdef USE_CAMERA_SENSOR_RETENTION
-		sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
-		sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
-		sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
-		sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
-		sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
-		sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
-		sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_4x_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_4x_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_4x_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_4x_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_4x_sizes_load_sram;
 #endif
-		cis->mipi_sensor_mode = sensor_2ld_setfile_A_mipi_sensor_mode;
-		cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_mipi_sensor_mode);
-		verify_sensor_mode = sensor_2ld_setfile_A_verify_sensor_mode;
-		verify_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_verify_sensor_mode);
+			cis->mipi_sensor_mode = sensor_2ld_setfile_A_4x_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_sensor_mode);
+			verify_sensor_mode = sensor_2ld_setfile_A_4x_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_verify_sensor_mode);
+		} else {
+			err("%s setfile index out of bound, take default (setfile_A)", __func__);
+			sensor_2ld_global = sensor_2ld_setfile_A_4x_Global_A2;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_A2);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A_4x;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_4x_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A_4x;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x);
+#ifdef USE_CAMERA_SENSOR_RETENTION
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_4x_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_4x_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_4x_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_4x_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_4x_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_4x_sizes_load_sram;
+#endif
+			cis->mipi_sensor_mode = sensor_2ld_setfile_A_4x_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_sensor_mode);
+			verify_sensor_mode = sensor_2ld_setfile_A_4x_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_verify_sensor_mode);
+		}
 	} else {
-		err("%s setfile index out of bound, take default (setfile_A)", __func__);
-		sensor_2ld_global = sensor_2ld_setfile_A_Global_A2;
-		sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A2);
-		sensor_2ld_setfiles = sensor_2ld_setfiles_A;
-		sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
-		sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
-		sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+		if (strcmp(setfile, "default") == 0 ||
+				strcmp(setfile, "setA") == 0) {
+			probe_info("%s setfile_A\n", __func__);
+			sensor_2ld_global = sensor_2ld_setfile_A_Global_A2;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A2);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
 #ifdef USE_CAMERA_SENSOR_RETENTION
-		sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
-		sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
-		sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
-		sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
-		sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
-		sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
-		sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
 #endif
-		cis->mipi_sensor_mode = sensor_2ld_setfile_A_mipi_sensor_mode;
-		cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_mipi_sensor_mode);
-		verify_sensor_mode = sensor_2ld_setfile_A_verify_sensor_mode;
-		verify_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_verify_sensor_mode);
+			cis->mipi_sensor_mode = sensor_2ld_setfile_A_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_mipi_sensor_mode);
+			verify_sensor_mode = sensor_2ld_setfile_A_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_verify_sensor_mode);
+		} else {
+			err("%s setfile index out of bound, take default (setfile_A)", __func__);
+			sensor_2ld_global = sensor_2ld_setfile_A_Global_A2;
+			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_A2);
+			sensor_2ld_setfiles = sensor_2ld_setfiles_A;
+			sensor_2ld_setfile_sizes = sensor_2ld_setfile_A_sizes;
+			sensor_2ld_pllinfos = sensor_2ld_pllinfos_A;
+			sensor_2ld_max_setfile_num = ARRAY_SIZE(sensor_2ld_setfiles_A);
+#ifdef USE_CAMERA_SENSOR_RETENTION
+			sensor_2ld_global_retention = sensor_2ld_setfile_A_Global_retention;
+			sensor_2ld_global_retention_size = ARRAY_SIZE(sensor_2ld_setfile_A_Global_retention);
+			sensor_2ld_retention = sensor_2ld_setfiles_A_retention;
+			sensor_2ld_retention_size = sensor_2ld_setfile_A_sizes_retention;
+			sensor_2ld_max_retention_num = ARRAY_SIZE(sensor_2ld_setfiles_A_retention);
+			sensor_2ld_load_sram = sensor_2ld_setfile_A_load_sram;
+			sensor_2ld_load_sram_size = sensor_2ld_setfile_A_sizes_load_sram;
+#endif
+			cis->mipi_sensor_mode = sensor_2ld_setfile_A_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_mipi_sensor_mode);
+			verify_sensor_mode = sensor_2ld_setfile_A_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_2ld_setfile_A_verify_sensor_mode);
+		}
 	}
 
 	if (cis->vendor_use_adaptive_mipi) {

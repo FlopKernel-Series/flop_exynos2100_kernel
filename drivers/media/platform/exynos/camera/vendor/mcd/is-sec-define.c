@@ -1524,6 +1524,22 @@ int is_sec_parse_rom_info(struct is_rom_info *finfo, char *buf, int rom_id)
 #if defined(CONFIG_CAMERA_USE_MCU) || defined(CONFIG_CAMERA_USE_INTERNAL_MCU)
 	struct is_ois_info *ois_pinfo = NULL;
 #endif
+	int tele_ois_rom_id = 0;
+	int tele_ois_tilt_rom_id = 0;
+
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+		tele_ois_tilt_rom_id = TELE_OIS_TILT_ROM_ID_V1;
+	else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1) ||
+		 sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2))
+		tele_ois_tilt_rom_id = TELE_OIS_TILT_ROM_ID_V2;
+	else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		tele_ois_tilt_rom_id = TELE_OIS_TILT_ROM_ID_V3;
+
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU) ||
+	    sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		tele_ois_rom_id = TELE_OIS_ROM_ID_V1;
+	else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU))
+		tele_ois_rom_id = TELE_OIS_ROM_ID_V2;
 
 	if (finfo->rom_header_version_start_addr != -1) {
 		memcpy(finfo->header_ver, &buf[finfo->rom_header_version_start_addr], IS_HEADER_VER_SIZE);
@@ -1568,7 +1584,7 @@ int is_sec_parse_rom_info(struct is_rom_info *finfo, char *buf, int rom_id)
 			memcpy(ois_pinfo->wide_romdata.cal_mark, &buf[finfo->rom_ois_list[6]], IS_OIS_CAL_MARK_DATA_SIZE);
 		}
 
-		if (rom_id == TELE_OIS_ROM_ID) {
+		if (rom_id == tele_ois_rom_id) {
 			memcpy(ois_pinfo->tele_romdata.xgg, &buf[finfo->rom_ois_list[7]], IS_OIS_GYRO_DATA_SIZE);
 			memcpy(ois_pinfo->tele_romdata.ygg, &buf[finfo->rom_ois_list[8]], IS_OIS_GYRO_DATA_SIZE);
 			memcpy(ois_pinfo->tele_romdata.xcoef, &buf[finfo->rom_ois_list[9]], IS_OIS_COEF_DATA_SIZE);
@@ -1590,7 +1606,7 @@ int is_sec_parse_rom_info(struct is_rom_info *finfo, char *buf, int rom_id)
 		}
 #endif
 
-		if (rom_id == TELE_OIS_TILT_ROM_ID) {
+		if (rom_id == tele_ois_tilt_rom_id) {
 			memcpy(ois_pinfo->tele_tilt_romdata.xgg, &buf[finfo->rom_ois_list[7]], IS_OIS_GYRO_DATA_SIZE);
 			memcpy(ois_pinfo->tele_tilt_romdata.ygg, &buf[finfo->rom_ois_list[8]], IS_OIS_GYRO_DATA_SIZE);
 			memcpy(ois_pinfo->tele_tilt_romdata.xcoef, &buf[finfo->rom_ois_list[9]], IS_OIS_COEF_DATA_SIZE);
@@ -1612,7 +1628,7 @@ int is_sec_parse_rom_info(struct is_rom_info *finfo, char *buf, int rom_id)
 			memcpy(ois_pinfo->wide_romdata.cal_mark, &buf[finfo->rom_ois_list[6]], IS_OIS_CAL_MARK_DATA_SIZE);
 		}
 
-		if (rom_id == TELE_OIS_ROM_ID) {
+		if (rom_id == tele_ois_rom_id) {
 			memcpy(ois_pinfo->tele_romdata.xgg, &buf[finfo->rom_ois_list[0]], IS_OIS_GYRO_DATA_SIZE);
 			memcpy(ois_pinfo->tele_romdata.ygg, &buf[finfo->rom_ois_list[1]], IS_OIS_GYRO_DATA_SIZE);
 			memcpy(ois_pinfo->tele_romdata.xcoef, &buf[finfo->rom_ois_list[2]], IS_OIS_COEF_DATA_SIZE);
@@ -1634,7 +1650,7 @@ int is_sec_parse_rom_info(struct is_rom_info *finfo, char *buf, int rom_id)
 		}
 #endif
 
-		if (rom_id == TELE_OIS_TILT_ROM_ID) {
+		if (rom_id == tele_ois_tilt_rom_id) {
 			memcpy(ois_pinfo->tele_tilt_romdata.xgg, &buf[finfo->rom_ois_list[0]], IS_OIS_GYRO_DATA_SIZE);
 			memcpy(ois_pinfo->tele_tilt_romdata.ygg, &buf[finfo->rom_ois_list[1]], IS_OIS_GYRO_DATA_SIZE);
 			memcpy(ois_pinfo->tele_tilt_romdata.xcoef, &buf[finfo->rom_ois_list[2]], IS_OIS_COEF_DATA_SIZE);

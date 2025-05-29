@@ -18,7 +18,7 @@
 /* S5K2LD_EVT0_Ver7.5 */
 
 /* Global A2 */
-const u32 sensor_2ld_setfile_A_Global_A2[] = {
+const u32 sensor_2ld_setfile_A_4x_Global_A2[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6000,	0x0005,	0x02,
 	0xFCFC,	0x2001,	0x02,
@@ -11723,7 +11723,7 @@ const u32 sensor_2ld_setfile_A_Global_A2[] = {
 	0x6000,	0x0085,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_Global_A3[] = {
+const u32 sensor_2ld_setfile_A_4x_Global_A3[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6000,	0x0005,	0x02,
 	0xFCFC,	0x2001,	0x02,
@@ -19083,7 +19083,7 @@ const u32 sensor_2ld_setfile_A_Global_A3[] = {
 };
 
 /* G2 */
-const u32 sensor_2ld_setfile_A_4000x3000_30fps[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x3000_30fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -19504,7 +19504,7 @@ const u32 sensor_2ld_setfile_A_4000x3000_30fps[] = {
 };
 
 /* G12 */
-const u32 sensor_2ld_setfile_A_4000x3000_60fps[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x3000_60fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -19925,7 +19925,7 @@ const u32 sensor_2ld_setfile_A_4000x3000_60fps[] = {
 };
 
 /* G3 */
-const u32 sensor_2ld_setfile_A_4000x2252_60fps[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x2252_60fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -20346,7 +20346,7 @@ const u32 sensor_2ld_setfile_A_4000x2252_60fps[] = {
 };
 
 /* G4 */
-const u32 sensor_2ld_setfile_A_4000x2252_30fps[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x2252_30fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -20767,7 +20767,7 @@ const u32 sensor_2ld_setfile_A_4000x2252_30fps[] = {
 };
 
 /* G2 30fps -> 24fps */ /* 0x0340 0x3B60 */
-const u32 sensor_2ld_setfile_A_4000x3000_24fps[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x3000_24fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -21188,7 +21188,7 @@ const u32 sensor_2ld_setfile_A_4000x3000_24fps[] = {
 };
 
 /* G4 30fps -> 24fps */ /* 0x0340 0x3B60 */
-const u32 sensor_2ld_setfile_A_4000x2252_24fps[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x2252_24fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -21609,7 +21609,7 @@ const u32 sensor_2ld_setfile_A_4000x2252_24fps[] = {
 };
 
 /* G14 */
-const u32 sensor_2ld_setfile_A_4000x2252_120fps[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x2252_120fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -22029,7 +22029,7 @@ const u32 sensor_2ld_setfile_A_4000x2252_120fps[] = {
 	0x6000,	0x0085,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_2800x2100_30fps_4000x3000[] = {
+const u32 sensor_2ld_setfile_A_4x_2800x2100_30fps_4000x3000[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -22450,7 +22450,7 @@ const u32 sensor_2ld_setfile_A_2800x2100_30fps_4000x3000[] = {
 };
 
 /* G10 */
-const u32 sensor_2ld_setfile_A_2000x1500_30fps[] = {
+const u32 sensor_2ld_setfile_A_4x_2000x1500_30fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -22871,7 +22871,7 @@ const u32 sensor_2ld_setfile_A_2000x1500_30fps[] = {
 };
 
 /* G11 */
-const u32 sensor_2ld_setfile_A_2000x1128_30fps[] = {
+const u32 sensor_2ld_setfile_A_4x_2000x1128_30fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -23292,7 +23292,7 @@ const u32 sensor_2ld_setfile_A_2000x1128_30fps[] = {
 };
 
 /* G5 */
-const u32 sensor_2ld_setfile_A_2016x1134_480fps[] = {
+const u32 sensor_2ld_setfile_A_4x_2016x1134_480fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -23713,7 +23713,7 @@ const u32 sensor_2ld_setfile_A_2016x1134_480fps[] = {
 };
 
 /* G15 */
-const u32 sensor_2ld_setfile_A_2016x1134_240fps[] = {
+const u32 sensor_2ld_setfile_A_4x_2016x1134_240fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -24134,7 +24134,7 @@ const u32 sensor_2ld_setfile_A_2016x1134_240fps[] = {
 };
 
 /* G6 */
-const u32 sensor_2ld_setfile_A_1008x756_120fps_mode2[] = {
+const u32 sensor_2ld_setfile_A_4x_1008x756_120fps_mode2[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -24555,7 +24555,7 @@ const u32 sensor_2ld_setfile_A_1008x756_120fps_mode2[] = {
 };
 
 /* G1 SDC enable */
-const u32 sensor_2ld_setfile_A_2016x1134_60fps_mode2_ssm_960[] = {
+const u32 sensor_2ld_setfile_A_4x_2016x1134_60fps_mode2_ssm_960[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -24975,10 +24975,10 @@ const u32 sensor_2ld_setfile_A_2016x1134_60fps_mode2_ssm_960[] = {
 	0x6000,	0x0085,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_2016x1134_60fps_mode2_ssm_480[] = {};
+const u32 sensor_2ld_setfile_A_4x_2016x1134_60fps_mode2_ssm_480[] = {};
 
 /* G8 SDC enable 1440fps -> 960fps */
-const u32 sensor_2ld_setfile_A_1280x720_60fps_mode2_ssm_960[] = {
+const u32 sensor_2ld_setfile_A_4x_1280x720_60fps_mode2_ssm_960[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -25399,7 +25399,7 @@ const u32 sensor_2ld_setfile_A_1280x720_60fps_mode2_ssm_960[] = {
 };
 
 /* G13 SDC off */
-const u32 sensor_2ld_setfile_A_1280x720_60fps_mode2_ssm_960_sdc_off[] = {
+const u32 sensor_2ld_setfile_A_4x_1280x720_60fps_mode2_ssm_960_sdc_off[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -25820,7 +25820,7 @@ const u32 sensor_2ld_setfile_A_1280x720_60fps_mode2_ssm_960_sdc_off[] = {
 };
 
 /* G16 */
-const u32 sensor_2ld_setfile_A_3328x1872_120fps[] = {
+const u32 sensor_2ld_setfile_A_4x_3328x1872_120fps[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x6214,	0x7971,	0x02,
 	0x6218,	0x7150,	0x02,
@@ -26241,10 +26241,10 @@ const u32 sensor_2ld_setfile_A_3328x1872_120fps[] = {
 };
 
 #ifdef USE_CAMERA_SENSOR_RETENTION
-const u32 sensor_2ld_setfile_A_Global_retention[] = {};
+const u32 sensor_2ld_setfile_A_4x_Global_retention[] = {};
 
 /* SRAM */
-const u32 sensor_2ld_setfile_A_full_retention_4000x3000[] = {
+const u32 sensor_2ld_setfile_A_4x_full_retention_4000x3000[] = {
 	0x6028,	0x2001,	0x02,
 	0x602A,	0xBD00,	0x02,
 	0x6F12,	0xFFFD,	0x02,
@@ -27015,7 +27015,7 @@ const u32 sensor_2ld_setfile_A_full_retention_4000x3000[] = {
 	0x6F12,	0x0000,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_4k2k_retention_4000x3000[] = {
+const u32 sensor_2ld_setfile_A_4x_4k2k_retention_4000x3000[] = {
 	0x6028,	0x2001,	0x02,
 	0x602A,	0xC320,	0x02,
 	0x6F12,	0xFFFD,	0x02,
@@ -27786,7 +27786,7 @@ const u32 sensor_2ld_setfile_A_4k2k_retention_4000x3000[] = {
 	0x6F12,	0x0000,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_fastAE_retention[] = {
+const u32 sensor_2ld_setfile_A_4x_fastAE_retention[] = {
 	0x6028,	0x2001,	0x02,
 	0x602A,	0x9A20,	0x02,
 	0x6F12,	0xFFFD,	0x02,
@@ -28557,7 +28557,7 @@ const u32 sensor_2ld_setfile_A_fastAE_retention[] = {
 	0x6F12,	0x0000,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_4000x3000_30fps_load_sram[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x3000_30fps_load_sram[] = {
 	0x021E,	0x0100,	0x02,
 	0x6028,	0x2000,	0x02,
 	0x602A,	0x0E1C,	0x02,
@@ -28574,7 +28574,7 @@ const u32 sensor_2ld_setfile_A_4000x3000_30fps_load_sram[] = {
 	0x0BCC,	0x0100,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_4000x2252_30fps_load_sram[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x2252_30fps_load_sram[] = {
 	0x021E,	0x0100,	0x02,
 	0x6028,	0x2000,	0x02,
 	0x602A,	0x0E1C,	0x02,
@@ -28591,7 +28591,7 @@ const u32 sensor_2ld_setfile_A_4000x2252_30fps_load_sram[] = {
 	0x0BCC,	0x0100,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_4000x3000_24fps_load_sram[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x3000_24fps_load_sram[] = {
 	0x021E,	0x0100,	0x02,
 	0x6028,	0x2000,	0x02,
 	0x602A,	0x0E1C,	0x02,
@@ -28608,7 +28608,7 @@ const u32 sensor_2ld_setfile_A_4000x3000_24fps_load_sram[] = {
 	0x0BCC,	0x0100,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_4000x2252_24fps_load_sram[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x2252_24fps_load_sram[] = {
 	0x021E,	0x0100,	0x02,
 	0x6028,	0x2000,	0x02,
 	0x602A,	0x0E1C,	0x02,
@@ -28625,7 +28625,7 @@ const u32 sensor_2ld_setfile_A_4000x2252_24fps_load_sram[] = {
 	0x0BCC,	0x0100,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_4000x2252_60fps_load_sram[] = {
+const u32 sensor_2ld_setfile_A_4x_4000x2252_60fps_load_sram[] = {
 	0x021E,	0x0100,	0x02,
 	0x6028,	0x2000,	0x02,
 	0x602A,	0x0E1C,	0x02,
@@ -28642,7 +28642,7 @@ const u32 sensor_2ld_setfile_A_4000x2252_60fps_load_sram[] = {
 	0x0BCC,	0x0100,	0x02,
 };
 
-const u32 sensor_2ld_setfile_A_1008x756_120fps_load_sram[] = {
+const u32 sensor_2ld_setfile_A_4x_1008x756_120fps_load_sram[] = {
 	0x021E,	0x0000,	0x02,
 	0x6028,	0x2000,	0x02,
 	0x602A,	0x0E1C,	0x02,
@@ -28661,7 +28661,7 @@ const u32 sensor_2ld_setfile_A_1008x756_120fps_load_sram[] = {
 #endif
 
 /* G10 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2000x1500_30fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_2000x1500_30fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28670,7 +28670,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2000x1500_30fps = {
 };
 
 /* G11 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2000x1128_30fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_2000x1128_30fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28679,7 +28679,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2000x1128_30fps = {
 };
 
 /* G5 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2016x1134_480fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_2016x1134_480fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28688,7 +28688,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2016x1134_480fps = {
 };
 
 /* G15 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2016x1134_240fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_2016x1134_240fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28697,7 +28697,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2016x1134_240fps = {
 };
 
 /* G6 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_1008x756_120fps_mode2 = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_1008x756_120fps_mode2 = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	2724800000ULL, /* pclk */
@@ -28706,7 +28706,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_1008x756_120fps_mode2 
 };
 
 /* G1 SDC enable */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2016x1134_60fps_mode2_ssm_960 = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_2016x1134_60fps_mode2_ssm_960 = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	2724800000ULL, /* pclk */
@@ -28714,10 +28714,10 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2016x1134_60fps_mode2_
 	0x08A8, /* line_length_pck */
 };
 
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2016x1134_60fps_mode2_ssm_480 = {};
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_2016x1134_60fps_mode2_ssm_480 = {};
 
 /* G8 SDC enable 1440fps -> 960fps */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_1280x720_60fps_mode2_ssm_960 = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_1280x720_60fps_mode2_ssm_960 = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	2724800000ULL, /* pclk */
@@ -28726,7 +28726,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_1280x720_60fps_mode2_s
 };
 
 /* SDC off */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_1280x720_60fps_mode2_ssm_960_sdc_off = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_1280x720_60fps_mode2_ssm_960_sdc_off = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	2724800000ULL, /* pclk */
@@ -28735,7 +28735,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_1280x720_60fps_mode2_s
 };
 
 /* G16 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_3328x1872_120fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_3328x1872_120fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28744,7 +28744,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_3328x1872_120fps = {
 };
 
 /* G17 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2800x2100_30fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_2800x2100_30fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28753,7 +28753,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2800x2100_30fps = {
 };
 
 /* G2 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x3000_30fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_4000x3000_30fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28762,7 +28762,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x3000_30fps = {
 };
 
 /* G12 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x3000_60fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_4000x3000_60fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28771,7 +28771,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x3000_60fps = {
 };
 
 /* G3 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x2252_60fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_4000x2252_60fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28780,7 +28780,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x2252_60fps = {
 };
 
 /* G4 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x2252_30fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_4000x2252_30fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28789,7 +28789,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x2252_30fps = {
 };
 
 /* G2 30fps -> 24fps */ /* 0x0340 0x3B60 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x3000_24fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_4000x3000_24fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28798,7 +28798,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x3000_24fps = {
 };
 
 /* G4 30fps -> 24fps */ /* 0x0340 0x3B60 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x2252_24fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_4000x2252_24fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28807,7 +28807,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x2252_24fps = {
 };
 
 /* G14 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x2252_120fps = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_4000x2252_120fps = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28816,7 +28816,7 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4000x2252_120fps = {
 };
 
 /* G17 */
-const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2800x2100_30fps_4000x3000 = {
+const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_4x_2800x2100_30fps_4000x3000 = {
 	EXT_CLK_Mhz * 1000 * 1000, /* ext_clk */
 	2964000000ULL, /* mipi_datarate */
 	1547000000ULL, /* pclk */
@@ -28824,135 +28824,135 @@ const struct sensor_pll_info_compact sensor_2ld_pllinfo_A_2800x2100_30fps_4000x3
 	0x1090, /* line_length_pck */
 };
 
-static const u32 *sensor_2ld_setfiles_A[] = {
-	sensor_2ld_setfile_A_4000x3000_30fps,
-	sensor_2ld_setfile_A_4000x3000_60fps,
-	sensor_2ld_setfile_A_4000x2252_60fps,
-	sensor_2ld_setfile_A_4000x2252_30fps,
-	sensor_2ld_setfile_A_2000x1500_30fps,
-	sensor_2ld_setfile_A_2000x1128_30fps,
-	sensor_2ld_setfile_A_4000x3000_24fps,
-	sensor_2ld_setfile_A_4000x2252_24fps,
-	sensor_2ld_setfile_A_2016x1134_480fps,
-	sensor_2ld_setfile_A_2016x1134_240fps,
-	sensor_2ld_setfile_A_1008x756_120fps_mode2,
-	sensor_2ld_setfile_A_2016x1134_60fps_mode2_ssm_960,
-	sensor_2ld_setfile_A_2016x1134_60fps_mode2_ssm_480,
-	sensor_2ld_setfile_A_1280x720_60fps_mode2_ssm_960,
-	sensor_2ld_setfile_A_1280x720_60fps_mode2_ssm_960_sdc_off,
-	sensor_2ld_setfile_A_4000x2252_120fps,
-	sensor_2ld_setfile_A_3328x1872_120fps,
-	sensor_2ld_setfile_A_2800x2100_30fps_4000x3000,
+static const u32 *sensor_2ld_setfiles_A_4x[] = {
+	sensor_2ld_setfile_A_4x_4000x3000_30fps,
+	sensor_2ld_setfile_A_4x_4000x3000_60fps,
+	sensor_2ld_setfile_A_4x_4000x2252_60fps,
+	sensor_2ld_setfile_A_4x_4000x2252_30fps,
+	sensor_2ld_setfile_A_4x_2000x1500_30fps,
+	sensor_2ld_setfile_A_4x_2000x1128_30fps,
+	sensor_2ld_setfile_A_4x_4000x3000_24fps,
+	sensor_2ld_setfile_A_4x_4000x2252_24fps,
+	sensor_2ld_setfile_A_4x_2016x1134_480fps,
+	sensor_2ld_setfile_A_4x_2016x1134_240fps,
+	sensor_2ld_setfile_A_4x_1008x756_120fps_mode2,
+	sensor_2ld_setfile_A_4x_2016x1134_60fps_mode2_ssm_960,
+	sensor_2ld_setfile_A_4x_2016x1134_60fps_mode2_ssm_480,
+	sensor_2ld_setfile_A_4x_1280x720_60fps_mode2_ssm_960,
+	sensor_2ld_setfile_A_4x_1280x720_60fps_mode2_ssm_960_sdc_off,
+	sensor_2ld_setfile_A_4x_4000x2252_120fps,
+	sensor_2ld_setfile_A_4x_3328x1872_120fps,
+	sensor_2ld_setfile_A_4x_2800x2100_30fps_4000x3000,
 };
 
-static const u32 sensor_2ld_setfile_A_sizes[] = {
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x3000_30fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x3000_60fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x2252_60fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x2252_30fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_2000x1500_30fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_2000x1128_30fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x3000_24fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x2252_24fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_2016x1134_480fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_2016x1134_240fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_1008x756_120fps_mode2),
-	ARRAY_SIZE(sensor_2ld_setfile_A_2016x1134_60fps_mode2_ssm_960),
-	ARRAY_SIZE(sensor_2ld_setfile_A_2016x1134_60fps_mode2_ssm_480),
-	ARRAY_SIZE(sensor_2ld_setfile_A_1280x720_60fps_mode2_ssm_960),
-	ARRAY_SIZE(sensor_2ld_setfile_A_1280x720_60fps_mode2_ssm_960_sdc_off),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x2252_120fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_3328x1872_120fps),
-	ARRAY_SIZE(sensor_2ld_setfile_A_2800x2100_30fps_4000x3000),
+static const u32 sensor_2ld_setfile_A_4x_sizes[] = {
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x3000_30fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x3000_60fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x2252_60fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x2252_30fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_2000x1500_30fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_2000x1128_30fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x3000_24fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x2252_24fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_2016x1134_480fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_2016x1134_240fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_1008x756_120fps_mode2),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_2016x1134_60fps_mode2_ssm_960),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_2016x1134_60fps_mode2_ssm_480),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_1280x720_60fps_mode2_ssm_960),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_1280x720_60fps_mode2_ssm_960_sdc_off),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x2252_120fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_3328x1872_120fps),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_2800x2100_30fps_4000x3000),
 };
 
 #ifdef USE_CAMERA_SENSOR_RETENTION
-static const u32 *sensor_2ld_setfiles_A_retention[] = {
-	sensor_2ld_setfile_A_full_retention_4000x3000,
-	sensor_2ld_setfile_A_4k2k_retention_4000x3000,
-	sensor_2ld_setfile_A_fastAE_retention,
+static const u32 *sensor_2ld_setfiles_A_4x_retention[] = {
+	sensor_2ld_setfile_A_4x_full_retention_4000x3000,
+	sensor_2ld_setfile_A_4x_4k2k_retention_4000x3000,
+	sensor_2ld_setfile_A_4x_fastAE_retention,
 };
 
-static const u32 sensor_2ld_setfile_A_sizes_retention[] = {
-	ARRAY_SIZE(sensor_2ld_setfile_A_full_retention_4000x3000),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4k2k_retention_4000x3000),
-	ARRAY_SIZE(sensor_2ld_setfile_A_fastAE_retention),
+static const u32 sensor_2ld_setfile_A_4x_sizes_retention[] = {
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_full_retention_4000x3000),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4k2k_retention_4000x3000),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_fastAE_retention),
 };
 
-static const u32 *sensor_2ld_setfile_A_load_sram[] = {
-	sensor_2ld_setfile_A_4000x3000_30fps_load_sram,
-	sensor_2ld_setfile_A_4000x2252_30fps_load_sram,
-	sensor_2ld_setfile_A_4000x3000_24fps_load_sram,
-	sensor_2ld_setfile_A_4000x2252_24fps_load_sram,
-	sensor_2ld_setfile_A_4000x2252_60fps_load_sram,
-	sensor_2ld_setfile_A_1008x756_120fps_load_sram,
+static const u32 *sensor_2ld_setfile_A_4x_load_sram[] = {
+	sensor_2ld_setfile_A_4x_4000x3000_30fps_load_sram,
+	sensor_2ld_setfile_A_4x_4000x2252_30fps_load_sram,
+	sensor_2ld_setfile_A_4x_4000x3000_24fps_load_sram,
+	sensor_2ld_setfile_A_4x_4000x2252_24fps_load_sram,
+	sensor_2ld_setfile_A_4x_4000x2252_60fps_load_sram,
+	sensor_2ld_setfile_A_4x_1008x756_120fps_load_sram,
 };
 
-static const u32 sensor_2ld_setfile_A_sizes_load_sram[] = {
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x3000_30fps_load_sram),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x2252_30fps_load_sram),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x3000_24fps_load_sram),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x2252_24fps_load_sram),
-	ARRAY_SIZE(sensor_2ld_setfile_A_4000x2252_60fps_load_sram),
-	ARRAY_SIZE(sensor_2ld_setfile_A_1008x756_120fps_load_sram),
+static const u32 sensor_2ld_setfile_A_4x_sizes_load_sram[] = {
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x3000_30fps_load_sram),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x2252_30fps_load_sram),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x3000_24fps_load_sram),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x2252_24fps_load_sram),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_4000x2252_60fps_load_sram),
+	ARRAY_SIZE(sensor_2ld_setfile_A_4x_1008x756_120fps_load_sram),
 };
 #endif
 
-static const struct sensor_pll_info_compact *sensor_2ld_pllinfos_A[] = {
-	&sensor_2ld_pllinfo_A_4000x3000_30fps,
-	&sensor_2ld_pllinfo_A_4000x3000_60fps,
-	&sensor_2ld_pllinfo_A_4000x2252_60fps,
-	&sensor_2ld_pllinfo_A_4000x2252_30fps,
-	&sensor_2ld_pllinfo_A_2000x1500_30fps,
-	&sensor_2ld_pllinfo_A_2000x1128_30fps,
-	&sensor_2ld_pllinfo_A_4000x3000_24fps,
-	&sensor_2ld_pllinfo_A_4000x2252_24fps,
-	&sensor_2ld_pllinfo_A_2016x1134_480fps,
-	&sensor_2ld_pllinfo_A_2016x1134_240fps,
-	&sensor_2ld_pllinfo_A_1008x756_120fps_mode2,
-	&sensor_2ld_pllinfo_A_2016x1134_60fps_mode2_ssm_960,
-	&sensor_2ld_pllinfo_A_2016x1134_60fps_mode2_ssm_480,
-	&sensor_2ld_pllinfo_A_1280x720_60fps_mode2_ssm_960,
-	&sensor_2ld_pllinfo_A_1280x720_60fps_mode2_ssm_960_sdc_off,
-	&sensor_2ld_pllinfo_A_4000x2252_120fps,
-	&sensor_2ld_pllinfo_A_3328x1872_120fps,
-	&sensor_2ld_pllinfo_A_2800x2100_30fps_4000x3000,
+static const struct sensor_pll_info_compact *sensor_2ld_pllinfos_A_4x[] = {
+	&sensor_2ld_pllinfo_A_4x_4000x3000_30fps,
+	&sensor_2ld_pllinfo_A_4x_4000x3000_60fps,
+	&sensor_2ld_pllinfo_A_4x_4000x2252_60fps,
+	&sensor_2ld_pllinfo_A_4x_4000x2252_30fps,
+	&sensor_2ld_pllinfo_A_4x_2000x1500_30fps,
+	&sensor_2ld_pllinfo_A_4x_2000x1128_30fps,
+	&sensor_2ld_pllinfo_A_4x_4000x3000_24fps,
+	&sensor_2ld_pllinfo_A_4x_4000x2252_24fps,
+	&sensor_2ld_pllinfo_A_4x_2016x1134_480fps,
+	&sensor_2ld_pllinfo_A_4x_2016x1134_240fps,
+	&sensor_2ld_pllinfo_A_4x_1008x756_120fps_mode2,
+	&sensor_2ld_pllinfo_A_4x_2016x1134_60fps_mode2_ssm_960,
+	&sensor_2ld_pllinfo_A_4x_2016x1134_60fps_mode2_ssm_480,
+	&sensor_2ld_pllinfo_A_4x_1280x720_60fps_mode2_ssm_960,
+	&sensor_2ld_pllinfo_A_4x_1280x720_60fps_mode2_ssm_960_sdc_off,
+	&sensor_2ld_pllinfo_A_4x_4000x2252_120fps,
+	&sensor_2ld_pllinfo_A_4x_3328x1872_120fps,
+	&sensor_2ld_pllinfo_A_4x_2800x2100_30fps_4000x3000,
 };
 
-/* merge into sensor driver */
-enum {
-	CAM_2LD_SET_A_all_DEFAULT_MIPI_CLOCK = 0,
-	CAM_2LD_SET_A_all_2964_MHZ = 0,
-	CAM_2LD_SET_A_all_3033p33_MHZ = 1,
-	CAM_2LD_SET_A_all_3042_MHZ = 2,
-};
+// /* merge into sensor driver */
+// enum {
+// 	CAM_2LD_SET_A_all_DEFAULT_MIPI_CLOCK = 0,
+// 	CAM_2LD_SET_A_all_2964_MHZ = 0,
+// 	CAM_2LD_SET_A_all_3033p33_MHZ = 1,
+// 	CAM_2LD_SET_A_all_3042_MHZ = 2,
+// };
 
-static const u32 sensor_2ld_setfile_A_mipi_all_2964_mhz[] = {
+static const u32 sensor_2ld_setfile_A_4x_mipi_all_2964_mhz[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x0310,	0x0156,	0x02,
 };
 
-static const u32 sensor_2ld_setfile_A_mipi_all_3033_mhz[] = {
+static const u32 sensor_2ld_setfile_A_4x_mipi_all_3033_mhz[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x0310,	0x015E,	0x02,
 };
 
-static const u32 sensor_2ld_setfile_A_mipi_all_3042_mhz[] = {
+static const u32 sensor_2ld_setfile_A_4x_mipi_all_3042_mhz[] = {
 	0xFCFC,	0x4000,	0x02,
 	0x0310,	0x015F,	0x02,
 };
 
-static const struct cam_mipi_setting sensor_2ld_setfile_A_mipi_setting_all[] = {
+static const struct cam_mipi_setting sensor_2ld_setfile_A_4x_mipi_setting_all[] = {
 	{ "2964 Msps", 2964,
-	  sensor_2ld_setfile_A_mipi_all_2964_mhz, ARRAY_SIZE(sensor_2ld_setfile_A_mipi_all_2964_mhz) },
+	  sensor_2ld_setfile_A_4x_mipi_all_2964_mhz, ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_all_2964_mhz) },
 	{ "3033.33 Msps", 3033,
-	  sensor_2ld_setfile_A_mipi_all_3033_mhz, ARRAY_SIZE(sensor_2ld_setfile_A_mipi_all_3033_mhz) },
+	  sensor_2ld_setfile_A_4x_mipi_all_3033_mhz, ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_all_3033_mhz) },
 	{ "3042 Msps", 3042,
-	  sensor_2ld_setfile_A_mipi_all_3042_mhz, ARRAY_SIZE(sensor_2ld_setfile_A_mipi_all_3042_mhz) },
+	  sensor_2ld_setfile_A_4x_mipi_all_3042_mhz, ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_all_3042_mhz) },
 };
 
 /* must be sorted. if not, trigger panic in fimc_is_vendor_verify_mipi_channel */
-static const struct cam_mipi_channel sensor_2ld_setfile_A_mipi_channel_all[] = {
+static const struct cam_mipi_channel sensor_2ld_setfile_A_4x_mipi_channel_all[] = {
 	{ CAM_RAT_BAND(CAM_RAT_1_GSM, CAM_BAND_001_GSM_GSM850), 0, 0, CAM_2LD_SET_A_all_2964_MHZ },
 	{ CAM_RAT_BAND(CAM_RAT_1_GSM, CAM_BAND_002_GSM_EGSM900), 0, 0, CAM_2LD_SET_A_all_3033p33_MHZ },
 	{ CAM_RAT_BAND(CAM_RAT_1_GSM, CAM_BAND_003_GSM_DCS1800), 0, 0, CAM_2LD_SET_A_all_2964_MHZ },
@@ -29072,49 +29072,49 @@ static const struct cam_mipi_channel sensor_2ld_setfile_A_mipi_channel_all[] = {
 	{ CAM_RAT_BAND(CAM_RAT_7_NR5G, CAM_BAND_333_NR5G_N078), 620000, 653333, CAM_2LD_SET_A_all_2964_MHZ },
 };
 
-static const struct cam_mipi_sensor_mode sensor_2ld_setfile_A_mipi_sensor_mode[] = {
+static const struct cam_mipi_sensor_mode sensor_2ld_setfile_A_4x_mipi_sensor_mode[] = {
 	/* MODE 3 */
 	{ SENSOR_2LD_4000X3000_30FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_4000X3000_60FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_4000X2252_60FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_4000X2252_30FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_2000X1500_30FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_2000X1128_30FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	/* MODE 3 - 24fps LIVE FOCUS */
 	{ SENSOR_2LD_4000X3000_24FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_4000X2252_24FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	/* MODE 3 - SM */
 	{ SENSOR_2LD_2016X1134_480FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_2016X1134_240FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	/* MODE 2 */
 	{ SENSOR_2LD_1008X756_120FPS_MODE2,
@@ -29123,37 +29123,37 @@ static const struct cam_mipi_sensor_mode sensor_2ld_setfile_A_mipi_sensor_mode[]
 	},
 	/* MODE 2 SSM */
 	{ SENSOR_2LD_2016X1134_60FPS_MODE2_SSM_960,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_2016X1134_60FPS_MODE2_SSM_480,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_1280X720_60FPS_MODE2_SSM_960,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_1280X720_60FPS_MODE2_SSM_960_SDC_OFF,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_4000X2252_120FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_3328X1872_120FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 	{ SENSOR_2LD_2800X2100_30FPS,
-		sensor_2ld_setfile_A_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_channel_all),
-		sensor_2ld_setfile_A_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_mipi_setting_all)
+		sensor_2ld_setfile_A_4x_mipi_channel_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_channel_all),
+		sensor_2ld_setfile_A_4x_mipi_setting_all,	ARRAY_SIZE(sensor_2ld_setfile_A_4x_mipi_setting_all)
 	},
 };
 
 /* structure for only verifying channel list. to prevent redundant checking */
-const int sensor_2ld_setfile_A_verify_sensor_mode[] = {
-	SENSOR_2LD_4000X3000_30FPS, /* sensor_2ld_setfile_A_mipi_channel_all */
+const int sensor_2ld_setfile_A_4x_verify_sensor_mode[] = {
+	SENSOR_2LD_4000X3000_30FPS, /* sensor_2ld_setfile_A_4x_mipi_channel_all */
 };
 #endif
