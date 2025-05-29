@@ -1,0 +1,43 @@
+#ifndef IS_VENDOR_FRAGMENT_USUV3_H
+#define IS_VENDOR_FRAGMENT_USUV3_H
+
+// Additional Camera Modules (REAR2 AFCAL, REAR4)
+#define CAMERA_REAR2_AFCAL              // (RSU has _AF, others don't define this for REAR2)
+#define CAMERA_REAR4
+#define CAMERA_REAR4_AFCAL
+#define CAMERA_REAR4_TILT
+#define CAMERA_REAR4_MODULEID
+
+// Specific Module Versions for USU_V03
+#define CAMERA_GH1_CAL_MODULE_VERSION 'B'
+#define CAMERA_HM3_CAL_MODULE_VERSION 'B'
+
+// Third OIS System
+#define CAMERA_3RD_OIS
+#define USE_TELE2_OIS_AF_COMMON_INTERFACE
+#define TELE2_OIS_ROM_ID ROM_ID_REAR4
+
+// Specific Sensor Mode/Options
+#define USE_EX_MODE_OPTION
+#define USE_CAMERA_IMX563_4000X3000
+
+// OIS Dual Cal specifics for USU_V03 (replaces OIS_DUAL_CAL_DEFAULT_VALUE_TELE)
+#define OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE 0
+#define OIS_DUAL_CAL_USE_REAR3_DATA
+
+// I2C Sharing
+#define USE_SHARE_I2C_CLIENT_HM3_HM1
+
+// Wacom Notification
+#define USE_CAMERA_NOTIFY_WACOM
+#ifdef USE_CAMERA_NOTIFY_WACOM
+#define CAMERA_NOTIFY_WACOM_CAM_MASK 0x00000000ff0000ffULL
+#endif
+
+// Event Version
+#define USE_CAMERA_EVT_1_1
+
+// PDP RDMA
+#define PDP_RDMA_MO_FRONT 5
+
+#endif /* IS_VENDOR_FRAGMENT_USUV3_H */

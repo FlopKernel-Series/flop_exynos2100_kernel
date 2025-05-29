@@ -21,7 +21,9 @@
 
 #define USE_CAMERA_ACTUATOR_12BIT_POSITION
 
-#if defined(CONFIG_CAMERA_USU_V01)
+#if defined(CONFIG_CAMERA_UNIFIED_V01)
+#include "is-vendor-config_unified_v01.h"
+#elif defined(CONFIG_CAMERA_USU_V01)
 #include "is-vendor-config_usu_v01.h"
 #elif defined(CONFIG_CAMERA_USU_V02)
 #include "is-vendor-config_usu_v02.h"

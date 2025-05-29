@@ -124,6 +124,12 @@ config CAMERA_RSU_V09
         default n
         help
           This camera is rsu_v09.
+config CAMERA_UNIFIED_V01
+        bool "This camera is all unified devices"
+        depends on CAMERA_VENDER_MCD
+        default n
+        help
+          This camera is all unified devices.
 config USE_OIS_TAMODE_CONTROL
 	bool "Use ois TAMODE control"
         depends on CAMERA_VENDER_MCD
