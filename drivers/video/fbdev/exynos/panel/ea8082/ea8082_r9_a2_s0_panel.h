@@ -1126,9 +1126,14 @@ static struct seqinfo r9_a2_s0_seqtbl[MAX_PANEL_SEQ] = {
 	[PANEL_ID_READ_SEQ] = SEQINFO_INIT("id-read-seq", r9_a2_s0_id_read_cmdtbl),
 	[PANEL_SET_BL_SEQ] = SEQINFO_INIT("set-bl-seq", r9_a2_s0_set_bl_cmdtbl),
 #ifdef CONFIG_SUPPORT_HMD
-	[PANEL_HMD_ON_SEQ] = SEQINFO_INIT("hmd-on-seq", r9_a2_s0_hmd_on_cmdtbl),
-	[PANEL_HMD_OFF_SEQ] = SEQINFO_INIT("hmd-off-seq", r9_a2_s0_hmd_off_cmdtbl),
-	[PANEL_HMD_BL_SEQ] = SEQINFO_INIT("hmd-bl-seq", r9_a2_s0_hmd_bl_cmdtbl),
+    // Point HMD sequences to the dummy/empty sequence since they are not implemented
+    [PANEL_HMD_ON_SEQ] = SEQINFO_INIT("hmd-on-seq-stub", r9_a2_s0_dummy_cmdtbl),
+    [PANEL_HMD_OFF_SEQ] = SEQINFO_INIT("hmd-off-seq-stub", r9_a2_s0_dummy_cmdtbl),
+    [PANEL_HMD_BL_SEQ] = SEQINFO_INIT("hmd-bl-seq-stub", r9_a2_s0_dummy_cmdtbl),
+#else
+    [PANEL_HMD_ON_SEQ] = SEQINFO_INIT("hmd-on-seq-dummy", r9_a2_s0_dummy_cmdtbl),
+    [PANEL_HMD_OFF_SEQ] = SEQINFO_INIT("hmd-off-seq-dummy", r9_a2_s0_dummy_cmdtbl),
+    [PANEL_HMD_BL_SEQ] = SEQINFO_INIT("hmd-bl-seq-dummy", r9_a2_s0_dummy_cmdtbl),
 #endif
 	[PANEL_DISPLAY_ON_SEQ] = SEQINFO_INIT("display-on-seq", r9_a2_s0_display_on_cmdtbl),
 	[PANEL_DISPLAY_OFF_SEQ] = SEQINFO_INIT("display-off-seq", r9_a2_s0_display_off_cmdtbl),

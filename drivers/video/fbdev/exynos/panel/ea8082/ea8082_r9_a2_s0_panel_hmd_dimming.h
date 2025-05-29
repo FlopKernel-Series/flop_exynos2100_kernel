@@ -78,9 +78,9 @@ static unsigned int ea8082_a2_s0_hmd_lum_tbl[EA8082_HMD_TOTAL_STEP] = {
 	103, 104, 104, 104, 105, 105,
 };
 
-struct gm2_dimming_init_info ea8082_ea8082_a2_s0_gm2_hmd_dimming_init_info[] = {
+struct gm2_dimming_init_info ea8082_r9_a2_s0_gm2_hmd_dimming_init_info[] = {
 	{
-		.name = "ea8082_ea8082_a2_s0_gm2_hmd_dimming",
+		.name = "ea8082_r9_a2_s0_gm2_hmd_dimming",
 	},
 };
 
@@ -88,7 +88,7 @@ static unsigned int ea8082_a2_s0_hmd_step_cnt_tbl[EA8082_HMD_TOTAL_STEP] = {
 	[0 ... EA8082_HMD_TOTAL_STEP - 1] = 1,
 };
 
-static struct brightness_table ea8082_ea8082_a2_s0_panel_hmd_brightness_table = {
+static struct brightness_table ea8082_r9_a2_s0_panel_hmd_brightness_table = {
 	.control_type = BRIGHTNESS_CONTROL_TYPE_GAMMA_MODE2,
 	.brt = ea8082_a2_s0_hmd_brt_tbl,
 	.sz_brt = ARRAY_SIZE(ea8082_a2_s0_hmd_brt_tbl),
@@ -105,20 +105,20 @@ static struct brightness_table ea8082_ea8082_a2_s0_panel_hmd_brightness_table = 
 	.sz_step_cnt = ARRAY_SIZE(ea8082_a2_s0_hmd_step_cnt_tbl),
 };
 
-static struct panel_dimming_info ea8082_ea8082_a2_s0_panel_hmd_dimming_info = {
+static struct panel_dimming_info ea8082_r9_a2_s0_panel_hmd_dimming_info = {
 	.name = "ea8082_ea8082_a2_s0_hmd",
 	.dim_init_info = {
 		NULL,
 	},
-	.gm2_dim_init_info = ea8082_ea8082_a2_s0_gm2_hmd_dimming_init_info,
-	.nr_gm2_dim_init_info = ARRAY_SIZE(ea8082_ea8082_a2_s0_gm2_hmd_dimming_init_info),
+	.gm2_dim_init_info = ea8082_r9_a2_s0_gm2_hmd_dimming_init_info,
+	.nr_gm2_dim_init_info = ARRAY_SIZE(ea8082_r9_a2_s0_gm2_hmd_dimming_init_info),
 	.target_luminance = EA8082_UNBOUND_HMD_TARGET_LUMINANCE,
 	.nr_luminance = EA8082_UNBOUND_HMD_NR_LUMINANCE,
 	.hbm_target_luminance = -1,
 	.nr_hbm_luminance = 0,
 	.extend_hbm_target_luminance = -1,
 	.nr_extend_hbm_luminance = 0,
-	.brt_tbl = &ea8082_ea8082_a2_s0_panel_hmd_brightness_table,
+	.brt_tbl = &ea8082_r9_a2_s0_panel_hmd_brightness_table,
 	/* dimming parameters */
 	.dimming_maptbl = NULL,
 	.dim_flash_on = false,	/* read dim flash when probe or not */

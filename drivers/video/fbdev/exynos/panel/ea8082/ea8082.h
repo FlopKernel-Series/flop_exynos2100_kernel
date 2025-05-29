@@ -426,6 +426,11 @@ static void show_self_diag(struct dumpinfo *info);
 static void show_cmdlog(struct dumpinfo *info);
 #endif
 
+#ifdef CONFIG_SUPPORT_HMD
+static int init_gamma_mode2_hmd_brt_table(struct maptbl *tbl);
+static int getidx_gamma_mode2_hmd_brt_table(struct maptbl *);
+#endif
+
 static struct dumpinfo ea8082_dmptbl[] = {
 	[DUMP_RDDPM] = DUMPINFO_INIT(rddpm, &ea8082_restbl[RES_RDDPM], show_rddpm),
 	[DUMP_RDDPM_SLEEP_IN] = DUMPINFO_INIT(rddpm_sleep_in, &ea8082_restbl[RES_RDDPM], show_rddpm_before_sleep_in),
