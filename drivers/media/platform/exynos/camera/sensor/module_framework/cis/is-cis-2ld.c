@@ -103,7 +103,7 @@ static bool sensor_2ld_cis_is_wdr_mode_on(cis_shared_data *cis_data)
 		return false;
 	}
 
-	if (sec_has_mcd_type_rsu())
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
 		return sensor_2ld_support_wdr_4x[mode];
 	else 
 		return sensor_2ld_support_wdr[mode];
@@ -118,7 +118,7 @@ static bool sensor_2ld_cis_get_aeb_supported(cis_shared_data *cis_data)
 		return false;
 	}
 
-	if (sec_has_mcd_type_rsu())
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
 		return sensor_2ld_support_aeb_4x[mode];
 	else
 		return sensor_2ld_support_aeb[mode];
@@ -441,7 +441,7 @@ int sensor_2ld_cis_select_setfile(struct v4l2_subdev *subdev)
 	case 0xA201:
 	case 0xA202:
 		info("2ld sensor revision(%#x)\n", rev);
-		if (sec_has_mcd_type_rsu()) {
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
 			sensor_2ld_global = sensor_2ld_setfile_A_4x_Global_A2;
 			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_A2);
 			sensor_2ld_setfiles = sensor_2ld_setfiles_A_4x;
@@ -476,7 +476,7 @@ int sensor_2ld_cis_select_setfile(struct v4l2_subdev *subdev)
 		}
 		break;
 	case 0xA301:
-		if (sec_has_mcd_type_rsu()) {
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
 			info("2ld sensor revision(%#x)\n", rev);
 			sensor_2ld_global = sensor_2ld_setfile_A_4x_Global_A3;
 			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_A3);
@@ -513,7 +513,7 @@ int sensor_2ld_cis_select_setfile(struct v4l2_subdev *subdev)
 		}
 		break;
 	default:
-		if (sec_has_mcd_type_rsu()) {
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
 			info("2ld sensor revision(%#x)\n", rev);
 			sensor_2ld_global = sensor_2ld_setfile_A_4x_Global_A2;
 			sensor_2ld_global_size = ARRAY_SIZE(sensor_2ld_setfile_A_4x_Global_A2);
@@ -4350,7 +4350,7 @@ static int cis_2ld_probe(struct i2c_client *client,
 		setfile = "default";
 	}
 
-	if (sec_has_mcd_type_rsu()) {
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
 		if (strcmp(setfile, "default") == 0 ||
 				strcmp(setfile, "setA") == 0) {
 			probe_info("%s setfile_A\n", __func__);

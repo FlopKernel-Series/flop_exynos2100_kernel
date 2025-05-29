@@ -39,19 +39,27 @@
 #include "is-dt.h"
 #include "is-cis-hi1336.h"
 
-#ifdef USE_HI1336_12M_FULL_SETFILE
-#include "is-cis-hi1336-12M-full-setA.h"
-#include "is-cis-hi1336-12M-full-setB.h"
-#elif defined(USE_HI1336B_SETFILE)
-#include "is-cis-hi1336B-setA.h"
-#include "is-cis-hi1336B-setB.h"
-#elif defined(USE_HI1336C_SETFILE)
-#include "is-cis-hi1336C-setA.h"
-#include "is-cis-hi1336C-setB.h"
-#else
+// #ifdef USE_HI1336_12M_FULL_SETFILE
+// #include "is-cis-hi1336-12M-full-setA.h"
+// #include "is-cis-hi1336-12M-full-setB.h"
+// #elif defined(USE_HI1336B_SETFILE)
+// #include "is-cis-hi1336B-setA.h"
+// #include "is-cis-hi1336B-setB.h"
+// #elif defined(USE_HI1336C_SETFILE)
+// #include "is-cis-hi1336C-setA.h"
+// #include "is-cis-hi1336C-setB.h"
+// #else
+// #include "is-cis-hi1336-setA.h"
+// #include "is-cis-hi1336-setB.h"
+// #endif /* USE_HI1336_12M_FULL_SETFILE */
+
 #include "is-cis-hi1336-setA.h"
 #include "is-cis-hi1336-setB.h"
-#endif /* USE_HI1336_12M_FULL_SETFILE */
+
+#if defined(USE_HI1336C_SETFILE)
+#include "is-cis-hi1336C-setA.h"
+#include "is-cis-hi1336C-setB.h"
+#endif
 
 #include "is-helper-i2c.h"
 #ifdef CONFIG_CAMERA_VENDER_MCD_V2
@@ -1935,41 +1943,80 @@ int cis_hi1336_probe(struct i2c_client *client,
 		setfile = "default";
 	}
 
-	if (strcmp(setfile, "default") == 0 || strcmp(setfile, "setA") == 0) {
-		probe_info("%s setfile_A\n", __func__);
-		sensor_hi1336_global = sensor_hi1336_setfile_A_Global;
-		sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336_setfile_A_Global);
-		sensor_hi1336_setfiles = sensor_hi1336_setfiles_A;
-		sensor_hi1336_setfile_sizes = sensor_hi1336_setfile_A_sizes;
-		sensor_hi1336_pllinfos = sensor_hi1336_pllinfos_A;
-		sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336_setfiles_A);
-		sensor_hi1336_setfile_fsync_info = sensor_hi1336_setfile_A_fsync_info;
-		cis->mipi_sensor_mode = sensor_hi1336_setfile_A_mipi_sensor_mode;
-		cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_hi1336_setfile_A_mipi_sensor_mode);
-		verify_sensor_mode = sensor_hi1336_setfile_A_verify_sensor_mode;
-		verify_sensor_mode_size = ARRAY_SIZE(sensor_hi1336_setfile_A_verify_sensor_mode);
-	} else if (strcmp(setfile, "setB") == 0) {
-		probe_info("%s setfile_B\n", __func__);
-		sensor_hi1336_global = sensor_hi1336_setfile_B_Global;
-		sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336_setfile_B_Global);
-		sensor_hi1336_setfiles = sensor_hi1336_setfiles_B;
-		sensor_hi1336_setfile_sizes = sensor_hi1336_setfile_B_sizes;
-		sensor_hi1336_pllinfos = sensor_hi1336_pllinfos_B;
-		sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336_setfiles_B);
-		sensor_hi1336_setfile_fsync_info = sensor_hi1336_setfile_B_fsync_info;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+		if (strcmp(setfile, "default") == 0 || strcmp(setfile, "setA") == 0) {
+			probe_info("%s setfile_A\n", __func__);
+			sensor_hi1336_global = sensor_hi1336c_setfile_A_Global;
+			sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336c_setfile_A_Global);
+			sensor_hi1336_setfiles = sensor_hi1336c_setfiles_A;
+			sensor_hi1336_setfile_sizes = sensor_hi1336c_setfile_A_sizes;
+			sensor_hi1336_pllinfos = sensor_hi1336c_pllinfos_A;
+			sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336c_setfiles_A);
+			sensor_hi1336_setfile_fsync_info = sensor_hi1336c_setfile_A_fsync_info;
+			cis->mipi_sensor_mode = sensor_hi1336c_setfile_A_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_hi1336c_setfile_A_mipi_sensor_mode);
+			verify_sensor_mode = sensor_hi1336c_setfile_A_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_hi1336c_setfile_A_verify_sensor_mode);
+		} else if (strcmp(setfile, "setB") == 0) {
+			probe_info("%s setfile_B\n", __func__);
+			sensor_hi1336_global = sensor_hi1336_setfile_B_Global;
+			sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336_setfile_B_Global);
+			sensor_hi1336_setfiles = sensor_hi1336_setfiles_B;
+			sensor_hi1336_setfile_sizes = sensor_hi1336_setfile_B_sizes;
+			sensor_hi1336_pllinfos = sensor_hi1336_pllinfos_B;
+			sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336_setfiles_B);
+			sensor_hi1336_setfile_fsync_info = sensor_hi1336_setfile_B_fsync_info;
+		} else {
+			err("%s setfile index out of bound, take default (setfile_A)", __func__);
+			sensor_hi1336_global = sensor_hi1336c_setfile_A_Global;
+			sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336c_setfile_A_Global);
+			sensor_hi1336_setfiles = sensor_hi1336c_setfiles_A;
+			sensor_hi1336_setfile_sizes = sensor_hi1336c_setfile_A_sizes;
+			sensor_hi1336_pllinfos = sensor_hi1336c_pllinfos_A;
+			sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336c_setfiles_A);
+			sensor_hi1336_setfile_fsync_info = sensor_hi1336c_setfile_A_fsync_info;
+			cis->mipi_sensor_mode = sensor_hi1336c_setfile_A_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_hi1336c_setfile_A_mipi_sensor_mode);
+			verify_sensor_mode = sensor_hi1336c_setfile_A_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_hi1336c_setfile_A_verify_sensor_mode);
+		}
 	} else {
-		err("%s setfile index out of bound, take default (setfile_A)", __func__);
-		sensor_hi1336_global = sensor_hi1336_setfile_A_Global;
-		sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336_setfile_A_Global);
-		sensor_hi1336_setfiles = sensor_hi1336_setfiles_A;
-		sensor_hi1336_setfile_sizes = sensor_hi1336_setfile_A_sizes;
-		sensor_hi1336_pllinfos = sensor_hi1336_pllinfos_A;
-		sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336_setfiles_A);
-		sensor_hi1336_setfile_fsync_info = sensor_hi1336_setfile_A_fsync_info;
-		cis->mipi_sensor_mode = sensor_hi1336_setfile_A_mipi_sensor_mode;
-		cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_hi1336_setfile_A_mipi_sensor_mode);
-		verify_sensor_mode = sensor_hi1336_setfile_A_verify_sensor_mode;
-		verify_sensor_mode_size = ARRAY_SIZE(sensor_hi1336_setfile_A_verify_sensor_mode);
+		if (strcmp(setfile, "default") == 0 || strcmp(setfile, "setA") == 0) {
+			probe_info("%s setfile_A\n", __func__);
+			sensor_hi1336_global = sensor_hi1336_setfile_A_Global;
+			sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336_setfile_A_Global);
+			sensor_hi1336_setfiles = sensor_hi1336_setfiles_A;
+			sensor_hi1336_setfile_sizes = sensor_hi1336_setfile_A_sizes;
+			sensor_hi1336_pllinfos = sensor_hi1336_pllinfos_A;
+			sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336_setfiles_A);
+			sensor_hi1336_setfile_fsync_info = sensor_hi1336_setfile_A_fsync_info;
+			// cis->mipi_sensor_mode = sensor_hi1336_setfile_A_mipi_sensor_mode;
+			// cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_hi1336_setfile_A_mipi_sensor_mode);
+			// verify_sensor_mode = sensor_hi1336_setfile_A_verify_sensor_mode;
+			// verify_sensor_mode_size = ARRAY_SIZE(sensor_hi1336_setfile_A_verify_sensor_mode);
+		} else if (strcmp(setfile, "setB") == 0) {
+			probe_info("%s setfile_B\n", __func__);
+			sensor_hi1336_global = sensor_hi1336_setfile_B_Global;
+			sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336_setfile_B_Global);
+			sensor_hi1336_setfiles = sensor_hi1336_setfiles_B;
+			sensor_hi1336_setfile_sizes = sensor_hi1336_setfile_B_sizes;
+			sensor_hi1336_pllinfos = sensor_hi1336_pllinfos_B;
+			sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336_setfiles_B);
+			sensor_hi1336_setfile_fsync_info = sensor_hi1336_setfile_B_fsync_info;
+		} else {
+			err("%s setfile index out of bound, take default (setfile_A)", __func__);
+			sensor_hi1336_global = sensor_hi1336_setfile_A_Global;
+			sensor_hi1336_global_size = ARRAY_SIZE(sensor_hi1336_setfile_A_Global);
+			sensor_hi1336_setfiles = sensor_hi1336_setfiles_A;
+			sensor_hi1336_setfile_sizes = sensor_hi1336_setfile_A_sizes;
+			sensor_hi1336_pllinfos = sensor_hi1336_pllinfos_A;
+			sensor_hi1336_max_setfile_num = ARRAY_SIZE(sensor_hi1336_setfiles_A);
+			sensor_hi1336_setfile_fsync_info = sensor_hi1336_setfile_A_fsync_info;
+			// cis->mipi_sensor_mode = sensor_hi1336_setfile_A_mipi_sensor_mode;
+			// cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_hi1336_setfile_A_mipi_sensor_mode);
+			// verify_sensor_mode = sensor_hi1336_setfile_A_verify_sensor_mode;
+			// verify_sensor_mode_size = ARRAY_SIZE(sensor_hi1336_setfile_A_verify_sensor_mode);
+		}
 	}
 
 	if (cis->vendor_use_adaptive_mipi) {
