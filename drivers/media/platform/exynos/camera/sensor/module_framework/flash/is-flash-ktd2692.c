@@ -24,9 +24,9 @@
 #include "is-device-sensor-peri.h"
 #include "is-core.h"
 
-#ifndef CONFIG_LEDS_KTD2692
+// #ifndef CONFIG_LEDS_KTD2692
 #include "is-flash.h"
-#endif
+// #endif
 
 #if defined(CONFIG_LEDS_KTD2692)
 #include <linux/leds-ktd2692.h>
@@ -51,6 +51,10 @@ static int flash_ktd2692_init(struct v4l2_subdev *subdev, u32 val)
 	flash->flash_data.flash_fired = false;
 
 #if defined(CONFIG_LEDS_KTD2692)
+	if (!sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+		gpio_request_one(flash->flash_gpio, GPIOF_OUT_INIT_LOW, "CAM_FLASH_GPIO_OUTPUT");
+		gpio_free(flash->flash_gpio);
+	}
 #else
 	gpio_request_one(flash->flash_gpio, GPIOF_OUT_INIT_LOW, "CAM_FLASH_GPIO_OUTPUT");
 	gpio_free(flash->flash_gpio);
@@ -76,7 +80,10 @@ static int sensor_ktd2692_flash_control(struct v4l2_subdev *subdev, enum flash_m
 
 	if (mode == CAM2_FLASH_MODE_OFF) {
 #if defined(CONFIG_LEDS_KTD2692)
-		ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_OFF, 0);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+			ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_OFF, 0);
+		else
+			ret = control_flash_gpio(flash->flash_gpio, 0);
 #else
 		ret = control_flash_gpio(flash->flash_gpio, 0);
 #endif
@@ -85,18 +92,22 @@ static int sensor_ktd2692_flash_control(struct v4l2_subdev *subdev, enum flash_m
 	} else if (mode == CAM2_FLASH_MODE_SINGLE) {
 #if defined(CONFIG_LEDS_KTD2692)
 #ifdef CONFIG_FLASH_CURRENT_CHANGE_SUPPORT
-		if (intensity > 500) {
-			ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_SINGLE, intensity);
-			if (ret)
-				err("capture flash on fail");
-		} else {
-			ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_TORCH, intensity);
-			if (ret)
-				err("capture flash on fail");
-		}
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+			if (intensity > 500) {
+				ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_SINGLE, intensity);
+				if (ret)
+					err("capture flash on fail");
+			} else {
+				ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_TORCH, intensity);
+				if (ret)
+					err("capture flash on fail");
+			}
 #else
-		ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_SINGLE, 0);
+			ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_SINGLE, 0);
 #endif
+		} else {
+			ret = control_flash_gpio(flash->flash_gpio, intensity);
+		}
 #else
 		ret = control_flash_gpio(flash->flash_gpio, intensity);
 #endif
@@ -104,7 +115,10 @@ static int sensor_ktd2692_flash_control(struct v4l2_subdev *subdev, enum flash_m
 			err("capture flash on fail");
 	} else if (mode == CAM2_FLASH_MODE_TORCH) {
 #if defined(CONFIG_LEDS_KTD2692)
-		ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_TORCH, 0);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+			ret = ktd2692_led_mode_ctrl(CAM2_FLASH_MODE_TORCH, 0);
+		else
+			ret = control_flash_gpio(flash->torch_gpio, intensity);
 #else
 		ret = control_flash_gpio(flash->torch_gpio, intensity);
 #endif
@@ -280,6 +294,13 @@ int flash_ktd2692_probe(struct device *dev, struct i2c_client *client)
 		//core->client3 = client;
 
 #if defined(CONFIG_LEDS_KTD2692)
+		if (!sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+			flash->flash_gpio = of_get_named_gpio(dnode, "flash-gpio", 0);
+			if (!gpio_is_valid(flash->flash_gpio)) {
+				dev_err(dev, "failed to get PIN_RESET\n");
+				return -EINVAL;
+			}
+		}
 #else
 		flash->flash_gpio = of_get_named_gpio(dnode, "flash-gpio", 0);
 		if (!gpio_is_valid(flash->flash_gpio)) {

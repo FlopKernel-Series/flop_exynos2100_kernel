@@ -21,7 +21,7 @@
 #define IS_VENDOR_SENSOR_COUNT 4        /* FRONT_0, REAR_0, REAR_1, REAR_2 */
 
 // LED Driver
-// #define CONFIG_LEDS_KTD2692             // Handled on kconfig
+#define CONFIG_LEDS_KTD2692
 
 // Dualized Camera
 #define USE_CAMERA_DUALIZED
