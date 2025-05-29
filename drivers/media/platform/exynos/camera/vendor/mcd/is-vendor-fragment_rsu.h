@@ -9,12 +9,12 @@
 #define CAMERA_STANDARD_CAL_ISP_VERSION 'E'
 
 // Buffer sizes
-#define IS_MAX_TNRISP_SIZE (0x0672E180)
-#define IS_FRONT_MAX_CAL_SIZE (64 * 1024)
-#define IS_REAR2_MAX_CAL_SIZE (64 * 1024)
+//#define IS_MAX_TNRISP_SIZE (0x0672E180) // Might need rechecking.
+#define IS_FRONT_MAX_CAL_SIZE (64 * 1024) // Might need rechecking.
+#define IS_REAR2_MAX_CAL_SIZE (64 * 1024) // Might need rechecking.
 
 // Calibration & Sensor Count
-#define CONFIG_SEC_CAL_ENABLE
+#define CONFIG_SEC_CAL_ENABLE   // Keep enabled, seems to not need runtime checks.
 #ifdef CONFIG_SEC_CAL_ENABLE
 #define USES_STANDARD_CAL_RELOAD
 #endif

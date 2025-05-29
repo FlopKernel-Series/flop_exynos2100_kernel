@@ -15,4 +15,8 @@
 // USU_V03
 #define TELE_OIS_TILT_ROM_ID_V3 ROM_ID_REAR4
 
+// OIS Telephoto Default Calibration Value
+// RSU, USU_V01, USU_V02:
+#define OIS_DUAL_CAL_DEFAULT_VALUE_TELE 0
+
 #endif /* IS_VENDOR_CONFIG_RSU_USU_DIFF_H */

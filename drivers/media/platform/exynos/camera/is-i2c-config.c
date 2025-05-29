@@ -123,10 +123,14 @@ int is_i2c_pin_control(struct is_module_enum *module, u32 scenario, u32 value)
 			info("%s[%d] eeprom i2c config(%d), rom_id(%d), scenario(%d)\n",
 				__func__, __LINE__, i2c_config_state, module->pdata->rom_id, scenario);
 #if defined(USE_CAMERA_DUALIZED)
-			if (module->pdata->rom_type == ROM_TYPE_EEPROM) {
+			if (sec_has_mcd_type_rsu()) {
+				if (module->pdata->rom_type == ROM_TYPE_EEPROM) {
+					ret |= is_i2c_pin_config(specific->eeprom_client[module->pdata->rom_id], i2c_config_state);
+				} else if (module->pdata->rom_type == ROM_TYPE_OTPROM) {
+					ret |= is_i2c_pin_config(specific->otprom_client[module->pdata->rom_id], i2c_config_state);
+				}
+			} else {
 				ret |= is_i2c_pin_config(specific->eeprom_client[module->pdata->rom_id], i2c_config_state);
-			} else if (module->pdata->rom_type == ROM_TYPE_OTPROM) {
-				ret |= is_i2c_pin_config(specific->otprom_client[module->pdata->rom_id], i2c_config_state);
 			}
 #else
 			ret |= is_i2c_pin_config(specific->eeprom_client[module->pdata->rom_id], i2c_config_state);

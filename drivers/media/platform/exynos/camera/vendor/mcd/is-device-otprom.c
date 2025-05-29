@@ -88,8 +88,10 @@ static int sensor_otprom_probe(struct i2c_client *client,
 
 	if (client->dev.of_node) {
 #if defined(CAMERA_UWIDE_DUALIZED)
-		if(otprom->driver_data == ROM_ID_REAR2)
-                	is_sec_set_rear2_dualized_rom_probe();
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+			if(otprom->driver_data == ROM_ID_REAR2)
+						is_sec_set_rear2_dualized_rom_probe();
+		}
 #endif
 		if(is_vendor_rom_parse_dt(client->dev.of_node, otprom->driver_data)) {
 			probe_err("parsing device tree is fail");

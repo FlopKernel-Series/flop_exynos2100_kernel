@@ -68,9 +68,9 @@ static bool ois_tamode_status;
 static u16 ois_center_x;
 static u16 ois_center_y;
 static struct is_common_mcu_info common_mcu_infos;
-#ifndef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
+// #ifndef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
 static struct mcu_efs_info efs_info;
-#endif
+// #endif
 extern struct is_sysfs_actuator sysfs_actuator;
 bool mcu_support_oldhw = false;
 
@@ -541,19 +541,19 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 	u8 gyro_y = 0, gyro_y2 = 0;
 	int tele_cmd_xcoef = 0;
 	int tele_cmd_ycoef = 0;
-#ifndef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
+// #ifndef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
 	struct is_vender_specific *specific;
 	u8 tele_xcoef[2];
 	u8 tele_ycoef[2];
 	long efs_size = 0;
-#ifndef OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE
+// #ifndef OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE
 	int rom_id = 0;
 	char *cal_buf;
 	struct is_rom_info *finfo = NULL;
 	u8 eeprom_xcoef[2];
 	u8 eeprom_ycoef[2];
-#endif
-#endif
+// #endif
+// #endif
 	struct is_mcu *is_mcu = NULL;
 	struct ois_mcu_dev *mcu = NULL;
 	struct is_ois *ois = NULL;
@@ -718,17 +718,21 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 				tele_cmd_ycoef = R_OIS_CMD_YCOEF_M2_1;
 #endif
 
-#ifndef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
-				specific = core->vender.private_data;
-				efs_size = specific->tilt_cal_tele2_efs_size;
-				if (efs_size) {
-					efs_info.ois_hall_shift_x = *((s16 *)&specific->tilt_cal_tele2_efs_data[MCU_HALL_SHIFT_ADDR_X_M2]);
-					efs_info.ois_hall_shift_y = *((s16 *)&specific->tilt_cal_tele2_efs_data[MCU_HALL_SHIFT_ADDR_Y_M2]);
-					set_bit(IS_EFS_STATE_READ, &efs_info.efs_state);
-				} else {
-					clear_bit(IS_EFS_STATE_READ, &efs_info.efs_state);
+// #ifndef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
+				if (!sec_get_mcd_feat(MCD_FEAT_TYPE_RSU) &&
+				    !sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1) &&
+				    !sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2)) {
+					specific = core->vender.private_data;
+					efs_size = specific->tilt_cal_tele2_efs_size;
+					if (efs_size) {
+						efs_info.ois_hall_shift_x = *((s16 *)&specific->tilt_cal_tele2_efs_data[MCU_HALL_SHIFT_ADDR_X_M2]);
+						efs_info.ois_hall_shift_y = *((s16 *)&specific->tilt_cal_tele2_efs_data[MCU_HALL_SHIFT_ADDR_Y_M2]);
+						set_bit(IS_EFS_STATE_READ, &efs_info.efs_state);
+					} else {
+						clear_bit(IS_EFS_STATE_READ, &efs_info.efs_state);
+					}
 				}
-#endif
+// #endif
 				for (i = 0; i < 4; i++) {
 					is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR2_XGG1 + i, ois_pinfo->tele_romdata.xgg[i]);
 #ifdef CAMERA_3RD_OIS
@@ -742,12 +746,56 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 #endif
 				}
 #ifdef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
-				is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
-				is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
-				is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
-				is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
+				if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU) ||
+				    sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1) ||
+				    sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2)) {
+					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
+					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
+					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
+					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
 
-				info_mcu("%s tele use default coef value", __func__);
+					info_mcu("%s tele use default coef value", __func__);
+				} else {
+					if (!test_bit(IS_EFS_STATE_READ, &efs_info.efs_state)) {
+#ifdef OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+
+						info_mcu("%s tele use default eeprom coef value", __func__);
+#else
+						rom_id = is_vendor_get_rom_id_from_position(SENSOR_POSITION_REAR2);
+						is_sec_get_cal_buf(&cal_buf, rom_id);
+						is_sec_get_sysfs_finfo(&finfo, rom_id);
+
+						eeprom_xcoef[0] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_x_addr]);
+						eeprom_xcoef[1] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_x_addr + 1]);
+						eeprom_ycoef[0] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_y_addr]);
+						eeprom_ycoef[1] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_y_addr + 1]);
+
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, eeprom_xcoef[0]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, eeprom_xcoef[1]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, eeprom_ycoef[0]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, eeprom_ycoef[1]);
+
+						info_mcu("%s tele eeprom xcoef = %d/%d, ycoef = %d/%d", __func__, eeprom_xcoef[0], eeprom_xcoef[1],
+							eeprom_ycoef[0], eeprom_ycoef[1]);
+#endif
+					} else {
+						tele_xcoef[0] = efs_info.ois_hall_shift_x & 0xFF;
+						tele_xcoef[1] = (efs_info.ois_hall_shift_x >> 8) & 0xFF;
+						tele_ycoef[0] = efs_info.ois_hall_shift_y & 0xFF;
+						tele_ycoef[1] = (efs_info.ois_hall_shift_y >> 8) & 0xFF;
+
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, tele_xcoef[0]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, tele_xcoef[1]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, tele_ycoef[0]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, tele_ycoef[1]);
+
+						info_mcu("%s tele efs xcoef = %d, ycoef = %d", __func__, efs_info.ois_hall_shift_x, efs_info.ois_hall_shift_y);
+					}
+				}
 #else
 				if (!test_bit(IS_EFS_STATE_READ, &efs_info.efs_state)) {
 #ifdef OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE

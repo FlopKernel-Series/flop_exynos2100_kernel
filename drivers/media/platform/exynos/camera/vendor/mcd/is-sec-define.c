@@ -183,11 +183,15 @@ EXPORT_SYMBOL_GPL(is_sec_set_rear2_dualized_rom_probe);
 int is_sec_get_sysfs_finfo(struct is_rom_info **finfo, int rom_id)
 {
 #if defined(CAMERA_UWIDE_DUALIZED)
-	if (rom_id == ROM_ID_REAR2 && rear2_dualized_rom_probe) {
-		*finfo = &sysfs_finfo_rear2_otp;
-		rear2_dualized_rom_probe = false;
-	}
-	else {
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+		if (rom_id == ROM_ID_REAR2 && rear2_dualized_rom_probe) {
+			*finfo = &sysfs_finfo_rear2_otp;
+			rear2_dualized_rom_probe = false;
+		}
+		else {
+			*finfo = &sysfs_finfo[rom_id];
+		}
+	} else {
 		*finfo = &sysfs_finfo[rom_id];
 	}
 #else
@@ -1169,9 +1173,11 @@ static int is_vender_replace_sensorid_with_second_sensorid(struct is_vender *ven
 
 	switch (position) {
 #if defined(CAMERA_UWIDE_DUALIZED)
-	case SENSOR_POSITION_REAR3:
-		specific->rear3_sensor_id = CAMERA_UWIDE_DUALIZED;
-		break;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+		case SENSOR_POSITION_REAR3:
+			specific->rear3_sensor_id = CAMERA_UWIDE_DUALIZED;
+			break;
+	}
 #endif
 	default:
 		err("%s invalid module position(%d) or dualization not supported", __func__ , position);
@@ -1191,9 +1197,12 @@ static int is_vender_get_dualized_sensorid(struct is_vender *vender, int positio
 
 	switch (position) {
 #if defined(CAMERA_UWIDE_DUALIZED)
-	case SENSOR_POSITION_REAR3:
-		ret = CAMERA_UWIDE_DUALIZED;
-		break;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+		case SENSOR_POSITION_REAR3:
+			ret = CAMERA_UWIDE_DUALIZED;
+			break;
+	}
+
 #endif
 	}
 	if (ret != SENSOR_NAME_NOTHING) {
@@ -1256,8 +1265,10 @@ static int is_sec_update_dualized_sensor(struct is_core *core, int rom_id) {
 					err("%s CIS active test failed", __func__);
 					is_vender_replace_sensorid_with_second_sensorid(&core->vender, position);
 #if defined(CAMERA_UWIDE_DUALIZED)
-					is_sec_get_sysfs_finfo(&finfo, rom_id);
-					*finfo = sysfs_finfo_rear2_otp;
+					if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+						is_sec_get_sysfs_finfo(&finfo, rom_id);
+						*finfo = sysfs_finfo_rear2_otp;
+					}
 #endif
 				} else {
 					info("%s CIS test passed", __func__);
@@ -4133,7 +4144,10 @@ int is_sec_run_fw_sel(int rom_id)
 		is_sec_get_sysfs_finfo(&finfo_rear, ROM_ID_REAR);
 		if (!test_bit(IS_ROM_STATE_CAL_READ_DONE, &finfo_rear->rom_state) || force_caldata_dump) {
 #if defined(USE_CAMERA_DUALIZED)
-			ret = is_sec_fw_sel_rom(ROM_ID_REAR, true);
+			if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+				ret = is_sec_fw_sel_rom(ROM_ID_REAR, true);
+			else
+				ret = is_sec_fw_sel_eeprom(ROM_ID_REAR, true);
 #else
 			ret = is_sec_fw_sel_eeprom(ROM_ID_REAR, true);
 #endif
@@ -4151,7 +4165,10 @@ int is_sec_run_fw_sel(int rom_id)
 				for (rom_id = ROM_ID_REAR; rom_id < ROM_ID_MAX; rom_id++) {
 					if (specific->rom_valid[rom_id] == true) {
 #if defined(USE_CAMERA_DUALIZED)
-						ret = is_sec_fw_sel_rom(rom_id, false);
+						if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+							ret = is_sec_fw_sel_rom(rom_id, false);
+						else
+							ret = is_sec_fw_sel_eeprom(rom_id, false);
 #else
 						ret = is_sec_fw_sel_eeprom(rom_id, false);
 #endif
@@ -4167,7 +4184,10 @@ int is_sec_run_fw_sel(int rom_id)
 		} else
 #endif
 #if defined(USE_CAMERA_DUALIZED)
-			ret = is_sec_fw_sel_rom(rom_id, false);
+			if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+				ret = is_sec_fw_sel_rom(rom_id, false);
+			else
+				ret = is_sec_fw_sel_eeprom(rom_id, false);
 #else
 			ret = is_sec_fw_sel_eeprom(rom_id, false);
 #endif
@@ -4209,11 +4229,13 @@ int is_sec_fw_sel_eeprom(int rom_id, bool headerOnly)
 #if defined(USE_CAMERA_DUALIZED)
 	struct is_module_enum *module;
 	int position = is_vendor_get_position_from_rom_id(rom_id);
-	ret = is_sec_update_dualized_sensor(core, rom_id);
-	is_vendor_get_module_from_position(position, &module);
-	if (module->pdata->rom_type == ROM_TYPE_OTPROM) {
-		ret = -ENODEV;
-		return ret;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+		ret = is_sec_update_dualized_sensor(core, rom_id);
+		is_vendor_get_module_from_position(position, &module);
+		if (module->pdata->rom_type == ROM_TYPE_OTPROM) {
+			ret = -ENODEV;
+			return ret;
+		}
 	}
 #endif
 

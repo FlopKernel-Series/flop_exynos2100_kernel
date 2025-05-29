@@ -807,7 +807,8 @@ int is_vender_probe(struct is_vender *vender)
 	for (i = 0; i < ROM_ID_MAX; i++) {
 		specific->eeprom_client[i] = NULL;
 #if defined(USE_CAMERA_DUALIZED)
-		specific->otprom_client[i] = NULL;
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+			specific->otprom_client[i] = NULL;
 #endif
 		specific->rom_valid[i] = false;
  	}
@@ -1678,10 +1679,12 @@ int is_vender_hw_init(struct is_vender *vender)
 			if (ret) {
 				err("is_sec_run_fw_sel for ROM_ID(%d) is fail(%d)", i, ret);
 #if defined(CAMERA_UWIDE_DUALIZED)
-				if(i == ROM_ID_REAR2) {
-					ret = is_sec_run_fw_sel(i);
-					if (ret) {
-						err("is_sec_run_fw_sel for dualized ROM_ID(%d) is fail(%d)", i, ret);
+				if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
+					if(i == ROM_ID_REAR2) {
+						ret = is_sec_run_fw_sel(i);
+						if (ret) {
+							err("is_sec_run_fw_sel for dualized ROM_ID(%d) is fail(%d)", i, ret);
+						}
 					}
 				}
 #endif
