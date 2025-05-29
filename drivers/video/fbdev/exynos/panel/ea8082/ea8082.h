@@ -486,6 +486,13 @@ static u32 EA8082_VRR_FPS[MAX_EA8082_VRR][MAX_EA8082_VRR_KEY] = {
 	[EA8082_VRR_60HS] = { 60, VRR_HS_MODE, 0, 0 },
 };
 
+#ifdef CONFIG_SUPPORT_DDI_FLASH
+struct dim_flash_result;
+
+static int do_gamma_flash_checksum(struct panel_device *panel, void *data, u32 len);
+static int ea8082_mtp_gamma_check(struct panel_device *panel, void *data, u32 len);
+#endif // CONFIG_SUPPORT_DDI_FLASH
+
 #ifdef CONFIG_DYNAMIC_MIPI
 
 #define MCD_DM_DDI_OSC_96_5 0x00

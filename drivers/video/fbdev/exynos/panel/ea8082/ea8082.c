@@ -1122,6 +1122,37 @@ static int getidx_gamma_mode2_brt_table(struct maptbl *tbl)
 	return maptbl_index(tbl, 0, row, 0);
 }
 
+#ifdef CONFIG_SUPPORT_DDI_FLASH
+static int do_gamma_flash_checksum(struct panel_device *panel, void *data, u32 len)
+{
+	struct dim_flash_result *result = (struct dim_flash_result *)data;
+
+	panel_warn("%s: EA8082 DDI flash operations not supported.\n", __func__);
+
+	if (result) {
+		if (atomic_cmpxchg(&result->running, 0, 1) != 0) {
+			panel_info("%s: already running\n", __func__);
+			return -EBUSY;
+		}
+
+		result->state = GAMMA_FLASH_ERROR_NOT_EXIST;
+		result->exist = 0;
+		snprintf(result->result, sizeof(result->result), "1\n%d 0 0 %d",
+			 result->state, result->exist);
+
+		atomic_xchg(&result->running, 0);
+	}
+
+	return -EOPNOTSUPP;
+}
+
+static int ea8082_mtp_gamma_check(struct panel_device *panel, void *data, u32 len)
+{
+	panel_warn("%s: EA8082 MTP Gamma Check not supported.\n", __func__);
+	return 1;
+}
+#endif // CONFIG_SUPPORT_DDI_FLASH
+
 #ifdef CONFIG_SUPPORT_HMD
 static int init_gamma_mode2_hmd_brt_table(struct maptbl *tbl)
 {
