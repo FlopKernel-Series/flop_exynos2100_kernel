@@ -23,6 +23,7 @@
 static int g_sec_current_device = DEVICE_UNKNOWN;
 static char g_sec_current_device_name[32] = "Unknown";
 static bool sec_feat_flags[SEC_FEAT_COUNT];
+static bool mcd_feat_flags[MCD_FEAT_COUNT];
 static bool g_detection_complete;
 
 enum SEC_devices sec_get_current_device(void)
@@ -39,6 +40,15 @@ bool sec_get_feat(enum sec_feat feat)
 	return sec_feat_flags[feat];
 }
 EXPORT_SYMBOL_GPL(sec_get_feat);
+
+bool sec_get_mcd_feat(enum mcd_feat feat)
+{
+	if (feat < 0 || feat >= MCD_FEAT_COUNT)
+		return false;
+
+	return mcd_feat_flags[feat];
+}
+EXPORT_SYMBOL_GPL(sec_get_mcd_feat);
 
 bool sec_is_detection_complete(void)
 {
@@ -83,6 +93,27 @@ static struct attribute_group attr_group = {
 static struct kobject *device_kobj;
 #endif
 
+static inline void setup_camera_params(void)
+{
+	switch (g_sec_current_device) {
+	case SEC_R9S:
+		mcd_feat_flags[MCD_FEAT_TYPE_RSU] = true;
+		break;
+	case SEC_O1S:
+		mcd_feat_flags[MCD_FEAT_TYPE_USU] = true;
+		break;
+	case SEC_P3S:
+		mcd_feat_flags[MCD_FEAT_TYPE_USU] = true;
+		mcd_feat_flags[MCD_FEAT_TYPE_USUV3] = true;
+		break;
+	case SEC_T2S:
+		mcd_feat_flags[MCD_FEAT_TYPE_USU] = true;
+		break;
+	default:
+		break;
+	}
+}
+
 static inline void print_sec_variables(const char *machine_name)
 {
 	SEC_DETECT_LOG("Current machine name: %s\n", machine_name);
@@ -102,6 +133,12 @@ static inline void print_sec_variables(const char *machine_name)
 		       sec_get_feat(SEC_FEAT_USES_SSP_UNBOUND) ? "true" : "false");
 	SEC_DETECT_LOG("sec_feat_uses_ssp_r9s = %s\n",
 		       sec_get_feat(SEC_FEAT_USES_SSP_R9S) ? "true" : "false");
+	SEC_DETECT_LOG("mcd_feat_type_rsu = %s\n",
+		       sec_get_mcd_feat(MCD_FEAT_TYPE_RSU) ? "true" : "false");
+	SEC_DETECT_LOG("mcd_feat_type_usu = %s\n",
+		       sec_get_mcd_feat(MCD_FEAT_TYPE_USU) ? "true" : "false");
+	SEC_DETECT_LOG("mcd_feat_type_usuv3 = %s\n",
+		       sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3) ? "true" : "false");
 }
 
 static int __init sec_detect_init(void)
@@ -161,6 +198,7 @@ static int __init sec_detect_init(void)
 		sec_feat_flags[SEC_FEAT_USES_S2MPB02] = true;
 	}
 
+	setup_camera_params();
 	print_sec_variables(machine_name);
 
 #ifdef CONFIG_SEC_DETECT_SYSFS

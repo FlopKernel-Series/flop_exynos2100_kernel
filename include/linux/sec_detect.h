@@ -44,8 +44,16 @@ enum sec_feat {
 	SEC_FEAT_COUNT,
 };
 
+enum mcd_feat {
+	MCD_FEAT_TYPE_RSU = 0,
+	MCD_FEAT_TYPE_USU,
+	MCD_FEAT_TYPE_USUV3,
+	MCD_FEAT_COUNT,
+};
+
 enum SEC_devices sec_get_current_device(void);
 bool sec_get_feat(enum sec_feat feat);
+bool sec_get_mcd_feat(enum mcd_feat feat);
 bool sec_is_detection_complete(void);
 
 #endif /* _LINUX_SEC_H */
