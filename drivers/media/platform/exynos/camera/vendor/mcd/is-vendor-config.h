@@ -13,6 +13,8 @@
 #ifndef IS_VENDOR_CONFIG_H
 #define IS_VENDOR_CONFIG_H
 
+#include <linux/sec_detect.h>
+
 #define USE_BINARY_PADDING_DATA_ADDED	/* for DDK signature */
 
 #if defined(USE_BINARY_PADDING_DATA_ADDED) && (defined(CONFIG_USE_SIGNED_BINARY) || defined(CONFIG_SAMSUNG_PRODUCT_SHIP))
