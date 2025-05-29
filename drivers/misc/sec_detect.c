@@ -139,6 +139,10 @@ static inline void print_sec_variables(const char *machine_name)
 		       sec_get_mcd_feat(MCD_FEAT_TYPE_USU) ? "true" : "false");
 	SEC_DETECT_LOG("mcd_feat_type_usuv3 = %s\n",
 		       sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3) ? "true" : "false");
+	SEC_DETECT_LOG("mcd_feat_type_usuv1 = %s\n",
+		       sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1) ? "true" : "false");
+	SEC_DETECT_LOG("mcd_feat_type_usuv2 = %s\n",
+		       sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2) ? "true" : "false");
 }
 
 static int __init sec_detect_init(void)
