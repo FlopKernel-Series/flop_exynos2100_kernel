@@ -365,20 +365,22 @@ struct is_sensor_cfg *is_sensor_g_mode(struct is_device_sensor *device)
 
 
 #ifdef USE_EX_MODE_OPTION
-	/* find sensor mode first by w/h, fps range and ex_mode_option */
-	if (ex_mode_option > 0) {
-		for (i = 0; i < cfgs; i++) {
-			if ((cfg_table[i].width == width) && (cfg_table[i].height == height)
-				&& (cfg_table[i].ex_mode == ex_mode_option)) {
-				deviation = cfg_table[i].framerate - framerate;
-				if (deviation == 0) {
-					/* You don't need to find another sensor mode */
-					select = &cfg_table[i];
-					break;
-				} else if ((deviation > 0) && approximate_value > abs(deviation)) {
-					/* try to find framerate smaller than previous */
-					approximate_value = abs(deviation);
-					select = &cfg_table[i];
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		/* find sensor mode first by w/h, fps range and ex_mode_option */
+		if (ex_mode_option > 0) {
+			for (i = 0; i < cfgs; i++) {
+				if ((cfg_table[i].width == width) && (cfg_table[i].height == height)
+					&& (cfg_table[i].ex_mode == ex_mode_option)) {
+					deviation = cfg_table[i].framerate - framerate;
+					if (deviation == 0) {
+						/* You don't need to find another sensor mode */
+						select = &cfg_table[i];
+						break;
+					} else if ((deviation > 0) && approximate_value > abs(deviation)) {
+						/* try to find framerate smaller than previous */
+						approximate_value = abs(deviation);
+						select = &cfg_table[i];
+					}
 				}
 			}
 		}

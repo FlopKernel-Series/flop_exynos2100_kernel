@@ -1666,10 +1666,12 @@ int is_vender_hw_init(struct is_vender *vender)
 	}
 
 #ifdef USE_SHARE_I2C_CLIENT_HM3_HM1
-	ret = is_vender_share_i2c_client(core, SENSOR_NAME_S5KHM3, SENSOR_NAME_S5KHM1);
-	if (ret) {
-		err("i2c client copy failed!\n");
-		return -EINVAL;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		ret = is_vender_share_i2c_client(core, SENSOR_NAME_S5KHM3, SENSOR_NAME_S5KHM1);
+		if (ret) {
+			err("i2c client copy failed!\n");
+			return -EINVAL;
+		}
 	}
 #endif
 
@@ -1692,7 +1694,8 @@ int is_vender_hw_init(struct is_vender *vender)
 		}
 	}
 #ifdef USE_CAMERA_NOTIFY_WACOM
-	is_eeprom_wacom_update_notifier();
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		is_eeprom_wacom_update_notifier();
 #endif
 
 	ret = is_sec_fw_find(core);
