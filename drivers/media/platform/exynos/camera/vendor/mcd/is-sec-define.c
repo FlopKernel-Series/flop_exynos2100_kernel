@@ -1549,7 +1549,8 @@ int is_sec_parse_rom_info(struct is_rom_info *finfo, char *buf, int rom_id)
 	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU) ||
 	    sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
 		tele_ois_rom_id = TELE_OIS_ROM_ID_V1;
-	else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU))
+	else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1) ||
+		 sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2))
 		tele_ois_rom_id = TELE_OIS_ROM_ID_V2;
 
 	if (finfo->rom_header_version_start_addr != -1) {
