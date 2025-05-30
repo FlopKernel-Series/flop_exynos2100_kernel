@@ -5324,13 +5324,15 @@ int is_create_sysfs(struct is_core *core)
 					dev_attr_rear2_mtf_exif.attr.name);
 		}
 #ifdef CAMERA_REAR2_AFCAL
-		if (device_create_file(camera_rear_dev, &dev_attr_rear2_afcal) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-					dev_attr_rear2_afcal.attr.name);
-		}
-		if (device_create_file(camera_rear_dev, &dev_attr_rear2_paf_cal_check) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-					dev_attr_rear2_paf_cal_check.attr.name);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (device_create_file(camera_rear_dev, &dev_attr_rear2_afcal) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+						dev_attr_rear2_afcal.attr.name);
+			}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear2_paf_cal_check) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+						dev_attr_rear2_paf_cal_check.attr.name);
+			}
 		}
 #endif
 #ifdef CAMERA_REAR2_TILT
@@ -5412,62 +5414,64 @@ int is_create_sysfs(struct is_core *core)
 #endif
 
 #ifdef CAMERA_REAR4
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_caminfo) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-				dev_attr_rear4_caminfo.attr.name);
-		}
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_camfw) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-				dev_attr_rear4_camfw.attr.name);
-		}
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_camfw_full) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-				dev_attr_rear4_camfw_full.attr.name);
-		}
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_checkfw_user) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-				dev_attr_rear4_checkfw_user.attr.name);
-		}
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_checkfw_factory) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-				dev_attr_rear4_checkfw_factory.attr.name);
-		}
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_sensorid_exif) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-					dev_attr_rear4_sensorid_exif.attr.name);
-		}
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_mtf_exif) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-					dev_attr_rear4_mtf_exif.attr.name);
-		}
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_caminfo) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+					dev_attr_rear4_caminfo.attr.name);
+			}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_camfw) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+					dev_attr_rear4_camfw.attr.name);
+			}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_camfw_full) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+					dev_attr_rear4_camfw_full.attr.name);
+			}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_checkfw_user) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+					dev_attr_rear4_checkfw_user.attr.name);
+			}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_checkfw_factory) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+					dev_attr_rear4_checkfw_factory.attr.name);
+			}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_sensorid_exif) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+						dev_attr_rear4_sensorid_exif.attr.name);
+			}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_mtf_exif) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+						dev_attr_rear4_mtf_exif.attr.name);
+			}
 #ifdef CAMERA_REAR4_AFCAL
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_afcal) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-					dev_attr_rear4_afcal.attr.name);
-		}
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_paf_cal_check) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-					dev_attr_rear4_paf_cal_check.attr.name);
-		}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_afcal) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+						dev_attr_rear4_afcal.attr.name);
+			}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_paf_cal_check) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+						dev_attr_rear4_paf_cal_check.attr.name);
+			}
 #endif
 #ifdef CAMERA_REAR4_TILT
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_tilt) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-					dev_attr_rear4_tilt.attr.name);
-		}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_tilt) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+						dev_attr_rear4_tilt.attr.name);
+			}
 #endif
 #ifdef USE_CAMERA_HW_BIG_DATA
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_hwparam) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-				dev_attr_rear4_hwparam.attr.name);
-		}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_hwparam) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+					dev_attr_rear4_hwparam.attr.name);
+			}
 #endif
 #ifdef CAMERA_REAR4_MODULEID
-		if (device_create_file(camera_rear_dev, &dev_attr_rear4_moduleid) < 0) {
-			pr_err("failed to create rear device file, %s\n",
-					dev_attr_rear4_moduleid.attr.name);
-		}
+			if (device_create_file(camera_rear_dev, &dev_attr_rear4_moduleid) < 0) {
+				pr_err("failed to create rear device file, %s\n",
+						dev_attr_rear4_moduleid.attr.name);
+			}
 #endif
+		}
 #endif
 
 #ifdef CAMERA_REAR_TOF
@@ -5911,8 +5915,10 @@ int is_destroy_sysfs(struct is_core *core)
 		device_remove_file(camera_rear_dev, &dev_attr_rear2_sensorid_exif);
 		device_remove_file(camera_rear_dev, &dev_attr_rear2_mtf_exif);
 #ifdef CAMERA_REAR2_AFCAL
-		device_remove_file(camera_rear_dev, &dev_attr_rear2_afcal);
-		device_remove_file(camera_rear_dev, &dev_attr_rear2_paf_cal_check);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			device_remove_file(camera_rear_dev, &dev_attr_rear2_afcal);
+			device_remove_file(camera_rear_dev, &dev_attr_rear2_paf_cal_check);
+		}
 #endif
 #ifdef CAMERA_REAR2_TILT
 		device_remove_file(camera_rear_dev, &dev_attr_rear2_tilt);
@@ -5948,26 +5954,28 @@ int is_destroy_sysfs(struct is_core *core)
 #endif
 
 #ifdef CAMERA_REAR4
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_caminfo);
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_camfw);
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_camfw_full);
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_checkfw_user);
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_checkfw_factory);
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_sensorid_exif);
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_mtf_exif);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_caminfo);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_camfw);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_camfw_full);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_checkfw_user);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_checkfw_factory);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_sensorid_exif);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_mtf_exif);
 #ifdef CAMERA_REAR4_AFCAL
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_afcal);
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_paf_cal_check);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_afcal);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_paf_cal_check);
 #endif
 #ifdef CAMERA_REAR4_TILT
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_tilt);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_tilt);
 #endif
 #ifdef USE_CAMERA_HW_BIG_DATA
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_hwparam);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_hwparam);
 #endif
 #ifdef CAMERA_REAR4_MODULEID
-		device_remove_file(camera_rear_dev, &dev_attr_rear4_moduleid);
+			device_remove_file(camera_rear_dev, &dev_attr_rear4_moduleid);
 #endif
+		}
 #endif
 
 #ifdef CAMERA_REAR_TOF

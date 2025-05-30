@@ -949,38 +949,40 @@ int sensor_hm3_cis_set_cal(struct v4l2_subdev *subdev)
 	is_sec_get_cal_buf(&cal_buf, ROM_ID_REAR);
 
 #ifdef CAMERA_HM3_CAL_MODULE_VERSION
-	if (finfo->header_ver[10] < CAMERA_HM3_CAL_MODULE_VERSION) {
-		start_addr = finfo->rom_xtc_cal_data_addr_list[HM3_CAL_START_ADDR];
-		if (cal_buf[start_addr + 2] == 0xFF && cal_buf[start_addr + 3] == 0xFF &&
-			cal_buf[start_addr + 4] == 0xFF && cal_buf[start_addr + 5] == 0xFF &&
-			cal_buf[start_addr + 6] == 0xFF && cal_buf[start_addr + 7] == 0xFF &&
-			cal_buf[start_addr + 8] == 0xFF && cal_buf[start_addr + 9] == 0xFF &&
-			cal_buf[start_addr + 10] == 0xFF && cal_buf[start_addr + 11] == 0xFF &&
-			cal_buf[start_addr + 12] == 0xFF && cal_buf[start_addr + 13] == 0xFF &&
-			cal_buf[start_addr + 14] == 0xFF && cal_buf[start_addr + 15] == 0xFF &&
-			cal_buf[start_addr + 16] == 0xFF && cal_buf[start_addr + 17] == 0xFF) {
-			info("empty Cal - cal offset[0x%04X] = val[0x%02X], cal offset[0x%04X] = val[0x%02X]",
-				start_addr + 2, cal_buf[start_addr + 2], start_addr + 17, cal_buf[start_addr + 17]);
-			info("[%s] empty Cal", __func__);
-			return 0;
-		}
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (finfo->header_ver[10] < CAMERA_HM3_CAL_MODULE_VERSION) {
+			start_addr = finfo->rom_xtc_cal_data_addr_list[HM3_CAL_START_ADDR];
+			if (cal_buf[start_addr + 2] == 0xFF && cal_buf[start_addr + 3] == 0xFF &&
+				cal_buf[start_addr + 4] == 0xFF && cal_buf[start_addr + 5] == 0xFF &&
+				cal_buf[start_addr + 6] == 0xFF && cal_buf[start_addr + 7] == 0xFF &&
+				cal_buf[start_addr + 8] == 0xFF && cal_buf[start_addr + 9] == 0xFF &&
+				cal_buf[start_addr + 10] == 0xFF && cal_buf[start_addr + 11] == 0xFF &&
+				cal_buf[start_addr + 12] == 0xFF && cal_buf[start_addr + 13] == 0xFF &&
+				cal_buf[start_addr + 14] == 0xFF && cal_buf[start_addr + 15] == 0xFF &&
+				cal_buf[start_addr + 16] == 0xFF && cal_buf[start_addr + 17] == 0xFF) {
+				info("empty Cal - cal offset[0x%04X] = val[0x%02X], cal offset[0x%04X] = val[0x%02X]",
+					start_addr + 2, cal_buf[start_addr + 2], start_addr + 17, cal_buf[start_addr + 17]);
+				info("[%s] empty Cal", __func__);
+				return 0;
+			}
 
-		len = (finfo->rom_xtc_cal_data_addr_list_len / HM3_CAL_ROW_LEN) - 1;
-		if (len >= 0) {
-			end_addr = finfo->rom_xtc_cal_data_addr_list[len * HM3_CAL_ROW_LEN + HM3_CAL_END_ADDR];
-			if (end_addr >= 15) {
-				if (cal_buf[end_addr	] == 0xFF && cal_buf[end_addr - 1] == 0xFF &&
-					cal_buf[end_addr - 2] == 0xFF && cal_buf[end_addr - 3] == 0xFF &&
-					cal_buf[end_addr - 4] == 0xFF && cal_buf[end_addr - 5] == 0xFF &&
-					cal_buf[end_addr - 6] == 0xFF && cal_buf[end_addr - 7] == 0xFF &&
-					cal_buf[end_addr - 8] == 0xFF && cal_buf[end_addr - 9] == 0xFF &&
-					cal_buf[end_addr - 10] == 0xFF && cal_buf[end_addr - 11] == 0xFF &&
-					cal_buf[end_addr - 12] == 0xFF && cal_buf[end_addr - 13] == 0xFF &&
-					cal_buf[end_addr - 14] == 0xFF && cal_buf[end_addr - 15] == 0xFF) {
-					info("empty Cal - cal offset[0x%04X] = val[0x%02X], cal offset[0x%04X] = val[0x%02X]",
-						end_addr, cal_buf[end_addr], end_addr - 15, cal_buf[end_addr - 15]);
-					info("[%s] empty Cal", __func__);
-					return 0;
+			len = (finfo->rom_xtc_cal_data_addr_list_len / HM3_CAL_ROW_LEN) - 1;
+			if (len >= 0) {
+				end_addr = finfo->rom_xtc_cal_data_addr_list[len * HM3_CAL_ROW_LEN + HM3_CAL_END_ADDR];
+				if (end_addr >= 15) {
+					if (cal_buf[end_addr	] == 0xFF && cal_buf[end_addr - 1] == 0xFF &&
+						cal_buf[end_addr - 2] == 0xFF && cal_buf[end_addr - 3] == 0xFF &&
+						cal_buf[end_addr - 4] == 0xFF && cal_buf[end_addr - 5] == 0xFF &&
+						cal_buf[end_addr - 6] == 0xFF && cal_buf[end_addr - 7] == 0xFF &&
+						cal_buf[end_addr - 8] == 0xFF && cal_buf[end_addr - 9] == 0xFF &&
+						cal_buf[end_addr - 10] == 0xFF && cal_buf[end_addr - 11] == 0xFF &&
+						cal_buf[end_addr - 12] == 0xFF && cal_buf[end_addr - 13] == 0xFF &&
+						cal_buf[end_addr - 14] == 0xFF && cal_buf[end_addr - 15] == 0xFF) {
+						info("empty Cal - cal offset[0x%04X] = val[0x%02X], cal offset[0x%04X] = val[0x%02X]",
+							end_addr, cal_buf[end_addr], end_addr - 15, cal_buf[end_addr - 15]);
+						info("[%s] empty Cal", __func__);
+						return 0;
+					}
 				}
 			}
 		}

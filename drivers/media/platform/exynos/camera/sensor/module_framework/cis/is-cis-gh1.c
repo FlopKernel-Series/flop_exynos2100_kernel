@@ -454,13 +454,22 @@ int sensor_gh1_cis_set_pdxtc_calibration(struct is_cis *cis)
 	is_sec_get_cal_buf(&cal_buf, ROM_ID_FRONT);
 	is_sec_get_sysfs_finfo(&finfo, ROM_ID_FRONT);
 #ifdef CAMERA_GH1_CAL_MODULE_VERSION
-	info("[%s] cur_header : %s", __func__, finfo->header_ver);
-	if (finfo->header_ver[10] < CAMERA_GH1_CAL_MODULE_VERSION)
-#endif
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		info("[%s] cur_header : %s", __func__, finfo->header_ver);
+		if (finfo->header_ver[10] < CAMERA_GH1_CAL_MODULE_VERSION) {
+			info("[%s] skip calibration, cal value not valid", __func__);
+			return 0;
+		}
+	} else {
+		info("[%s] skip calibration, cal value not valid", __func__);
+		return 0;
+	}
+#else
 	{
 		info("[%s] skip calibration, cal value not valid", __func__);
 		return 0;
 	}
+#endif
 	if (finfo->rom_pdxtc_cal_data_start_addr == -1) {
 		err("[%s] cal addr empty");
 		goto p_err;
@@ -526,14 +535,25 @@ int sensor_gh1_cis_set_xtc_calibration(struct is_cis *cis)
 	is_sec_get_sysfs_finfo(&finfo, ROM_ID_FRONT);
 
 #ifdef CAMERA_GH1_CAL_MODULE_VERSION
-	info("[%s] cur_header : %s", __func__, finfo->header_ver);
-	if (finfo->header_ver[10] < CAMERA_GH1_CAL_MODULE_VERSION)
-#endif
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		info("[%s] cur_header : %s", __func__, finfo->header_ver);
+		if (finfo->header_ver[10] < CAMERA_GH1_CAL_MODULE_VERSION) {
+			info("[%s] skip calibration, cal value not valid", __func__);
+			xtc_skip = true;
+			return 0;
+		}
+	} else {
+		info("[%s] skip calibration, cal value not valid", __func__);
+		xtc_skip = true;
+		return 0;
+	}
+#else
 	{
 		info("[%s] skip calibration, cal value not valid", __func__);
 		xtc_skip = true;
 		return 0;
 	}
+#endif
 
 	if (finfo->rom_xtc_cal_data_start_addr == -1) {
 		err("[%s] cal_addr empty");
