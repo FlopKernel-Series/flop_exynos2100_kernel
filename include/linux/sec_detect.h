@@ -36,6 +36,7 @@ static const char *const device_names[] = {
 enum sec_feat {
 	SEC_FEAT_USES_S2MPB02 = 0,
 	SEC_FEAT_USES_KTD2692,
+	SEC_FEAT_SUPPORT_MASK_LAYER,
 	SEC_FEAT_COUNT,
 };
 
