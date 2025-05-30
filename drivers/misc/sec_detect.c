@@ -94,6 +94,8 @@ static inline void print_sec_variables(const char *machine_name)
 		       sec_get_feat(SEC_FEAT_USES_KTD2692) ? "true" : "false");
 	SEC_DETECT_LOG("sec_feat_support_mask_layer = %s\n",
 		       sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER) ? "true" : "false");
+	SEC_DETECT_LOG("sec_feat_support_tig = %s\n",
+		       sec_get_feat(SEC_FEAT_SUPPORT_TIG) ? "true" : "false");
 }
 
 static int __init sec_detect_init(void)
@@ -132,6 +134,7 @@ static int __init sec_detect_init(void)
 			sizeof(g_sec_current_device_name));
 		sec_feat_flags[SEC_FEAT_USES_KTD2692] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_MASK_LAYER] = true;
+		sec_feat_flags[SEC_FEAT_SUPPORT_TIG] = true;
 	} else if (strstr(machine_name, "O1S") != NULL) {
 		g_sec_current_device = SEC_O1S;
 		strscpy(g_sec_current_device_name, "o1s",
