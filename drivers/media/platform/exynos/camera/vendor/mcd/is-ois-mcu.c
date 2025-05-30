@@ -711,8 +711,13 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 			/* write tele xgg ygg xcoef ycoef */
 			if (ois_pinfo->tele_tilt_romdata.cal_mark[0] == 0xBB) {
 #ifdef OIS_DUAL_CAL_USE_REAR3_DATA
-				tele_cmd_xcoef = R_OIS_CMD_XCOEF_M3_1;
-				tele_cmd_ycoef = R_OIS_CMD_YCOEF_M3_1;
+				if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+					tele_cmd_xcoef = R_OIS_CMD_XCOEF_M3_1;
+					tele_cmd_ycoef = R_OIS_CMD_YCOEF_M3_1;
+				} else {
+					tele_cmd_xcoef = R_OIS_CMD_XCOEF_M2_1;
+					tele_cmd_ycoef = R_OIS_CMD_YCOEF_M2_1;
+				}
 #else
 				tele_cmd_xcoef = R_OIS_CMD_XCOEF_M2_1;
 				tele_cmd_ycoef = R_OIS_CMD_YCOEF_M2_1;
@@ -758,12 +763,31 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 				} else {
 					if (!test_bit(IS_EFS_STATE_READ, &efs_info.efs_state)) {
 #ifdef OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE
-						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
-						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
-						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
-						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+						if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
 
-						info_mcu("%s tele use default eeprom coef value", __func__);
+							info_mcu("%s tele use default eeprom coef value", __func__);
+						} else {
+							rom_id = is_vendor_get_rom_id_from_position(SENSOR_POSITION_REAR2);
+							is_sec_get_cal_buf(&cal_buf, rom_id);
+							is_sec_get_sysfs_finfo(&finfo, rom_id);
+
+							eeprom_xcoef[0] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_x_addr]);
+							eeprom_xcoef[1] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_x_addr + 1]);
+							eeprom_ycoef[0] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_y_addr]);
+							eeprom_ycoef[1] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_y_addr + 1]);
+
+							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, eeprom_xcoef[0]);
+							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, eeprom_xcoef[1]);
+							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, eeprom_ycoef[0]);
+							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, eeprom_ycoef[1]);
+
+							info_mcu("%s tele eeprom xcoef = %d/%d, ycoef = %d/%d", __func__, eeprom_xcoef[0], eeprom_xcoef[1],
+								eeprom_ycoef[0], eeprom_ycoef[1]);
+						}
 #else
 						rom_id = is_vendor_get_rom_id_from_position(SENSOR_POSITION_REAR2);
 						is_sec_get_cal_buf(&cal_buf, rom_id);
@@ -799,12 +823,31 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 #else
 				if (!test_bit(IS_EFS_STATE_READ, &efs_info.efs_state)) {
 #ifdef OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE
-					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
-					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
-					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
-					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+					if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
 
-					info_mcu("%s tele use default eeprom coef value", __func__);
+						info_mcu("%s tele use default eeprom coef value", __func__);
+					} else {
+						rom_id = is_vendor_get_rom_id_from_position(SENSOR_POSITION_REAR2);
+						is_sec_get_cal_buf(&cal_buf, rom_id);
+						is_sec_get_sysfs_finfo(&finfo, rom_id);
+
+						eeprom_xcoef[0] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_x_addr]);
+						eeprom_xcoef[1] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_x_addr + 1]);
+						eeprom_ycoef[0] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_y_addr]);
+						eeprom_ycoef[1] = *((u8 *)&cal_buf[finfo->rom_dualcal_slave1_oisshift_y_addr + 1]);
+
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, eeprom_xcoef[0]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, eeprom_xcoef[1]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, eeprom_ycoef[0]);
+						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef + 1, eeprom_ycoef[1]);
+
+						info_mcu("%s tele eeprom xcoef = %d/%d, ycoef = %d/%d", __func__, eeprom_xcoef[0], eeprom_xcoef[1],
+							eeprom_ycoef[0], eeprom_ycoef[1]);
+					}
 #else
 					rom_id = is_vendor_get_rom_id_from_position(SENSOR_POSITION_REAR2);
 					is_sec_get_cal_buf(&cal_buf, rom_id);
