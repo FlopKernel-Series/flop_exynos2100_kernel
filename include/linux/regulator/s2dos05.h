@@ -70,8 +70,18 @@ struct s2dos05_platform_data {
 	int		adc_mode;
 	/* 1 : sync mode, 2 : async mode  */
 	int		adc_sync_mode;
-#ifdef CONFIG_SEC_PM
+#if IS_ENABLED(CONFIG_SEC_PM)
 	const char *sec_disp_pmic_name;
+
+	/* OCL_ELVSS
+	 * 0: 1.3A
+	 * 1: 1.5A
+	 * 2: 1.7A (default)
+	 * 3: 1.9A
+	 */
+	int		ocl_elvss;
+
+	unsigned int	enable_fd_delay_ms;
 #endif /* CONFIG_SEC_PM */
 };
 
@@ -113,6 +123,7 @@ enum S2DOS05_regulators {
 	S2DOS05_BUCK1,
 #if IS_ENABLED(CONFIG_SEC_PM)
 	S2DOS05_ELVSS_SSD,
+	S2DOS05_ELVSS_FD,
 #endif /* CONFIG_SEC_PM */
 	S2DOS05_REG_MAX,
 };
@@ -141,6 +152,16 @@ enum S2DOS05_regulators {
 #define S2DOS05_ENABLE_MASK_L3	(1 << 2)
 #define S2DOS05_ENABLE_MASK_L4	(1 << 3)
 #define S2DOS05_ENABLE_MASK_B1	(1 << 4)
+
+#define S2DOS05_OCL_ELVSS_MASK	(3 << 0)
+
+/* hidden for SM3080 only */
+#define SM3080_AVDD	5
+#define SM3080_ELVSS	6
+#define SM3080_ELVDD	7
+#define SM3080_ENABLE_MASK_AVDD		(1 << SM3080_AVDD)
+#define SM3080_ENABLE_MASK_ELVSS	(1 << SM3080_ELVSS)
+#define SM3080_ENABLE_MASK_ELVDD	(1 << SM3080_ELVDD)
 
 #define S2DOS05_RAMP_DELAY	12000
 
@@ -185,6 +206,9 @@ enum S2DOS05_regulators {
 #define CURRENT_MODE			0x00
 #define POWER_MODE			0x10
 #define RAWCURRENT_MODE			0x20
+#define FAULT_STATUS1		0x67	/* S2DOS05 SCP */
+#define FAULT_STATUS2		0x68
+#define INT_STATUS1			0xB8	/* SM3080 SCP */
 #define SMPNUM_MASK			0x0F
 
 #define S2DOS05_MAX_ADC_CHANNEL		8
