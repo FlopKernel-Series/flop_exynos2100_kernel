@@ -2,6 +2,8 @@
 # Makefile for the sensor drivers.
 #
 
+ccflags-y += -Wno-declaration-after-statement
+
 # Each configuration option enables a list of files.
 
 broadcom-sensorhub-y := ssp_dev.o ssp_i2c.o ssp_data.o ssp_sysfs.o\

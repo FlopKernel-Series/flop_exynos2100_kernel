@@ -41,6 +41,7 @@
 #include "bbdpl/bbd.h"
 #include <linux/sec_class.h>
 #include "sensor_list.h"
+#include <linux/sec_detect.h>
 
 #ifdef CONFIG_SENSORS_SSP_HIFI_BATCHING
 #include <linux/vmalloc.h> /* memory scraps issue. */

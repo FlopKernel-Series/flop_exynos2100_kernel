@@ -14,12 +14,20 @@
  */
 #include "ssp.h"
 
+// #if defined(CONFIG_SENSORS_SSP_UNBOUND)
+// #define SSP_FIRMWARE_REVISION_BCM_R	23101001
+// #elif defined(CONFIG_SENSORS_SSP_R9S)
+// #define SSP_FIRMWARE_REVISION_BCM_R	23082100
+// #else
+// #define SSP_FIRMWARE_REVISION_BCM_R	00000000
+// #endif
+
 #if defined(CONFIG_SENSORS_SSP_UNBOUND)
-#define SSP_FIRMWARE_REVISION_BCM_R	24122600
-#elif defined(CONFIG_SENSORS_SSP_R9S)
-#define SSP_FIRMWARE_REVISION_BCM_R	25082000
-#else
-#define SSP_FIRMWARE_REVISION_BCM_R	00000000
+#define SSP_FIRMWARE_REVISION_BCM_R_UNBOUND	24122600
+#endif
+
+#if defined(CONFIG_SENSORS_SSP_R9S)
+#define SSP_FIRMWARE_REVISION_BCM_R_R9S	25082000
 #endif
 
 unsigned int get_module_rev(struct ssp_data *data)
@@ -27,7 +35,12 @@ unsigned int get_module_rev(struct ssp_data *data)
 	unsigned int version = 00000000;
 	switch(android_version){
 		case 11:
-			version = SSP_FIRMWARE_REVISION_BCM_R;
+			if (sec_get_feat(SEC_FEAT_USES_SSP_UNBOUND))
+				version = SSP_FIRMWARE_REVISION_BCM_R_UNBOUND;
+			else if (sec_get_feat(SEC_FEAT_USES_SSP_R9S))
+				version = SSP_FIRMWARE_REVISION_BCM_R_R9S;
+			else
+				version = SSP_FIRMWARE_REVISION_BCM_R_UNBOUND; // Default for unbound
 			break;
 		default:
 			pr_err("%s : unknown android_version: %d", __func__, android_version);

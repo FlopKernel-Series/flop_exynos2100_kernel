@@ -820,25 +820,34 @@ static ssize_t set_ssp_control(struct device *dev,
 		int iRet = 0;
 		struct ssp_msg *msg = kzalloc(sizeof(*msg), GFP_KERNEL);
 
-#if defined(CONFIG_SENSORS_SSP_UNBOUND)	
-		int thd[2] = {200, 1000000};
-		int index = 0;
+#if defined(CONFIG_SENSORS_SSP_UNBOUND)
+		int thd[2];
+		if (sec_get_feat(SEC_FEAT_USES_SSP_UNBOUND)) {
+			thd[0] = 200;
+			thd[1] = 1000000;
+			int index = 0;
 
-		char *str = (char *)(buf + strlen(SSP_LIGHT_SEAMLESS_THD));
-		char *token = strsep(&str, ",");
+			char *str = (char *)(buf + strlen(SSP_LIGHT_SEAMLESS_THD));
+			char *token = strsep(&str, ",");
 
-		while (token != NULL && index < 2) {
-			iRet = kstrtoint(token, 10, &thd[index++]);
-			if (iRet < 0) {
-				pr_err("[SSP]: %s - kstrtoint failed.(%d)\n", __func__, iRet);
-				if (msg != NULL)
-					kfree(msg);
-				return iRet;
+			while (token != NULL && index < 2) {
+				iRet = kstrtoint(token, 10, &thd[index++]);
+				if (iRet < 0) {
+					pr_err("[SSP]: %s - kstrtoint failed.(%d)\n", __func__, iRet);
+					if (msg != NULL)
+						kfree(msg);
+					return iRet;
+				}
+				token = strsep(&str, ",");
 			}
-			token = strsep(&str, ",");
-		}
 
-		pr_err("set light_seamless threshold = %d,%d", thd[0], thd[1]);
+			pr_err("set light_seamless threshold = %d,%d", thd[0], thd[1]);
+		} else {
+			thd[0] = 200;
+			kstrtoint(buf + strlen(SSP_LIGHT_SEAMLESS_THD), 10, &thd[0]);
+			
+			pr_err("set light_seamless threshold = %d", thd[0]);
+		}
 #else
 		int thd = 200;
 		kstrtoint(buf + strlen(SSP_LIGHT_SEAMLESS_THD), 10, &thd);

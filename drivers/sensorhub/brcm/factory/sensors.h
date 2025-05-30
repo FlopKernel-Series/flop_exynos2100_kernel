@@ -1,6 +1,7 @@
 #ifndef SENSORS_H
 #define SENSORS_H
 #include "../ssp.h"
+#include <linux/sec_detect.h>
 
 #define ITEM_MAX 10
 

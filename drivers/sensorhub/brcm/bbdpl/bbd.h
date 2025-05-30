@@ -20,6 +20,7 @@
 
 #include "../wakelock_wrapper.h"
 #include <linux/firmware.h>
+#include <linux/sec_detect.h>
 
 #pragma pack(4)
 //typedef unsigned char   uint8_t;

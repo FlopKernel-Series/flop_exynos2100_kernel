@@ -134,15 +134,27 @@ static struct bbd_device bbd;
 
 int android_version = 11;
 
-static unsigned char bbd_patch_R[] = {
+// static unsigned char bbd_patch_R[] = {
+// #if defined(CONFIG_SENSORS_SSP_UNBOUND)	
+// #include "firmware/bbd_patch_file_unbound_r.h"
+// #elif defined(CONFIG_SENSORS_SSP_R9S)
+// #include "firmware/bbd_patch_file_r9s_r.h"
+// #else 
+// #include "firmware/bbd_patch_file_unbound_r.h"
+// #endif
+// };
+
 #if defined(CONFIG_SENSORS_SSP_UNBOUND)	
+static unsigned char bbd_patch_R_unbound[] = {
 #include "firmware/bbd_patch_file_unbound_r.h"
-#elif defined(CONFIG_SENSORS_SSP_R9S)
-#include "firmware/bbd_patch_file_r9s_r.h"
-#else 
-#include "firmware/bbd_patch_file_unbound_r.h"
-#endif
 };
+#endif
+
+#if defined(CONFIG_SENSORS_SSP_R9S)
+static unsigned char bbd_patch_R_r9s[] = {
+#include "firmware/bbd_patch_file_r9s_r.h"
+};
+#endif
 
 /* Function to push read data into any bbd device's read buf */
 ssize_t bbd_on_read(unsigned int minor, const unsigned char *buf, size_t size);
@@ -790,11 +802,21 @@ extern int get_patch_version(int ap_type, int hw_rev);
 int get_patch(unsigned char **patch) {
 	switch(android_version) {
 		case 11:
-			*patch = bbd_patch_R;
-			return sizeof(bbd_patch_R);
+			if (sec_get_feat(SEC_FEAT_USES_SSP_R9S)) {
+				*patch = bbd_patch_R_r9s;
+				return sizeof(bbd_patch_R_r9s);
+			} else {
+				*patch = bbd_patch_R_unbound;
+				return sizeof(bbd_patch_R_unbound);
+			}
 		default:
-			*patch = bbd_patch_R;
-			return sizeof(bbd_patch_R);
+			if (sec_get_feat(SEC_FEAT_USES_SSP_R9S)) {
+				*patch = bbd_patch_R_r9s;
+				return sizeof(bbd_patch_R_r9s);
+			} else {
+				*patch = bbd_patch_R_unbound;
+				return sizeof(bbd_patch_R_unbound);
+			}
 	}
 }
 

@@ -330,7 +330,10 @@ static ssize_t proximity_default_trim_show(struct device *dev,
 	// 3: moving sum type3
 	if (ret != sizeof(prox_cal)) {
 #if defined(CONFIG_SENSORS_SSP_R9S)
-		ret = 2;
+		if (sec_get_feat(SEC_FEAT_USES_SSP_R9S))
+			ret = 2;
+		else
+			ret = 1;
 #else
 		ret = 1;
 #endif
@@ -634,11 +637,20 @@ static ssize_t proximity_cal_store(struct device *dev,
 	int iRet = 0;
 	int64_t enable = 0;
 	struct ssp_data *data = dev_get_drvdata(dev);
-#if defined(CONFIG_SENSORS_SSP_R9S)
-	int cal_data[2] = {0, 2};
-#else
-	int cal_data[2] = {0, 1};
-#endif
+// #if defined(CONFIG_SENSORS_SSP_R9S)
+// 	int cal_data[2] = {0, 2};
+// #else
+// 	int cal_data[2] = {0, 1};
+// #endif
+	int cal_data[2];
+
+	if (sec_get_feat(SEC_FEAT_USES_SSP_R9S)) {
+		cal_data[0] = 0;
+		cal_data[1] = 2;
+	} else {
+		cal_data[0] = 0;
+		cal_data[1] = 1;
+	}
 
 	if (!(data->uSensorState & (1 << PROXIMITY_SENSOR))) {
 		pr_info("[SSP] %s - Skip this function!!!, proximity sensor is not connected(0x%llx)\n",
