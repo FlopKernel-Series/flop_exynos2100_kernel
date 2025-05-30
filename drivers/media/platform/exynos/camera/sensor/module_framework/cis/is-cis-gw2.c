@@ -590,9 +590,11 @@ int sensor_gw2_cis_set_pdxtc_calibration(struct is_cis *cis)
 	is_sec_get_sysfs_finfo(&finfo, ROM_ID_REAR);
 
 #ifdef CAMERA_GW2_PDXTC_MODULE_VERSION
-	if(finfo->header_ver[10] < CAMERA_GW2_PDXTC_MODULE_VERSION) {
-		info("%s - skip pdxtc_cal, cal value not valid(cur_header : %s)", __func__, finfo->header_ver);
-		return 0;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		if(finfo->header_ver[10] < CAMERA_GW2_PDXTC_MODULE_VERSION) {
+			info("%s - skip pdxtc_cal, cal value not valid(cur_header : %s)", __func__, finfo->header_ver);
+			return 0;
+		}
 	}
 #endif
 
@@ -973,15 +975,17 @@ int sensor_gw2_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 #endif
 
 #ifdef CAMERA_GW2_PDXTC_MODULE_VERSION
-	if (finfo->header_ver[10] < CAMERA_GW2_PDXTC_MODULE_VERSION) {
-		ret = is_sensor_write16(cis->client, 0x6028, 0x2000);
-		ret = is_sensor_write16(cis->client, 0x602A, 0x55B0);
-		ret = is_sensor_write16(cis->client, 0x6F12, 0x0000);
-		if (ret < 0){
-			err("sensor_gw2 disable pdxtc fail!");
-			goto p_err_i2c_unlock;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		if (finfo->header_ver[10] < CAMERA_GW2_PDXTC_MODULE_VERSION) {
+			ret = is_sensor_write16(cis->client, 0x6028, 0x2000);
+			ret = is_sensor_write16(cis->client, 0x602A, 0x55B0);
+			ret = is_sensor_write16(cis->client, 0x6F12, 0x0000);
+			if (ret < 0){
+				err("sensor_gw2 disable pdxtc fail!");
+				goto p_err_i2c_unlock;
+			}
+			info("%s - disable pdxtc", __func__);
 		}
-		info("%s - disable pdxtc", __func__);
 	}
 #endif
 
