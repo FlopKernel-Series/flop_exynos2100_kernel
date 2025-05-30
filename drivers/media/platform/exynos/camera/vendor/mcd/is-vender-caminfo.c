@@ -155,16 +155,18 @@ static int is_vender_caminfo_set_efs_data(void __user *p_efsdata_user)
 	}
 
 #ifdef CAMERA_3RD_OIS
-	specific->tilt_cal_tele2_efs_size = efs_data.tilt_cal_tele2_efs_size;
-	if (efs_data.tilt_cal_tele2_efs_size <= IS_TILT_CAL_TELE_EFS_MAX_SIZE && efs_data.tilt_cal_tele2_efs_size > 0) {
-		if (copy_from_user(specific->tilt_cal_tele2_efs_data, efs_data.tilt_cal_tele2_efs_buf, sizeof(uint8_t) * efs_data.tilt_cal_tele2_efs_size)) {
-			err("%s : failed to copy data from user", __func__);
-			ret = -EINVAL;
-			goto EXIT;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		specific->tilt_cal_tele2_efs_size = efs_data.tilt_cal_tele2_efs_size;
+		if (efs_data.tilt_cal_tele2_efs_size <= IS_TILT_CAL_TELE_EFS_MAX_SIZE && efs_data.tilt_cal_tele2_efs_size > 0) {
+			if (copy_from_user(specific->tilt_cal_tele2_efs_data, efs_data.tilt_cal_tele2_efs_buf, sizeof(uint8_t) * efs_data.tilt_cal_tele2_efs_size)) {
+				err("%s : failed to copy data from user", __func__);
+				ret = -EINVAL;
+				goto EXIT;
+			}
+		} else {
+			info("[%s] wrong tilt cal tele2 data size : data size must be smaller than max size.(%d)", __func__, efs_data.tilt_cal_tele2_efs_size);
+			ret = -EFAULT;
 		}
-	} else {
-		info("[%s] wrong tilt cal tele2 data size : data size must be smaller than max size.(%d)", __func__, efs_data.tilt_cal_tele2_efs_size);
-		ret = -EFAULT;
 	}
 #endif
 
@@ -742,4 +744,3 @@ module_exit(is_vender_caminfo_exit);
 
 MODULE_DESCRIPTION("Exynos Caminfo driver");
 MODULE_LICENSE("GPL v2");
-

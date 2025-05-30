@@ -3099,14 +3099,16 @@ void ois_power_control(int onoff)
 	camera_running = is_vendor_check_camera_running(SENSOR_POSITION_REAR);
 	camera_running2 = is_vendor_check_camera_running(SENSOR_POSITION_REAR2);
 #ifdef CAMERA_3RD_OIS
-	camera_running3 = is_vendor_check_camera_running(SENSOR_POSITION_REAR4);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		camera_running3 = is_vendor_check_camera_running(SENSOR_POSITION_REAR4);
+	}
 #endif
 
 	switch (onoff) {
 	case 0:
 		if (!camera_running && !camera_running2
 #ifdef CAMERA_3RD_OIS
-			&& !camera_running3
+			&& (!sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3) || !camera_running3)
 #endif
 			&& check_ois_power) {
 			check_ois_power = false;
@@ -3119,7 +3121,7 @@ void ois_power_control(int onoff)
 	case 1:
 		if (!camera_running && !camera_running2
 #ifdef CAMERA_3RD_OIS
-			&& !camera_running3
+			&& (!sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3) || !camera_running3)
 #endif
 			&& !check_ois_power) {
 			check_ois_power = true;
@@ -3263,17 +3265,19 @@ static ssize_t camera_ois_autotest_show(struct device *dev,
 		strncat(wide_buffer, tele_buffer, strlen(tele_buffer));
 
 #ifdef CAMERA_3RD_OIS
-		if (x_result_3rd && y_result_3rd) {
-			sprintf(tele2_buffer, ",%s,%d,%s,%d", "pass", 0, "pass", 0);
-		} else if (x_result_3rd) {
-			sprintf(tele2_buffer, ",%s,%d,%s,%d", "pass", 0, "fail", sin_y_3rd);
-		} else if (y_result_3rd) {
-			sprintf(tele2_buffer, ",%s,%d,%s,%d", "fail", sin_x_3rd, "pass", 0);
-		} else {
-			sprintf(tele2_buffer, ",%s,%d,%s,%d", "fail", sin_x_3rd, "fail", sin_y_3rd);
-		}
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (x_result_3rd && y_result_3rd) {
+				sprintf(tele2_buffer, ",%s,%d,%s,%d", "pass", 0, "pass", 0);
+			} else if (x_result_3rd) {
+				sprintf(tele2_buffer, ",%s,%d,%s,%d", "pass", 0, "fail", sin_y_3rd);
+			} else if (y_result_3rd) {
+				sprintf(tele2_buffer, ",%s,%d,%s,%d", "fail", sin_x_3rd, "pass", 0);
+			} else {
+				sprintf(tele2_buffer, ",%s,%d,%s,%d", "fail", sin_x_3rd, "fail", sin_y_3rd);
+			}
 
-		strncat(wide_buffer, tele2_buffer, strlen(tele2_buffer));
+			strncat(wide_buffer, tele2_buffer, strlen(tele2_buffer));
+		}
 #endif
 		info("%s result =  %s\n", __func__, wide_buffer);
 
@@ -3551,12 +3555,13 @@ static ssize_t camera_ois_gyronoise_show(struct device *dev,
 	camera_running = is_vendor_check_camera_running(SENSOR_POSITION_REAR);
 	camera_running2 = is_vendor_check_camera_running(SENSOR_POSITION_REAR2);
 #ifdef CAMERA_3RD_OIS
-	camera_running3 = is_vendor_check_camera_running(SENSOR_POSITION_REAR4);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		camera_running3 = is_vendor_check_camera_running(SENSOR_POSITION_REAR4);
 #endif
 
 	if (!camera_running && !camera_running2
 #ifdef CAMERA_3RD_OIS
-		&& !camera_running3
+		&& (!sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3) || !camera_running3)
 #endif
 	) {
 		check_power = check_ois_power;
@@ -3605,12 +3610,13 @@ static ssize_t camera_ois_hall_position_show(struct device *dev,
 	camera_running = is_vendor_check_camera_running(SENSOR_POSITION_REAR);
 	camera_running2 = is_vendor_check_camera_running(SENSOR_POSITION_REAR2);
 #ifdef CAMERA_3RD_OIS
-	camera_running3 = is_vendor_check_camera_running(SENSOR_POSITION_REAR4);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		camera_running3 = is_vendor_check_camera_running(SENSOR_POSITION_REAR4);
 #endif
 
 	if (camera_running || camera_running2
 #ifdef CAMERA_3RD_OIS
-		|| camera_running3
+		|| (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3) && camera_running3)
 #endif
 		)
 		is_ois_get_hall_pos(sysfs_core, targetPos, hallPos);
@@ -3618,13 +3624,23 @@ static ssize_t camera_ois_hall_position_show(struct device *dev,
 		err("Camera power is not enabled.");
 
 #ifdef CAMERA_3RD_OIS
-	info("[%s] %u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u", __func__,
-		targetPos[0], targetPos[1], targetPos[2], targetPos[3], targetPos[4], targetPos[5],
-		hallPos[0], hallPos[1], hallPos[2], hallPos[3], hallPos[4], hallPos[5]);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		info("[%s] %u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u", __func__,
+			targetPos[0], targetPos[1], targetPos[2], targetPos[3], targetPos[4], targetPos[5],
+			hallPos[0], hallPos[1], hallPos[2], hallPos[3], hallPos[4], hallPos[5]);
 
-	return sprintf(buf, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u",
-		targetPos[0], targetPos[1], targetPos[2], targetPos[3], targetPos[4], targetPos[5],
-		hallPos[0], hallPos[1], hallPos[2], hallPos[3], hallPos[4], hallPos[5]);
+		return sprintf(buf, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u",
+			targetPos[0], targetPos[1], targetPos[2], targetPos[3], targetPos[4], targetPos[5],
+			hallPos[0], hallPos[1], hallPos[2], hallPos[3], hallPos[4], hallPos[5]);
+	} else {
+		info("[%s] %u,%u,%u,%u,%u,%u,%u,%u", __func__,
+			targetPos[0], targetPos[1], targetPos[2], targetPos[3],
+			hallPos[0], hallPos[1], hallPos[2], hallPos[3]);
+
+		return sprintf(buf, "%u,%u,%u,%u,%u,%u,%u,%u",
+			targetPos[0], targetPos[1], targetPos[2], targetPos[3],
+			hallPos[0], hallPos[1], hallPos[2], hallPos[3]);
+	}
 #else
 	info("[%s] %u,%u,%u,%u,%u,%u,%u,%u", __func__,
 		targetPos[0], targetPos[1], targetPos[2], targetPos[3],
@@ -5693,13 +5709,15 @@ int is_create_sysfs(struct is_core *core)
 		}
 #endif
 #ifdef CAMERA_3RD_OIS
-		if (device_create_file(camera_ois_dev, &dev_attr_ois_gain_rear4) < 0) {
-			pr_err("failed to create ois device file, %s\n",
-				dev_attr_ois_gain_rear4.attr.name);
-		}
-		if (device_create_file(camera_ois_dev, &dev_attr_ois_supperssion_ratio_rear4) < 0) {
-			pr_err("failed to create ois device file, %s\n",
-				dev_attr_ois_supperssion_ratio_rear4.attr.name);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (device_create_file(camera_ois_dev, &dev_attr_ois_gain_rear4) < 0) {
+				pr_err("failed to create ois device file, %s\n",
+					dev_attr_ois_gain_rear4.attr.name);
+			}
+			if (device_create_file(camera_ois_dev, &dev_attr_ois_supperssion_ratio_rear4) < 0) {
+				pr_err("failed to create ois device file, %s\n",
+					dev_attr_ois_supperssion_ratio_rear4.attr.name);
+			}
 		}
 #endif
 		if (device_create_file(camera_ois_dev, &dev_attr_ois_rawdata) < 0) {
@@ -6059,8 +6077,10 @@ int is_destroy_sysfs(struct is_core *core)
 		device_remove_file(camera_ois_dev, &dev_attr_ois_supperssion_ratio_rear3);
 #endif
 #ifdef CAMERA_3RD_OIS
-		device_remove_file(camera_ois_dev, &dev_attr_ois_gain_rear4);
-		device_remove_file(camera_ois_dev, &dev_attr_ois_supperssion_ratio_rear4);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			device_remove_file(camera_ois_dev, &dev_attr_ois_gain_rear4);
+			device_remove_file(camera_ois_dev, &dev_attr_ois_supperssion_ratio_rear4);
+		}
 #endif
 		device_remove_file(camera_ois_dev, &dev_attr_ois_rawdata);
 		device_remove_file(camera_ois_dev, &dev_attr_calibrationtest);

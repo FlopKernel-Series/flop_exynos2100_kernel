@@ -287,7 +287,8 @@ int is_ois_gpio_on(struct is_core *core)
 	is_ois_control_gpio(core, SENSOR_POSITION_REAR2, GPIO_SCENARIO_ON);
 #endif
 #ifdef CAMERA_3RD_OIS
-	is_ois_control_gpio(core, SENSOR_POSITION_REAR4, GPIO_SCENARIO_ON);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		is_ois_control_gpio(core, SENSOR_POSITION_REAR4, GPIO_SCENARIO_ON);
 #endif
 
 #if defined (CONFIG_CAMERA_USE_INTERNAL_MCU)
@@ -314,7 +315,8 @@ int is_ois_gpio_off(struct is_core *core)
 	is_ois_control_gpio(core, SENSOR_POSITION_REAR2, GPIO_SCENARIO_OFF);
 #endif
 #ifdef CAMERA_3RD_OIS
-	is_ois_control_gpio(core, SENSOR_POSITION_REAR4, GPIO_SCENARIO_OFF);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		is_ois_control_gpio(core, SENSOR_POSITION_REAR4, GPIO_SCENARIO_OFF);
 #endif
 
 

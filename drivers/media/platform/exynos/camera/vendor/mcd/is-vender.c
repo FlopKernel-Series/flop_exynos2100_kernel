@@ -2279,10 +2279,12 @@ int is_vender_sensor_gpio_on(struct is_vender *vender, u32 scenario, u32 gpio_sc
 	}
 #endif
 #ifdef CAMERA_3RD_OIS
-	core = container_of(vender, struct is_core, vender);
-	if (module->position == SENSOR_POSITION_REAR4) {
-		core->mcu->is_tele2_on = true;
-		info("[%s] tele2 power on completed.", __func__);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		core = container_of(vender, struct is_core, vender);
+		if (module->position == SENSOR_POSITION_REAR4) {
+			core->mcu->is_tele2_on = true;
+			info("[%s] tele2 power on completed.", __func__);
+		}
 	}
 #endif
 	return ret;
@@ -2368,9 +2370,11 @@ int is_vender_sensor_gpio_off(struct is_vender *vender, u32 scenario, u32 gpio_s
 	}
 #endif
 #ifdef CAMERA_3RD_OIS
-	core = container_of(vender, struct is_core, vender);
-	if (module->position == SENSOR_POSITION_REAR4)
-		core->mcu->is_tele2_on = false;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		core = container_of(vender, struct is_core, vender);
+		if (module->position == SENSOR_POSITION_REAR4)
+			core->mcu->is_tele2_on = false;
+	}
 #endif
 	return ret;
 }
@@ -2792,7 +2796,7 @@ bool is_vender_check_resource_type(u32 rsc_type)
 {
 	if (rsc_type == RESOURCE_TYPE_SENSOR0 || rsc_type == RESOURCE_TYPE_SENSOR2
 #ifdef CAMERA_3RD_OIS
-	 	|| rsc_type == RESOURCE_TYPE_SENSOR3
+		|| (rsc_type == RESOURCE_TYPE_SENSOR3 && sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
 #endif
 		)
 		return true;
@@ -2901,25 +2905,27 @@ int is_vendor_shaking_gpio_on(struct is_vender *vender)
 	is_ois_control_gpio(core, SENSOR_POSITION_REAR, GPIO_SCENARIO_ON);
 	is_af_move_lens(core, SENSOR_POSITION_REAR);
 #if defined(USE_TELE2_OIS_AF_COMMON_INTERFACE) && defined(CAMERA_3RD_OIS)
-	is_vendor_get_module_from_position(SENSOR_POSITION_REAR4, &module);
-	if (!module) {
-		err("%s, module is NULL", __func__);
-		ret = -EINVAL;
-		mutex_unlock(&g_shaking_mutex);
-		return ret;
-	}
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		is_vendor_get_module_from_position(SENSOR_POSITION_REAR4, &module);
+		if (!module) {
+			err("%s, module is NULL", __func__);
+			ret = -EINVAL;
+			mutex_unlock(&g_shaking_mutex);
+			return ret;
+		}
 
-	sensor_id = module->pdata->id;
-	device = &core->sensor[sensor_id];
+		sensor_id = module->pdata->id;
+		device = &core->sensor[sensor_id];
 
-	is_ois_control_gpio(core, SENSOR_POSITION_REAR4, GPIO_SCENARIO_ON);
+		is_ois_control_gpio(core, SENSOR_POSITION_REAR4, GPIO_SCENARIO_ON);
 
-	if (device->mcu->mcu_ctrl_actuator) {
-		is_vender_mcu_power_on(false);
-		is_ois_init_rear2(core);
-		ret = CALL_OISOPS(device->mcu->ois, ois_set_af_active, device->subdev_mcu, 1);
-		if (ret < 0)
-			err("ois set af active fail");
+		if (device->mcu->mcu_ctrl_actuator) {
+			is_vender_mcu_power_on(false);
+			is_ois_init_rear2(core);
+			ret = CALL_OISOPS(device->mcu->ois, ois_set_af_active, device->subdev_mcu, 1);
+			if (ret < 0)
+				err("ois set af active fail");
+		}
 	}
 #endif
 
@@ -2951,28 +2957,31 @@ int is_vendor_shaking_gpio_off(struct is_vender *vender)
 	core = container_of(vender, struct is_core, vender);
 
 #if defined(USE_TELE2_OIS_AF_COMMON_INTERFACE) && defined(CAMERA_3RD_OIS)
-	is_vendor_get_module_from_position(SENSOR_POSITION_REAR4, &module);
-	if (!module) {
-		err("%s, module is NULL", __func__);
-		ret = -EINVAL;
-		mutex_unlock(&g_shaking_mutex);
-		return ret;
-	}
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		is_vendor_get_module_from_position(SENSOR_POSITION_REAR4, &module);
+		if (!module) {
+			err("%s, module is NULL", __func__);
+			ret = -EINVAL;
+			mutex_unlock(&g_shaking_mutex);
+			return ret;
+		}
 
-	sensor_id = module->pdata->id;
-	device = &core->sensor[sensor_id];
+		sensor_id = module->pdata->id;
+		device = &core->sensor[sensor_id];
 
-	if (device->mcu->mcu_ctrl_actuator) {
-		ret = CALL_OISOPS(device->mcu->ois, ois_set_af_active, device->subdev_mcu, 0);
-		if (ret < 0)
-			err("ois set af active fail");
+		if (device->mcu->mcu_ctrl_actuator) {
+			ret = CALL_OISOPS(device->mcu->ois, ois_set_af_active, device->subdev_mcu, 0);
+			if (ret < 0)
+				err("ois set af active fail");
+		}
+		is_vender_mcu_power_off(false);
 	}
-	is_vender_mcu_power_off(false);
 #endif
 
 	is_ois_control_gpio(core, SENSOR_POSITION_REAR, GPIO_SCENARIO_OFF);
 #if defined(USE_TELE2_OIS_AF_COMMON_INTERFACE) && defined(CAMERA_3RD_OIS)
-	is_ois_control_gpio(core, SENSOR_POSITION_REAR4, GPIO_SCENARIO_OFF);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		is_ois_control_gpio(core, SENSOR_POSITION_REAR4, GPIO_SCENARIO_OFF);
 #endif
 
 	check_shaking_noise = false;

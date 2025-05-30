@@ -1607,14 +1607,16 @@ int is_sec_parse_rom_info(struct is_rom_info *finfo, char *buf, int rom_id)
 		}
 
 #ifdef CAMERA_3RD_OIS
-		if (rom_id == TELE2_OIS_ROM_ID) {
-			memcpy(ois_pinfo->tele2_romdata.xgg, &buf[finfo->rom_ois_list[7]], IS_OIS_GYRO_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.ygg, &buf[finfo->rom_ois_list[8]], IS_OIS_GYRO_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.xcoef, &buf[finfo->rom_ois_list[9]], IS_OIS_COEF_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.ycoef, &buf[finfo->rom_ois_list[10]], IS_OIS_COEF_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.supperssion_xratio, &buf[finfo->rom_ois_list[11]], IS_OIS_SUPPERSSION_RATIO_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.supperssion_yratio, &buf[finfo->rom_ois_list[12]], IS_OIS_SUPPERSSION_RATIO_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.cal_mark, &buf[finfo->rom_ois_list[13]], IS_OIS_CAL_MARK_DATA_SIZE);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (rom_id == TELE2_OIS_ROM_ID) {
+				memcpy(ois_pinfo->tele2_romdata.xgg, &buf[finfo->rom_ois_list[7]], IS_OIS_GYRO_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.ygg, &buf[finfo->rom_ois_list[8]], IS_OIS_GYRO_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.xcoef, &buf[finfo->rom_ois_list[9]], IS_OIS_COEF_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.ycoef, &buf[finfo->rom_ois_list[10]], IS_OIS_COEF_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.supperssion_xratio, &buf[finfo->rom_ois_list[11]], IS_OIS_SUPPERSSION_RATIO_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.supperssion_yratio, &buf[finfo->rom_ois_list[12]], IS_OIS_SUPPERSSION_RATIO_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.cal_mark, &buf[finfo->rom_ois_list[13]], IS_OIS_CAL_MARK_DATA_SIZE);
+			}
 		}
 #endif
 
@@ -1651,14 +1653,16 @@ int is_sec_parse_rom_info(struct is_rom_info *finfo, char *buf, int rom_id)
 		}
 
 #ifdef CAMERA_3RD_OIS
-		if (rom_id == TELE2_OIS_ROM_ID) {
-			memcpy(ois_pinfo->tele2_romdata.xgg, &buf[finfo->rom_ois_list[0]], IS_OIS_GYRO_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.ygg, &buf[finfo->rom_ois_list[1]], IS_OIS_GYRO_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.xcoef, &buf[finfo->rom_ois_list[2]], IS_OIS_COEF_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.ycoef, &buf[finfo->rom_ois_list[3]], IS_OIS_COEF_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.supperssion_xratio, &buf[finfo->rom_ois_list[4]], IS_OIS_SUPPERSSION_RATIO_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.supperssion_yratio, &buf[finfo->rom_ois_list[5]], IS_OIS_SUPPERSSION_RATIO_DATA_SIZE);
-			memcpy(ois_pinfo->tele2_romdata.cal_mark, &buf[finfo->rom_ois_list[6]], IS_OIS_CAL_MARK_DATA_SIZE);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (rom_id == TELE2_OIS_ROM_ID) {
+				memcpy(ois_pinfo->tele2_romdata.xgg, &buf[finfo->rom_ois_list[0]], IS_OIS_GYRO_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.ygg, &buf[finfo->rom_ois_list[1]], IS_OIS_GYRO_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.xcoef, &buf[finfo->rom_ois_list[2]], IS_OIS_COEF_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.ycoef, &buf[finfo->rom_ois_list[3]], IS_OIS_COEF_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.supperssion_xratio, &buf[finfo->rom_ois_list[4]], IS_OIS_SUPPERSSION_RATIO_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.supperssion_yratio, &buf[finfo->rom_ois_list[5]], IS_OIS_SUPPERSSION_RATIO_DATA_SIZE);
+				memcpy(ois_pinfo->tele2_romdata.cal_mark, &buf[finfo->rom_ois_list[6]], IS_OIS_CAL_MARK_DATA_SIZE);
+			}
 		}
 #endif
 
