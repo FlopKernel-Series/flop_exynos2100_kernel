@@ -2382,7 +2382,9 @@ static int __decon_update_regs(struct decon_device *decon, struct decon_reg_data
 	decon_reg_all_win_shadow_update_req(decon->id);
 	decon_to_psr_info(decon, &psr);
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	decon_set_mask_layer(decon, regs, 0);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER)) {
+		decon_set_mask_layer(decon, regs, 0);
+	}
 #endif
 	if ((decon_reg_start(decon->id, &psr) < 0) &&
 			!IS_ENABLED(CONFIG_EXYNOS_EMUL_DISP)) {
@@ -3115,7 +3117,8 @@ end:
 	decon_dpp_stop(decon, false);
 
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	decon_set_mask_layer(decon, regs, 1);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+		decon_set_mask_layer(decon, regs, 1);
 #endif
 
 fence_err:
@@ -3702,7 +3705,8 @@ static int decon_set_win_config(struct decon_device *decon,
 		goto err;
 	}
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	regs->mask_layer = decon_get_mask_layer(decon, win_data);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+		regs->mask_layer = decon_get_mask_layer(decon, win_data);
 #endif
 
 	num_of_window = decon_get_active_win_count(decon, win_data, &readback_req);
@@ -3803,7 +3807,8 @@ add_new_regs:
 
 	kthread_queue_work(&decon->up.worker, &decon->up.work);
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	decon_wait_mask_layer_trigger(decon);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+		decon_wait_mask_layer_trigger(decon);
 #endif
 
 	/**
@@ -5942,7 +5947,8 @@ static int decon_probe(struct platform_device *pdev)
 	init_waitqueue_head(&decon->doze_hiber.doze_wake_wait);
 #endif
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	init_waitqueue_head(&decon->wait_mask_layer_trigger_queue);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+		init_waitqueue_head(&decon->wait_mask_layer_trigger_queue);
 #endif
 #if IS_ENABLED(CONFIG_MCD_PANEL)
 	init_waitqueue_head(&decon->fsync.wait);

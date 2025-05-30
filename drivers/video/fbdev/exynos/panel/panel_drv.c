@@ -3414,7 +3414,8 @@ static long panel_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg
 
 #ifdef CONFIG_SUPPORT_MASK_LAYER
 	case PANEL_IOC_SET_MASK_LAYER:
-		ret = panel_set_mask_layer(panel, arg);
+		if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+			ret = panel_set_mask_layer(panel, arg);
 		break;
 #endif
 

@@ -40,6 +40,7 @@
 #endif
 #include <linux/iommu.h>
 #include <linux/sync_file.h>
+#include <linux/sec_detect.h>
 
 /* TODO: SoC dependency will be removed */
 #include "./cal_2100/regs-decon.h"

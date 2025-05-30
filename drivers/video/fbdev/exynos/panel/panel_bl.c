@@ -508,7 +508,8 @@ static void panel_bl_update_acl_state(struct panel_bl_device *panel_bl)
 	}
 #endif
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (panel_bl->props.mask_layer_br_hook == MASK_LAYER_HOOK_ON) {
+	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER) &&
+	    panel_bl->props.mask_layer_br_hook == MASK_LAYER_HOOK_ON) {
 		panel_bl->props.acl_opr = 0;
 		panel_bl->props.acl_pwrsave = ACL_PWRSAVE_OFF;
 		return;
@@ -903,7 +904,8 @@ int _panel_update_brightness(struct panel_device *panel, u32 send_cmd)
 	brightness = bd->props.brightness;
 
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (panel_bl->props.mask_layer_br_hook == MASK_LAYER_HOOK_ON) {
+	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER) &&
+	    panel_bl->props.mask_layer_br_hook == MASK_LAYER_HOOK_ON) {
 		brightness = panel_bl->props.mask_layer_br_target;
 		panel_info("mask_layer_br_hook (%d)->(%d)\n",
 			bd->props.brightness, panel_bl->props.mask_layer_br_target);
