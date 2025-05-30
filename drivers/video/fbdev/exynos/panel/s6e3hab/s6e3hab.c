@@ -324,8 +324,12 @@ static void print_gamma_table(struct panel_info *panel_data, int id)
 	struct brightness_table *brt_tbl = &panel_bl->subdev[id].brt_tbl;
 
 #ifdef CONFIG_SUPPORT_HMD
-	gamma_maptbl = find_panel_maptbl_by_index(panel_data,
-			(id == PANEL_BL_SUBDEV_TYPE_HMD) ? HMD_GAMMA_MAPTBL : GAMMA_MAPTBL);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+		gamma_maptbl = find_panel_maptbl_by_index(panel_data,
+				(id == PANEL_BL_SUBDEV_TYPE_HMD) ? HMD_GAMMA_MAPTBL : GAMMA_MAPTBL);
+	} else {
+		gamma_maptbl = find_panel_maptbl_by_index(panel_data, GAMMA_MAPTBL);
+	}
 #else
 	gamma_maptbl = find_panel_maptbl_by_index(panel_data, GAMMA_MAPTBL);
 #endif
@@ -395,8 +399,12 @@ static int generate_hbm_gamma_table(struct panel_info *panel_data, int id)
 		}
 
 #ifdef CONFIG_SUPPORT_HMD
-		gamma_maptbl = find_panel_maptbl_by_index(panel_data,
-				(id == PANEL_BL_SUBDEV_TYPE_HMD) ? HMD_GAMMA_MAPTBL : GAMMA_MAPTBL);
+		if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+			gamma_maptbl = find_panel_maptbl_by_index(panel_data,
+					(id == PANEL_BL_SUBDEV_TYPE_HMD) ? HMD_GAMMA_MAPTBL : GAMMA_MAPTBL);
+		} else {
+			gamma_maptbl = find_panel_maptbl_by_index(panel_data, GAMMA_MAPTBL);
+		}
 #else
 		gamma_maptbl = find_panel_maptbl_by_index(panel_data, GAMMA_MAPTBL);
 #endif
@@ -509,9 +517,13 @@ static int generate_gamma_table_using_lut(struct panel_info *panel_data, int id)
 			gamma_maptbl = &panel_dim_info->dimming_maptbl[DIMMING_GAMMA_MAPTBL];
 		} else {
 #ifdef CONFIG_SUPPORT_HMD
-			gamma_maptbl = find_panel_maptbl_by_index(panel_data,
-					(id == PANEL_BL_SUBDEV_TYPE_HMD) ?
-					HMD_GAMMA_MAPTBL : GAMMA_MAPTBL);
+			if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+				gamma_maptbl = find_panel_maptbl_by_index(panel_data,
+						(id == PANEL_BL_SUBDEV_TYPE_HMD) ?
+						HMD_GAMMA_MAPTBL : GAMMA_MAPTBL);
+			} else {
+				gamma_maptbl = find_panel_maptbl_by_index(panel_data, GAMMA_MAPTBL);
+			}
 #else
 			gamma_maptbl = find_panel_maptbl_by_index(panel_data, GAMMA_MAPTBL);
 #endif
@@ -620,7 +632,8 @@ static int generate_gamma_table_using_flash(struct panel_info *panel_data, int i
 	if (id == PANEL_BL_SUBDEV_TYPE_DISP)
 		index = GAMMA_MAPTBL;
 #ifdef CONFIG_SUPPORT_HMD
-	else if (id == PANEL_BL_SUBDEV_TYPE_HMD)
+	else if (id == PANEL_BL_SUBDEV_TYPE_HMD &&
+		 sec_get_feat(SEC_FEAT_SUPPORT_HMD))
 		index = HMD_GAMMA_MAPTBL;
 #endif
 
@@ -637,12 +650,14 @@ static int generate_gamma_table_using_flash(struct panel_info *panel_data, int i
 
 		if (!dim_flash_is_valid(panel_data,
 #ifdef CONFIG_SUPPORT_HMD
-			(id == PANEL_BL_SUBDEV_TYPE_HMD) ? DIM_FLASH_HMD_GAMMA :
+			(sec_get_feat(SEC_FEAT_SUPPORT_HMD) &&
+			 id == PANEL_BL_SUBDEV_TYPE_HMD) ? DIM_FLASH_HMD_GAMMA :
 #endif
 			DIM_FLASH_GAMMA, vrr_idx)) {
 			panel_warn("dim_flash(%d) vrr_idx:%d not prepared\n",
 #ifdef CONFIG_SUPPORT_HMD
-					(id == PANEL_BL_SUBDEV_TYPE_HMD) ? DIM_FLASH_HMD_GAMMA :
+					(sec_get_feat(SEC_FEAT_SUPPORT_HMD) &&
+					 id == PANEL_BL_SUBDEV_TYPE_HMD) ? DIM_FLASH_HMD_GAMMA :
 #endif
 					DIM_FLASH_GAMMA, vrr_idx);
 			continue;
@@ -652,7 +667,8 @@ static int generate_gamma_table_using_flash(struct panel_info *panel_data, int i
 			ret = copy_from_dim_flash(panel_data,
 					tbl->arr + maptbl_index(tbl, vrr_idx, i, 0),
 #ifdef CONFIG_SUPPORT_HMD
-					(id == PANEL_BL_SUBDEV_TYPE_HMD) ? DIM_FLASH_HMD_GAMMA :
+					(sec_get_feat(SEC_FEAT_SUPPORT_HMD) &&
+					 id == PANEL_BL_SUBDEV_TYPE_HMD) ? DIM_FLASH_HMD_GAMMA :
 #endif
 					DIM_FLASH_GAMMA,
 					vrr_idx, i, 0, sizeof_row(tbl));
@@ -1804,9 +1820,11 @@ static void copy_irc_maptbl(struct maptbl *tbl, u8 *dst)
 
 	panel = (struct panel_device *)tbl->pdata;
 #ifdef CONFIG_SUPPORT_HMD
-	if (panel->state.hmd_on == PANEL_HMD_ON) {
-		panel_info("don't support HMD ON\n");
-		return;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+		if (panel->state.hmd_on == PANEL_HMD_ON) {
+			panel_info("don't support HMD ON\n");
+			return;
+		}
 	}
 #endif
 	panel_bl = &panel->panel_bl;
@@ -1867,8 +1885,10 @@ static int init_maptbl_from_table(struct maptbl *tbl, enum dim_flash_items item)
 	panel_data = &panel->panel_data;
 	id = PANEL_BL_SUBDEV_TYPE_DISP;
 #ifdef CONFIG_SUPPORT_HMD
-	if (item == DIM_FLASH_HMD_GAMMA || item == DIM_FLASH_HMD_AOR)
-		id = PANEL_BL_SUBDEV_TYPE_HMD;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+		if (item == DIM_FLASH_HMD_GAMMA || item == DIM_FLASH_HMD_AOR)
+			id = PANEL_BL_SUBDEV_TYPE_HMD;
+	}
 #endif
 	panel_dim_info = panel_data->panel_dim_info[id];
 

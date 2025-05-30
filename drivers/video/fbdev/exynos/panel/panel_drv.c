@@ -2323,16 +2323,18 @@ static int panel_sleep_out(struct panel_device *panel)
 	}
 #endif
 #ifdef CONFIG_SUPPORT_HMD
-	if (state->hmd_on == PANEL_HMD_ON) {
-		panel_info("hmd was on, setting hmd on seq\n");
-		ret = __panel_seq_hmd_on(panel);
-		if (ret)
-			panel_err("failed to set hmd on seq\n");
+	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+		if (state->hmd_on == PANEL_HMD_ON) {
+			panel_info("hmd was on, setting hmd on seq\n");
+			ret = __panel_seq_hmd_on(panel);
+			if (ret)
+				panel_err("failed to set hmd on seq\n");
 
-		ret = panel_bl_set_brightness(&panel->panel_bl,
-				PANEL_BL_SUBDEV_TYPE_HMD, SEND_CMD);
-		if (ret)
-			panel_err("fail to set hmd brightness\n");
+			ret = panel_bl_set_brightness(&panel->panel_bl,
+					PANEL_BL_SUBDEV_TYPE_HMD, SEND_CMD);
+			if (ret)
+				panel_err("fail to set hmd brightness\n");
+		}
 	}
 #endif
 

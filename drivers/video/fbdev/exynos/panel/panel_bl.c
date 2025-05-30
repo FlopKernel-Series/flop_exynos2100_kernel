@@ -494,10 +494,12 @@ static void panel_bl_update_acl_state(struct panel_bl_device *panel_bl)
 	panel_data = &panel->panel_data;
 
 #ifdef CONFIG_SUPPORT_HMD
-	if (panel_bl->props.id == PANEL_BL_SUBDEV_TYPE_HMD) {
-		panel_bl->props.acl_opr = 0;
-		panel_bl->props.acl_pwrsave = ACL_PWRSAVE_OFF;
-		return;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+		if (panel_bl->props.id == PANEL_BL_SUBDEV_TYPE_HMD) {
+			panel_bl->props.acl_opr = 0;
+			panel_bl->props.acl_pwrsave = ACL_PWRSAVE_OFF;
+			return;
+		}
 	}
 #endif
 #ifdef CONFIG_SUPPORT_AOD_BL
@@ -846,8 +848,10 @@ int panel_bl_set_brightness(struct panel_bl_device *panel_bl, int id, u32 send_c
 
 	//g_tracing_mark_write('C', "lcd_br", luminance);
 #ifdef CONFIG_SUPPORT_HMD
-	if (id == PANEL_BL_SUBDEV_TYPE_HMD)
-		index = PANEL_HMD_BL_SEQ;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+		if (id == PANEL_BL_SUBDEV_TYPE_HMD)
+			index = PANEL_HMD_BL_SEQ;
+	}
 #endif
 #ifdef CONFIG_SUPPORT_AOD_BL
 	if (id == PANEL_BL_SUBDEV_TYPE_AOD)
@@ -924,10 +928,12 @@ int _panel_update_brightness(struct panel_device *panel, u32 send_cmd)
 	panel_bl->subdev[PANEL_BL_SUBDEV_TYPE_AOD].brightness = brightness;
 #endif
 #ifdef CONFIG_SUPPORT_HMD
-	if (id == PANEL_BL_SUBDEV_TYPE_HMD) {
-		panel_info("keep plat_br:%d\n", brightness);
-		ret = -EINVAL;
-		goto exit_set;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+		if (id == PANEL_BL_SUBDEV_TYPE_HMD) {
+			panel_info("keep plat_br:%d\n", brightness);
+			ret = -EINVAL;
+			goto exit_set;
+		}
 	}
 #endif
 	ret = panel_bl_set_brightness(panel_bl, id, send_cmd);
