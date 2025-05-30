@@ -285,5 +285,6 @@ source "drivers/input/sec_input/slsi/Kconfig" # ADDED BY LEGO AUTOMATICALLY: DO 
 # p3s
 source "drivers/input/wacom/Kconfig" # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 source "drivers/regulator/s2dos05/Kconfig" # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+source "drivers/sensors/vl53l5/Kconfig" # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 
 endmenu

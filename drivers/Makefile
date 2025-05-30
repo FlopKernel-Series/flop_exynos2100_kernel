@@ -247,3 +247,4 @@ obj-y += input/sec_input/slsi/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 # p3s
 obj-y += input/wacom/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += regulator/s2dos05/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+obj-y += sensors/vl53l5/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
