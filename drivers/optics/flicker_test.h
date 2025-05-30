@@ -42,18 +42,19 @@
  * You can build this with CONFIG_EOL_TEST
  */
 
+#define LED_DT_NODE_NAME "is-flash-gpio"
+
 #if IS_ENABLED(CONFIG_LEDS_S2MPB02)
 #include <linux/leds-s2mpb02.h>
-#define LED_DT_NODE_NAME "is-flash-gpio"
-#elif IS_ENABLED(CONFIG_LEDS_KTD2692)
+#endif
+#if IS_ENABLED(CONFIG_LEDS_KTD2692)
 #include <linux/leds-ktd2692.h>
-#define LED_DT_NODE_NAME "is-flash-gpio"
-#elif IS_ENABLED(CONFIG_LEDS_SM5714)
+#endif
+#if IS_ENABLED(CONFIG_LEDS_SM5714)
 #include <linux/sm5714.h>
-#define LED_DT_NODE_NAME "is-flash-gpio"
-#elif IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)
+#endif
+#if IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)
 #include <linux/leds-aw36518.h>
-#define LED_DT_NODE_NAME "is-flash-gpio"
 #endif
 
 #define DEFAULT_DUTY_50HZ		5000000

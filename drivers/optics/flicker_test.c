@@ -15,6 +15,7 @@
  */
 
 #include "flicker_test.h"
+#include <linux/sec_detect.h>
 
 /* Waiting for an interrupt error */
 #define TEST_WAIT_TIME (30)
@@ -156,38 +157,46 @@ void als_eol_set_env(bool torch, int intensity)
 	if (err < 0)
 		printk(KERN_ERR "%s - test init fail", __func__);
 
-#if IS_ENABLED(CONFIG_LEDS_S2MPB02)
-	if (torch) {
-		env.gpio_led = gpio_torch;
-		env.led_curr = (intensity/20);
-		env.led_mode = S2MPB02_TORCH_LED_1;
-	} else {
-		env.gpio_led = gpio_flash;
-		env.led_curr = (intensity-50)/100;
-		env.led_mode = S2MPB02_FLASH_LED_1;
-	}
-	printk(KERN_INFO "%s - gpio:%d intensity:%d(%d) led_mode:%d",
-			__func__, env.gpio_led, intensity, env.led_curr, env.led_mode);
-#elif IS_ENABLED(CONFIG_LEDS_SM5714)
-	env.gpio_led = gpio_torch;
-	env.led_curr = (intensity-50)/25;
-	printk(KERN_INFO "%s - gpio:%d", __func__, env.gpio_led);
-#elif IS_ENABLED(CONFIG_LEDS_KTD2692)
-	// KTD don't use gpios
-	env.gpio_led = -1;
-	env.led_curr = intensity;
-	env.led_mode = 4;	//Flicker mode
-
-	printk(KERN_INFO "%s - gpio:%d intensity:%d(%d) led_mode:%d",
-			__func__, env.gpio_led, intensity, env.led_curr, env.led_mode);
-#elif IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)
-	env.gpio_led = gpio_flash;
-	env.led_curr = (intensity);
-	printk(KERN_INFO "%s - gpio:%d intensity:%d(%d)",
-			__func__, env.gpio_led, intensity, env.led_curr);
-#else
-	printk(KERN_INFO "%s - env not set");
+	if (sec_get_feat(SEC_FEAT_USES_S2MPB02)) {
+#ifdef CONFIG_LEDS_S2MPB02
+		if (torch) {
+			env.gpio_led = gpio_torch;
+			env.led_curr = (intensity/20);
+			env.led_mode = S2MPB02_TORCH_LED_1;
+		} else {
+			env.gpio_led = gpio_flash;
+			env.led_curr = (intensity-50)/100;
+			env.led_mode = S2MPB02_FLASH_LED_1;
+		}
+		printk(KERN_INFO "%s - gpio:%d intensity:%d(%d) led_mode:%d",
+				__func__, env.gpio_led, intensity, env.led_curr, env.led_mode);
 #endif
+	} else if (sec_get_feat(SEC_FEAT_USES_KTD2692)) {
+#ifdef CONFIG_LEDS_KTD2692
+		// KTD don't use gpios
+		env.gpio_led = -1;
+		env.led_curr = intensity;
+		env.led_mode = 4;	//Flicker mode
+
+		printk(KERN_INFO "%s - gpio:%d intensity:%d(%d) led_mode:%d",
+				__func__, env.gpio_led, intensity, env.led_curr, env.led_mode);
+#endif
+	} else if (IS_ENABLED(CONFIG_LEDS_SM5714)) {
+#ifdef CONFIG_LEDS_SM5714
+		env.gpio_led = gpio_torch;
+		env.led_curr = (intensity-50)/25;
+		printk(KERN_INFO "%s - gpio:%d", __func__, env.gpio_led);
+#endif
+	} else if (IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)) {
+#ifdef CONFIG_LEDS_AW36518_FLASH
+		env.gpio_led = gpio_flash;
+		env.led_curr = (intensity);
+		printk(KERN_INFO "%s - gpio:%d intensity:%d(%d)",
+				__func__, env.gpio_led, intensity, env.led_curr);
+#endif
+	} else {
+		printk(KERN_INFO "%s - env not set");
+	}
 	env.led_state = 1;
 }
 EXPORT_SYMBOL(als_eol_set_env);
@@ -232,9 +241,8 @@ struct result_data* als_eol_mode(void)
 
 	hrtimer_cancel(&data->force_stop_timer);
 	__als_set_led_mode(0);
-#if !IS_ENABLED(CONFIG_LEDS_KTD2692)
-	gpio_free(env.gpio_led);
-#endif
+	if (!sec_get_feat(SEC_FEAT_USES_KTD2692))
+		gpio_free(env.gpio_led);
 
 	test_result.ratio[EOL_STATE_100] = test_result.awb[EOL_STATE_100]*100 / test_result.clear[EOL_STATE_100];
 	test_result.ratio[EOL_STATE_120] = test_result.awb[EOL_STATE_120]*100 / test_result.clear[EOL_STATE_120];
@@ -283,34 +291,43 @@ int __als_eol_init_alloc(void)
 void __als_set_led_mode(int current_index)
 {
 // KTD2692 doesn't need this func.
-#if IS_ENABLED(CONFIG_LEDS_S2MPB02)
-	s2mpb02_led_en(env.led_mode, current_index, S2MPB02_LED_TURN_WAY_GPIO);
-#elif IS_ENABLED(CONFIG_LEDS_SM5714)
-	/* 50~225mA, 25mA step */
-	sm5714_fled_torch_gpio(current_index);
-#elif IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)
-	if (current_index)
-		aw36518_enable_flicker(current_index, true);
-	else
-		aw36518_enable_flicker(0, false);
+	if (sec_get_feat(SEC_FEAT_USES_S2MPB02)) {
+#ifdef CONFIG_LEDS_S2MPB02
+		s2mpb02_led_en(env.led_mode, current_index, S2MPB02_LED_TURN_WAY_GPIO);
 #endif
+	} else if (IS_ENABLED(CONFIG_LEDS_SM5714)) {
+#ifdef CONFIG_LEDS_SM5714
+		/* 50~225mA, 25mA step */
+		sm5714_fled_torch_gpio(current_index);
+#endif
+	} else if (IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)) {
+#ifdef CONFIG_LEDS_AW36518_FLASH
+		if (current_index)
+			aw36518_enable_flicker(current_index, true);
+		else
+			aw36518_enable_flicker(0, false);
+#endif
+	}
 }
 
 int __als_flickering_start(void)
 {
 	int pulse_duty, ret;
-#if !IS_ENABLED(CONFIG_LEDS_KTD2692)
-	ret = gpio_request(env.gpio_led, NULL);
-	if (ret < 0)
-		return ret;
-#endif
+	if (!sec_get_feat(SEC_FEAT_USES_KTD2692)) {
+		ret = gpio_request(env.gpio_led, NULL);
+		if (ret < 0)
+			return ret;
+	}
 
 	data->eol_state = EOL_STATE_INIT;
 	data->eol_enable = 1;
 
-#if IS_ENABLED(CONFIG_LEDS_S2MPB02)
-	__als_set_led_mode(0);
+	if (sec_get_feat(SEC_FEAT_USES_S2MPB02)) {
+#ifdef CONFIG_LEDS_S2MPB02
+		__als_set_led_mode(0);
 #endif
+	}
+
 	__als_set_led_mode(env.led_curr);
 
 	if (g_Hz != -1) {
@@ -332,11 +349,19 @@ int __als_flickering_start(void)
 
 void led_work_func(struct work_struct *work)
 {
-#if IS_ENABLED(CONFIG_LEDS_S2MPB02) || IS_ENABLED(CONFIG_LEDS_SM5714) || IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)
-	gpio_direction_output(env.gpio_led, env.led_state);
-#elif IS_ENABLED(CONFIG_LEDS_KTD2692)
-	ktd2692_led_mode_ctrl(env.led_mode, env.led_state * env.led_curr);
+	if (sec_get_feat(SEC_FEAT_USES_S2MPB02)) {
+#ifdef CONFIG_LEDS_S2MPB02
+		gpio_direction_output(env.gpio_led, env.led_state);
 #endif
+	} else if (IS_ENABLED(CONFIG_LEDS_SM5714) || IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)) {
+#if defined(CONFIG_LEDS_SM5714) || defined(CONFIG_LEDS_AW36518_FLASH)
+		gpio_direction_output(env.gpio_led, env.led_state);
+#endif
+	} else if (sec_get_feat(SEC_FEAT_USES_KTD2692)) {
+#ifdef CONFIG_LEDS_KTD2692
+		ktd2692_led_mode_ctrl(env.led_mode, env.led_state * env.led_curr);
+#endif
+	}
 	env.led_state ^= 1;
 }
 
@@ -374,10 +399,17 @@ int als_eol_parse_dt(void)
 		printk(KERN_ERR "Can't find led node");
 		return -ENODEV;
 	}
-#if IS_ENABLED(CONFIG_LEDS_S2MPB02) || IS_ENABLED(CONFIG_LEDS_SM5714) || IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)
-	gpio_torch = of_get_named_gpio(np, "torch-gpio", 0);
-	gpio_flash = of_get_named_gpio(np, "flash-gpio", 0);
+	if (sec_get_feat(SEC_FEAT_USES_S2MPB02)
+#ifdef CONFIG_LEDS_S2MPB02
+		|| 1
 #endif
+		|| IS_ENABLED(CONFIG_LEDS_SM5714)
+		|| IS_ENABLED(CONFIG_LEDS_AW36518_FLASH)) {
+#if defined(CONFIG_LEDS_S2MPB02) || defined(CONFIG_LEDS_SM5714) || defined(CONFIG_LEDS_AW36518_FLASH)
+		gpio_torch = of_get_named_gpio(np, "torch-gpio", 0);
+		gpio_flash = of_get_named_gpio(np, "flash-gpio", 0);
+#endif
+	}
 	printk(KERN_INFO "torch : %d flash : %d", gpio_torch, gpio_flash);
 
 	return 0;

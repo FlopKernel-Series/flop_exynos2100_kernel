@@ -47,6 +47,8 @@
 #include "is-hw-api-ois-mcu.h"
 #include "is-device-af.h"
 
+#include <linux/sec_detect.h>
+
 extern int is_create_sysfs(struct is_core *core);
 extern bool is_dumped_fw_loading_needed;
 extern bool force_caldata_dump;
@@ -2539,14 +2541,16 @@ int is_vender_set_torch(struct camera2_shot *shot)
 		sky81296_torch_ctrl(1);
 #endif
 #if IS_ENABLED(CONFIG_LEDS_S2MPB02)
+		if (sec_get_feat(SEC_FEAT_USES_S2MPB02)) {
 #if defined(LEDS_S2MPB02_ADAPTIVE_MOVIE_CURRENT)
-		info("s2mpb02 adaptive firingPower(%d)\n", shot->ctl.flash.firingPower);
+			info("s2mpb02 adaptive firingPower(%d)\n", shot->ctl.flash.firingPower);
 
-		if (shot->ctl.flash.firingPower == 5)
-			s2mpb02_set_torch_current(S2MPB02_TORCH_RECORDING, LEDS_S2MPB02_ADAPTIVE_MOVIE_CURRENT);
-		else
+			if (shot->ctl.flash.firingPower == 5)
+				s2mpb02_set_torch_current(S2MPB02_TORCH_RECORDING, LEDS_S2MPB02_ADAPTIVE_MOVIE_CURRENT);
+			else
 #endif
-			s2mpb02_set_torch_current(S2MPB02_TORCH_RECORDING, 0);
+				s2mpb02_set_torch_current(S2MPB02_TORCH_RECORDING, 0);
+		}
 #endif
 		break;
 	case AA_FLASHMODE_START: /*Pre flash mode*/
@@ -2556,7 +2560,9 @@ int is_vender_set_torch(struct camera2_shot *shot)
 		sky81296_torch_ctrl(1);
 #endif
 #if IS_ENABLED(CONFIG_LEDS_S2MPB02)
-		s2mpb02_set_torch_current(S2MPB02_TORCH_PREFLASH, 0);
+		if (sec_get_feat(SEC_FEAT_USES_S2MPB02)) {
+			s2mpb02_set_torch_current(S2MPB02_TORCH_PREFLASH, 0);
+		}
 #endif
 		break;
 	case AA_FLASHMODE_CAPTURE: /*Main flash mode*/
