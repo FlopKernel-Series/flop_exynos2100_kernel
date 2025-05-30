@@ -68,6 +68,7 @@
 // Device-specific
 #include "is-vendor-fragment_rsu.h"
 #include "is-vendor-fragment_usu.h"
+#include "is-vendor-fragment_usuv3.h"
 
 // Differing configurations
 #include "is-vendor-fragment_rsu_usu_diff.h"
