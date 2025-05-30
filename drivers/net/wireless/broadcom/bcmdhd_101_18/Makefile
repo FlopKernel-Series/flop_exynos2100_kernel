@@ -33,6 +33,19 @@ DHDCFLAGS += -Wall -Werror -Wstrict-prototypes -Dlinux -DLINUX -DBCMDRIVER      
 
 DHDCFLAGS += -DOEM_ANDROID
 
+# Symbol renaming for BCM4375 module
+DHDCFLAGS += -Ddhd_host_recover_link=bcm4389_dhd_host_recover_link
+DHDCFLAGS += -Ddhd_smmu_fault_handler=bcm4389_dhd_smmu_fault_handler
+DHDCFLAGS += -Ddhd_dongle_mem_dump=bcm4389_dhd_dongle_mem_dump
+DHDCFLAGS += -Ddhd_bus_check_driver_up=bcm4389_dhd_bus_check_driver_up
+DHDCFLAGS += -Ddhd_wlan_mem_prealloc=bcm4389_dhd_wlan_mem_prealloc
+DHDCFLAGS += -Ddhd_init_wlan_mem=bcm4389_dhd_init_wlan_mem
+DHDCFLAGS += -Ddhd_exit_wlan_mem=bcm4389_dhd_exit_wlan_mem
+DHDCFLAGS += -Ddhd_get_wlan_oob_gpio=bcm4389_dhd_get_wlan_oob_gpio
+DHDCFLAGS += -Ddhd_get_wlan_oob_gpio_number=bcm4389_dhd_get_wlan_oob_gpio_number
+DHDCFLAGS += -Ddhd_wlan_resources=bcm4389_dhd_wlan_resources
+DHDCFLAGS += -Ddhd_wlan_control=bcm4389_dhd_wlan_control
+
 #####################
 # Bus Interface Type
 #####################
