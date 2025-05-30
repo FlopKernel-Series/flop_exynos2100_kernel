@@ -98,6 +98,10 @@ static inline void print_sec_variables(const char *machine_name)
 		       sec_get_feat(SEC_FEAT_SUPPORT_TIG) ? "true" : "false");
 	SEC_DETECT_LOG("sec_feat_support_hmd = %s\n",
 		       sec_get_feat(SEC_FEAT_SUPPORT_HMD) ? "true" : "false");
+	SEC_DETECT_LOG("sec_feat_uses_ssp_unbound = %s\n",
+		       sec_get_feat(SEC_FEAT_USES_SSP_UNBOUND) ? "true" : "false");
+	SEC_DETECT_LOG("sec_feat_uses_ssp_r9s = %s\n",
+		       sec_get_feat(SEC_FEAT_USES_SSP_R9S) ? "true" : "false");
 }
 
 static int __init sec_detect_init(void)
@@ -137,12 +141,14 @@ static int __init sec_detect_init(void)
 		sec_feat_flags[SEC_FEAT_USES_KTD2692] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_MASK_LAYER] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_TIG] = true;
+		sec_feat_flags[SEC_FEAT_USES_SSP_R9S] = true;
 	} else if (strstr(machine_name, "O1S") != NULL) {
 		g_sec_current_device = SEC_O1S;
 		strscpy(g_sec_current_device_name, "o1s",
 			sizeof(g_sec_current_device_name));
 		sec_feat_flags[SEC_FEAT_USES_S2MPB02] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_HMD] = true;
+		sec_feat_flags[SEC_FEAT_USES_SSP_UNBOUND] = true;
 	} else if (strstr(machine_name, "P3S") != NULL) {
 		g_sec_current_device = SEC_P3S;
 		strscpy(g_sec_current_device_name, "p3s",
