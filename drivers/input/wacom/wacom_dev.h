@@ -50,7 +50,8 @@ extern unsigned int lpcharge;
 #define WACOM_CMD_RETRY		2
 #define WACOM_INVALID_IRQ_COUNT	2
 
-//#define CMD_RESULT_WORD_LEN	20
+#undef CMD_RESULT_WORD_LEN
+#define CMD_RESULT_WORD_LEN	12
 
 #define WACOM_I2C_MODE_NORMAL		false
 #define WACOM_I2C_MODE_BOOT		true
