@@ -1471,9 +1471,12 @@ int ois_mcu_af_write_position(struct ois_mcu_dev *mcu, u32 val)
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE)
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS1_REAR2_AF, val_high);
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR2_AF, val_low);
-#elif defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS1_REAR3_AF, val_high);
-	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR3_AF, val_low);
+#endif
+#if defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS1_REAR3_AF, val_high);
+		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR3_AF, val_low);
+	}
 #endif
 	usleep_range(2000, 2100);
 
@@ -1659,9 +1662,12 @@ int ois_mcu_af_move_lens(struct is_core *core)
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE)
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS1_REAR2_AF, 0x80);
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR2_AF, 0x00);
-#elif defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS1_REAR3_AF, 0x80);
-	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR3_AF, 0x00);
+#endif
+#if defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS1_REAR3_AF, 0x80);
+		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR3_AF, 0x00);
+	}
 #endif
 
 	info_mcu("%s : X\n", __func__);
@@ -1838,7 +1844,10 @@ bool ois_mcu_auto_test_all(struct is_core *core,
 #ifdef CAMERA_3RD_OIS
 	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
 #ifdef USE_TELE2_OIS_AF_COMMON_INTERFACE
-		ois_mcu_af_move_lens(core);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+			ois_mcu_af_move_lens(core);
+		else
+			is_af_move_lens(core, SENSOR_POSITION_REAR4);
 #else
 		is_af_move_lens(core, SENSOR_POSITION_REAR4);
 #endif
@@ -2058,7 +2067,10 @@ bool ois_mcu_auto_test_rear2(struct is_core *core,
 #ifdef CAMERA_3RD_OIS
 	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
 #ifdef USE_TELE2_OIS_AF_COMMON_INTERFACE
-		ois_mcu_af_move_lens(core);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+			ois_mcu_af_move_lens(core);
+		else
+			is_af_move_lens(core, SENSOR_POSITION_REAR4);
 #else
 		is_af_move_lens(core, SENSOR_POSITION_REAR4);
 #endif
@@ -3870,25 +3882,27 @@ static int ois_mcu_probe(struct platform_device *pdev)
 		ois[i].ois_ops = &ois_ops_mcu;
 
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-		if (mcu_actuator_list[i] == 1) {
-			actuator->id = ACTUATOR_NAME_AK737X;
-			actuator->subdev = subdev_actuator;
-			actuator->device = sensor_id[i];
-			actuator->position = 0;
-			actuator->need_softlanding = 0;
-			actuator->max_position = MCU_ACT_POS_MAX_SIZE;
-			actuator->pos_size_bit = MCU_ACT_POS_SIZE_BIT;
-			actuator->pos_direction = MCU_ACT_POS_DIRECTION;
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (mcu_actuator_list[i] == 1) {
+				actuator->id = ACTUATOR_NAME_AK737X;
+				actuator->subdev = subdev_actuator;
+				actuator->device = sensor_id[i];
+				actuator->position = 0;
+				actuator->need_softlanding = 0;
+				actuator->max_position = MCU_ACT_POS_MAX_SIZE;
+				actuator->pos_size_bit = MCU_ACT_POS_SIZE_BIT;
+				actuator->pos_direction = MCU_ACT_POS_DIRECTION;
 
-			is_mcu[i].subdev_actuator = subdev_actuator;
-			is_mcu[i].actuator = actuator;
+				is_mcu[i].subdev_actuator = subdev_actuator;
+				is_mcu[i].actuator = actuator;
 
-			device->subdev_actuator[sensor_id[i]] = subdev_actuator;
-			device->actuator[sensor_id[i]] = actuator;
+				device->subdev_actuator[sensor_id[i]] = subdev_actuator;
+				device->actuator[sensor_id[i]] = actuator;
 
-			v4l2_subdev_init(subdev_actuator, &subdev_ops);
-			v4l2_set_subdevdata(subdev_actuator, actuator);
-			v4l2_set_subdev_hostdata(subdev_actuator, device);
+				v4l2_subdev_init(subdev_actuator, &subdev_ops);
+				v4l2_set_subdevdata(subdev_actuator, actuator);
+				v4l2_set_subdev_hostdata(subdev_actuator, device);
+			}
 		}
 #endif
 

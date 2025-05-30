@@ -841,10 +841,12 @@ void is_sensor_ois_set_init_work(struct work_struct *data)
 		err("v4l2_subdev_call(ois_set_mode) is fail(%d)", ret);
 
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-	if (sensor_peri->mcu->mcu_ctrl_actuator) {
-		ret = CALL_OISOPS(sensor_peri->mcu->ois, ois_set_af_active, sensor_peri->subdev_mcu, 1);
-		if (ret < 0)
-			err("ois set af active fail");
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (sensor_peri->mcu->mcu_ctrl_actuator) {
+			ret = CALL_OISOPS(sensor_peri->mcu->ois, ois_set_af_active, sensor_peri->subdev_mcu, 1);
+			if (ret < 0)
+				err("ois set af active fail");
+		}
 	}
 #endif
 	info("[%s] X\n", __func__);
@@ -868,10 +870,12 @@ void is_sensor_ois_set_deinit_work(struct work_struct *data)
 	sensor_peri = ois->sensor_peri;
 
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-	if (sensor_peri->mcu->mcu_ctrl_actuator) {
-		ret = CALL_OISOPS(sensor_peri->mcu->ois, ois_set_af_active, sensor_peri->subdev_mcu, 0);
-		if (ret < 0)
-			err("ois set af active fail");
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (sensor_peri->mcu->mcu_ctrl_actuator) {
+			ret = CALL_OISOPS(sensor_peri->mcu->ois, ois_set_af_active, sensor_peri->subdev_mcu, 0);
+			if (ret < 0)
+				err("ois set af active fail");
+		}
 	}
 #endif
 	info("[%s] X\n", __func__);
@@ -2030,13 +2034,23 @@ int is_sensor_peri_s_stream(struct is_device_sensor *device,
 		if (!skip_sub_device) {
 #ifdef USE_AF_SLEEP_MODE
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-			if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
-#endif
-			{
+			if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+				if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
+				{
+					if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
+						schedule_work(&sensor_peri->actuator->actuator_active_on);
+					}
+				}
+			} else {
 				if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
 					schedule_work(&sensor_peri->actuator->actuator_active_on);
 				}
 			}
+#else
+			if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
+				schedule_work(&sensor_peri->actuator->actuator_active_on);
+			}
+#endif
 #endif
 #ifndef USE_RTA_CONTROL_LASER_AF
 			if (sensor_peri->laser_af && test_bit(IS_SENSOR_LASER_AF_AVAILABLE, &sensor_peri->peri_state)) {
@@ -2074,13 +2088,23 @@ int is_sensor_peri_s_stream(struct is_device_sensor *device,
 			info("[%s] join time E", __func__);
 #ifdef USE_AF_SLEEP_MODE
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-			if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
-#endif
-			{
+			if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+				if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
+				{
+					if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
+						flush_work(&sensor_peri->actuator->actuator_active_on);
+					}
+				}
+			} else {
 				if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
 					flush_work(&sensor_peri->actuator->actuator_active_on);
 				}
 			}
+#else
+			if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
+				flush_work(&sensor_peri->actuator->actuator_active_on);
+			}
+#endif
 #endif
 			info("[%s] join time X", __func__);
 		}
@@ -2137,13 +2161,23 @@ int is_sensor_peri_s_stream(struct is_device_sensor *device,
 			/* stream off sequence */
 #ifdef USE_AF_SLEEP_MODE
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-			if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
-#endif
-			{
+			if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+				if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
+				{
+					if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
+						schedule_work(&sensor_peri->actuator->actuator_active_off);
+					}
+				}
+			} else {
 				if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
 					schedule_work(&sensor_peri->actuator->actuator_active_off);
 				}
 			}
+#else
+			if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
+				schedule_work(&sensor_peri->actuator->actuator_active_off);
+			}
+#endif
 #endif
 		}
 
@@ -2205,13 +2239,23 @@ int is_sensor_peri_s_stream(struct is_device_sensor *device,
 #endif
 #ifdef USE_AF_SLEEP_MODE
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-			if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
-#endif
-			{
+			if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+				if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
+				{
+					if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
+						flush_work(&sensor_peri->actuator->actuator_active_off);
+					}
+				}
+			} else {
 				if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
 					flush_work(&sensor_peri->actuator->actuator_active_off);
 				}
 			}
+#else
+			if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
+				flush_work(&sensor_peri->actuator->actuator_active_off);
+			}
+#endif
 #endif
 
 			info("[%s] join time X", __func__);

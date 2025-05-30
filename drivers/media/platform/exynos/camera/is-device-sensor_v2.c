@@ -2435,9 +2435,28 @@ int is_sensor_s_input(struct is_device_sensor *device,
 	}
 
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-	if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
-#endif
-	{
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
+		{
+			if (sensor_peri->actuator
+				&& module->ext.actuator_con.product_name == device->actuator[device->pdev->id]->id) {
+				u32 i2c_channel = module->ext.actuator_con.peri_setting.i2c.channel;
+				sensor_peri->actuator->sensor_peri = sensor_peri;
+				if (i2c_channel < SENSOR_CONTROL_I2C_MAX) {
+					sensor_peri->actuator->i2c_lock = &core->i2c_lock[i2c_channel];
+					set_bit(IS_SENSOR_ACTUATOR_AVAILABLE, &sensor_peri->peri_state);
+					minfo("%s[%d] enable actuator i2c client. position = %d\n",
+						device, __func__, __LINE__,
+						core->current_position);
+				} else {
+					mwarn("wrong actuator i2c_channel(%d)", device, i2c_channel);
+				}
+			} else {
+				sensor_peri->subdev_actuator = NULL;
+				sensor_peri->actuator = NULL;
+			}
+		}
+	} else {
 		if (sensor_peri->actuator
 			&& module->ext.actuator_con.product_name == device->actuator[device->pdev->id]->id) {
 			u32 i2c_channel = module->ext.actuator_con.peri_setting.i2c.channel;
@@ -2456,6 +2475,25 @@ int is_sensor_s_input(struct is_device_sensor *device,
 			sensor_peri->actuator = NULL;
 		}
 	}
+#else
+	if (sensor_peri->actuator
+		&& module->ext.actuator_con.product_name == device->actuator[device->pdev->id]->id) {
+		u32 i2c_channel = module->ext.actuator_con.peri_setting.i2c.channel;
+		sensor_peri->actuator->sensor_peri = sensor_peri;
+		if (i2c_channel < SENSOR_CONTROL_I2C_MAX) {
+			sensor_peri->actuator->i2c_lock = &core->i2c_lock[i2c_channel];
+			set_bit(IS_SENSOR_ACTUATOR_AVAILABLE, &sensor_peri->peri_state);
+			minfo("%s[%d] enable actuator i2c client. position = %d\n",
+				device, __func__, __LINE__,
+				core->current_position);
+		} else {
+			mwarn("wrong actuator i2c_channel(%d)", device, i2c_channel);
+		}
+	} else {
+		sensor_peri->subdev_actuator = NULL;
+		sensor_peri->actuator = NULL;
+	}
+#endif
 
 	/* set flash data */
 	if (device->flash && module->ext.flash_con.product_name == device->flash->id) {
@@ -2484,11 +2522,13 @@ int is_sensor_s_input(struct is_device_sensor *device,
 			sensor_peri->mcu->ois->sensor_peri = sensor_peri;
 		}
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-		if (device->mcu->actuator) {
-			sensor_peri->actuator = device->mcu->actuator;
-			sensor_peri->subdev_actuator = device->mcu->actuator->subdev;
-			sensor_peri->actuator->sensor_peri = sensor_peri;
-			set_bit(IS_SENSOR_ACTUATOR_AVAILABLE, &sensor_peri->peri_state);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (device->mcu->actuator) {
+				sensor_peri->actuator = device->mcu->actuator;
+				sensor_peri->subdev_actuator = device->mcu->actuator->subdev;
+				sensor_peri->actuator->sensor_peri = sensor_peri;
+				set_bit(IS_SENSOR_ACTUATOR_AVAILABLE, &sensor_peri->peri_state);
+			}
 		}
 #endif
 #ifndef CONFIG_CAMERA_USE_INTERNAL_MCU
