@@ -22,6 +22,7 @@
 
 static int g_sec_current_device = DEVICE_UNKNOWN;
 static char g_sec_current_device_name[32] = "Unknown";
+static bool sec_feat_flags[SEC_FEAT_COUNT];
 static bool g_detection_complete;
 
 enum SEC_devices sec_get_current_device(void)
@@ -29,6 +30,15 @@ enum SEC_devices sec_get_current_device(void)
 	return g_sec_current_device;
 }
 EXPORT_SYMBOL_GPL(sec_get_current_device);
+
+bool sec_get_feat(enum sec_feat feat)
+{
+	if (feat < 0 || feat >= SEC_FEAT_COUNT)
+		return false;
+
+	return sec_feat_flags[feat];
+}
+EXPORT_SYMBOL_GPL(sec_get_feat);
 
 bool sec_is_detection_complete(void)
 {
@@ -78,6 +88,10 @@ static inline void print_sec_variables(const char *machine_name)
 	SEC_DETECT_LOG("Current machine name: %s\n", machine_name);
 	SEC_DETECT_LOG("Detected device codename: %s\n",
 		       g_sec_current_device_name);
+	SEC_DETECT_LOG("sec_feat_uses_s2mpb02 = %s\n",
+		       sec_get_feat(SEC_FEAT_USES_S2MPB02) ? "true" : "false");
+	SEC_DETECT_LOG("sec_feat_uses_ktd2692 = %s\n",
+		       sec_get_feat(SEC_FEAT_USES_KTD2692) ? "true" : "false");
 }
 
 static int __init sec_detect_init(void)
@@ -114,18 +128,22 @@ static int __init sec_detect_init(void)
 		g_sec_current_device = SEC_R9S;
 		strscpy(g_sec_current_device_name, "r9s",
 			sizeof(g_sec_current_device_name));
+		sec_feat_flags[SEC_FEAT_USES_KTD2692] = true;
 	} else if (strstr(machine_name, "O1S") != NULL) {
 		g_sec_current_device = SEC_O1S;
 		strscpy(g_sec_current_device_name, "o1s",
 			sizeof(g_sec_current_device_name));
+		sec_feat_flags[SEC_FEAT_USES_S2MPB02] = true;
 	} else if (strstr(machine_name, "P3S") != NULL) {
 		g_sec_current_device = SEC_P3S;
 		strscpy(g_sec_current_device_name, "p3s",
 			sizeof(g_sec_current_device_name));
+		sec_feat_flags[SEC_FEAT_USES_S2MPB02] = true;
 	} else if (strstr(machine_name, "T2S") != NULL) {
 		g_sec_current_device = SEC_T2S;
 		strscpy(g_sec_current_device_name, "t2s",
 			sizeof(g_sec_current_device_name));
+		sec_feat_flags[SEC_FEAT_USES_S2MPB02] = true;
 	}
 
 	print_sec_variables(machine_name);

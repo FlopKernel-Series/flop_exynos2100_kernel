@@ -33,7 +33,14 @@ static const char *const device_names[] = {
 	[SEC_T2S] = "Galaxy S21+",
 };
 
+enum sec_feat {
+	SEC_FEAT_USES_S2MPB02 = 0,
+	SEC_FEAT_USES_KTD2692,
+	SEC_FEAT_COUNT,
+};
+
 enum SEC_devices sec_get_current_device(void);
+bool sec_get_feat(enum sec_feat feat);
 bool sec_is_detection_complete(void);
 
 #endif /* _LINUX_SEC_H */
