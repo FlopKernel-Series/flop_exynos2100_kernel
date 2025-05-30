@@ -2846,8 +2846,8 @@ static void *unbound3_a3_s0_dummy_cmdtbl[] = {
 
 #ifdef CONFIG_SUPPORT_GM2_FLASH
 static void *unbound3_a3_s0_gm2_flash_res_init_cmdtbl[] = {
-	&s6e3had_restbl[RES_GM2_FLASH_VBIAS1],
-	&s6e3had_restbl[RES_GM2_FLASH_VBIAS2],
+	// &s6e3had_restbl[RES_GM2_FLASH_VBIAS1],
+	// &s6e3had_restbl[RES_GM2_FLASH_VBIAS2],
 };
 #endif
 
