@@ -186,9 +186,11 @@ static int sensor_module_3m5_power_setpin(struct device *dev,
 
 	/* TELE CAMERA - POWER ON */
 #ifdef USE_BUCK2_REGULATOR_CONTROL
-	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, gpio_none, "VDD_EXT_1P3_PB02", PIN_REGULATOR, 1, 0);
-	SET_PIN_SHARED(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, SRT_ACQUIRE,
-			&core->shared_rsc_slock[SHARED_PIN7], &core->shared_rsc_count[SHARED_PIN7], 1);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, gpio_none, "VDD_EXT_1P3_PB02", PIN_REGULATOR, 1, 0);
+		SET_PIN_SHARED(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON, SRT_ACQUIRE,
+				&core->shared_rsc_slock[SHARED_PIN7], &core->shared_rsc_count[SHARED_PIN7], 1);
+	}
 #endif
 	if (gpio_is_valid(gpio_subcam_sel))
 		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_ON,
@@ -273,16 +275,20 @@ static int sensor_module_3m5_power_setpin(struct device *dev,
 			&core->shared_rsc_slock[SHARED_PIN3], &core->shared_rsc_count[SHARED_PIN3], 0);
 #endif
 #ifdef USE_BUCK2_REGULATOR_CONTROL
-	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, gpio_none, "VDD_EXT_1P3_PB02", PIN_REGULATOR, 0, 0);
-	SET_PIN_SHARED(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, SRT_RELEASE,
-			&core->shared_rsc_slock[SHARED_PIN7], &core->shared_rsc_count[SHARED_PIN7], 0);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, gpio_none, "VDD_EXT_1P3_PB02", PIN_REGULATOR, 0, 0);
+		SET_PIN_SHARED(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, SRT_RELEASE,
+				&core->shared_rsc_slock[SHARED_PIN7], &core->shared_rsc_count[SHARED_PIN7], 0);
+	}
 #endif
 
 	/* VISION - POWER ON */
 #ifdef USE_BUCK2_REGULATOR_CONTROL
-	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDD_EXT_1P3_PB02", PIN_REGULATOR, 1, 0);
-	SET_PIN_SHARED(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, SRT_ACQUIRE,
-			&core->shared_rsc_slock[SHARED_PIN7], &core->shared_rsc_count[SHARED_PIN7], 1);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDD_EXT_1P3_PB02", PIN_REGULATOR, 1, 0);
+		SET_PIN_SHARED(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, SRT_ACQUIRE,
+				&core->shared_rsc_slock[SHARED_PIN7], &core->shared_rsc_count[SHARED_PIN7], 1);
+	}
 #endif
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDDA_2.8V_SUB", PIN_REGULATOR, 1, 0);
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDDD_1.05V_SUB", PIN_REGULATOR, 1, 0);
@@ -325,10 +331,12 @@ static int sensor_module_3m5_power_setpin(struct device *dev,
 #ifdef CONFIG_OIS_USE
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, gpio_none, "VDDD_1.8V_OIS", PIN_REGULATOR, 0, 0);
 #endif
-#ifdef USE_BUCK2_REGULATOR_CONTROL
-	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, gpio_none, "VDD_EXT_1P3_PB02", PIN_REGULATOR, 0, 0);
-	SET_PIN_SHARED(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, SRT_RELEASE,
-			&core->shared_rsc_slock[SHARED_PIN7], &core->shared_rsc_count[SHARED_PIN7], 0);
+#ifdef 
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, gpio_none, "VDD_EXT_1P3_PB02", PIN_REGULATOR, 0, 0);
+		SET_PIN_SHARED(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, SRT_RELEASE,
+				&core->shared_rsc_slock[SHARED_PIN7], &core->shared_rsc_count[SHARED_PIN7], 0);
+	}
 #endif
 
 	dev_info(dev, "%s X v4\n", __func__);

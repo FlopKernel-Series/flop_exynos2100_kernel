@@ -53,8 +53,10 @@ static int flash_s2mpb02_init(struct v4l2_subdev *subdev, u32 val)
 	flash->flash_data.flash_fired = false;
 
 #ifdef LEDS_S2MPB02_FLASH_GPIO_CONTROL
-	gpio_request_one(flash->flash_gpio, GPIOF_OUT_INIT_LOW, "CAM_FLASH_GPIO_OUTPUT");
-	gpio_free(flash->flash_gpio);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		gpio_request_one(flash->flash_gpio, GPIOF_OUT_INIT_LOW, "CAM_FLASH_GPIO_OUTPUT");
+		gpio_free(flash->flash_gpio);
+	}
 #endif
 	gpio_request_one(flash->torch_gpio, GPIOF_OUT_INIT_LOW, "CAM_TORCH_GPIO_OUTPUT");
 	gpio_free(flash->torch_gpio);
@@ -81,7 +83,10 @@ static int sensor_s2mpb02_flash_control(struct v4l2_subdev *subdev, enum flash_m
 
 	if (mode == CAM2_FLASH_MODE_OFF) {
 #ifdef LEDS_S2MPB02_FLASH_GPIO_CONTROL
-		ret = control_flash_gpio(flash->flash_gpio, 0);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU))
+			ret = control_flash_gpio(flash->flash_gpio, 0);
+		else
+			ret = s2mpb02_led_en(S2MPB02_FLASH_LED_1, 0, S2MPB02_LED_TURN_WAY_I2C);
 #else
 		ret = s2mpb02_led_en(S2MPB02_FLASH_LED_1, 0, S2MPB02_LED_TURN_WAY_I2C);
 #endif
@@ -93,8 +98,14 @@ static int sensor_s2mpb02_flash_control(struct v4l2_subdev *subdev, enum flash_m
 	} else if (mode == CAM2_FLASH_MODE_SINGLE) {
 		if (intensity >= 150) {
 #ifdef LEDS_S2MPB02_FLASH_GPIO_CONTROL
-			s2mpb02_set_flash_current(intensity);
-			ret = control_flash_gpio(flash->flash_gpio, 1);
+			if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+				s2mpb02_set_flash_current(intensity);
+				ret = control_flash_gpio(flash->flash_gpio, 1);
+			} else {
+				ret = s2mpb02_led_en(S2MPB02_FLASH_LED_1,
+				((intensity > 150) ? ((intensity - 50) / 100) : 1),
+				S2MPB02_LED_TURN_WAY_I2C);
+			}
 #else
 			ret = s2mpb02_led_en(S2MPB02_FLASH_LED_1,
 					((intensity > 150) ? ((intensity - 50) / 100) : 1),
@@ -275,15 +286,17 @@ static int flash_s2mpb02_probe(struct device *dev, struct i2c_client *client)
 		flash[i].client = client;
 
 #ifdef LEDS_S2MPB02_FLASH_GPIO_CONTROL
-		flash[i].flash_gpio = of_get_named_gpio(dnode, "flash-gpio", 0);
-		if (!gpio_is_valid(flash[i].flash_gpio)) {
-			dev_err(dev, "failed to get PIN_RESET\n");
-			kfree(flash);
-			kfree(subdev_flash);
-			return -EINVAL;
-		} else {
-			gpio_request_one(flash[i].flash_gpio, GPIOF_OUT_INIT_LOW, "CAM_FLASH_OUTPUT");
-			gpio_free(flash[i].flash_gpio);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+			flash[i].flash_gpio = of_get_named_gpio(dnode, "flash-gpio", 0);
+			if (!gpio_is_valid(flash[i].flash_gpio)) {
+				dev_err(dev, "failed to get PIN_RESET\n");
+				kfree(flash);
+				kfree(subdev_flash);
+				return -EINVAL;
+			} else {
+				gpio_request_one(flash[i].flash_gpio, GPIOF_OUT_INIT_LOW, "CAM_FLASH_OUTPUT");
+				gpio_free(flash[i].flash_gpio);
+			}
 		}
 #endif
 
