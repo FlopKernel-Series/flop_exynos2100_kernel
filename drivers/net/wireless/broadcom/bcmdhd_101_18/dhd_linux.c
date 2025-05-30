@@ -13291,6 +13291,13 @@ dhd_module_init(void)
 {
 	int err;
 
+#if defined(CONFIG_SEC_DETECT)
+	if (!sec_get_feat(SEC_FEAT_USES_BCM4389)) {
+		SEC_DETECT_LOG("This device is not allowed to load BCM4389 driver!\n");
+		return 0;
+	}
+#endif
+
 	err = _dhd_module_init();
 #ifdef DHD_SUPPORT_HDM
 	if (err && !dhd_download_fw_on_driverload) {
@@ -13312,6 +13319,13 @@ int
 dhd_module_init_hdm(void)
 {
 	int err = 0;
+
+#if defined(CONFIG_SEC_DETECT)
+	if (!sec_get_feat(SEC_FEAT_USES_BCM4389)) {
+		SEC_DETECT_LOG("This device is not allowed to load BCM4389 driver!\n");
+		return 0;
+	}
+#endif
 
 	hdm_trigger_init = TRUE;
 

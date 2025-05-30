@@ -59,6 +59,10 @@
 
 #include <linux/nl80211.h>
 
+#if defined(CONFIG_SEC_DETECT)
+#include <linux/sec_detect.h>
+#endif
+
 #ifdef WL_MONITOR
 #define MAX_RADIOTAP_SIZE      256 /* Maximum size to hold HE Radiotap header format */
 #define MAX_MON_PKT_SIZE       (4096 + MAX_RADIOTAP_SIZE)
