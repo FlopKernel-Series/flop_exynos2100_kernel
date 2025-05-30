@@ -37,11 +37,13 @@
 #include "is-resourcemgr.h"
 #include "is-dt.h"
 #include "is-cis-imx563.h"
-#ifndef USE_CAMERA_IMX563_4000X3000
+// #ifndef USE_CAMERA_IMX563_4000X3000
 #include "is-cis-imx563-setA.h"
-#else
+// #else
+#ifdef USE_CAMERA_IMX563_4000X3000
 #include "is-cis-imx563-setB.h"
 #endif
+// #endif
 #include "is-helper-i2c.h"
 
 #define SENSOR_NAME "IMX563"
@@ -109,7 +111,10 @@ static bool sensor_imx563_cis_is_wdr_mode_on(cis_shared_data *cis_data)
 		return false;
 	}
 
-	return sensor_imx563_support_wdr[mode];
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		return sensor_imx563_support_wdr[mode];
+	else
+		return sensor_imx563_support_wdr_4x[mode];
 }
 
 /*************************************************
@@ -146,7 +151,10 @@ static void sensor_imx563_set_integration_max_margin(u32 mode, cis_shared_data *
 		err("invalid mode(%d)!!", mode);
 	}
 
-	cis_data->max_margin_coarse_integration_time = sensor_imx563_integration_max_margin[mode];
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		cis_data->max_margin_coarse_integration_time = sensor_imx563_integration_max_margin_4x[mode];
+	else
+		cis_data->max_margin_coarse_integration_time = sensor_imx563_integration_max_margin[mode];
 
 	dbg_sensor(1, "max_margin_coarse_integration_time(%d)\n", cis_data->max_margin_coarse_integration_time);
 }
@@ -217,23 +225,44 @@ static void sensor_imx563_cis_data_calculation(const struct sensor_pll_info_comp
 	cis_data->min_fine_integration_time = SENSOR_IMX563_FINE_INTEGRATION_TIME_MIN;
 	cis_data->max_fine_integration_time = SENSOR_IMX563_FINE_INTEGRATION_TIME_MAX;
 
-	switch (cis_data->sens_config_index_cur) {
-#ifdef USE_CAMERA_IMX563_4000X3000
-		case SENSOR_IMX563_1984X1488_30FPS:
-		case SENSOR_IMX563_1008X756_120FPS:
-		case SENSOR_IMX563_1984X1488_240FPS:
-		case SENSOR_IMX563_2016X1136_480FPS:
-		case SENSOR_IMX563_1280X720_480FPS:
-#else
-		case SENSOR_IMX563_2016X1512_120FPS:
-		case SENSOR_IMX563_2016X1134_120FPS:
-		case SENSOR_IMX563_2016X1134_240FPS:
-#endif
-			cis_data->min_coarse_integration_time = 32;
-        break;
-        default:
-			cis_data->min_coarse_integration_time = SENSOR_IMX563_COARSE_INTEGRATION_TIME_MIN;
-		break;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		switch (cis_data->sens_config_index_cur) {
+	// #ifdef USE_CAMERA_IMX563_4000X3000
+			case SENSOR_IMX563_1984X1488_30FPS:
+			case SENSOR_IMX563_1008X756_120FPS:
+			case SENSOR_IMX563_1984X1488_240FPS:
+			case SENSOR_IMX563_2016X1136_480FPS:
+			case SENSOR_IMX563_1280X720_480FPS:
+	// #else
+	// 		case SENSOR_IMX563_2016X1512_120FPS:
+	// 		case SENSOR_IMX563_2016X1134_120FPS:
+	// 		case SENSOR_IMX563_2016X1134_240FPS:
+	// #endif
+				cis_data->min_coarse_integration_time = 32;
+			break;
+			default:
+				cis_data->min_coarse_integration_time = SENSOR_IMX563_COARSE_INTEGRATION_TIME_MIN;
+			break;
+		}
+	} else {
+		switch (cis_data->sens_config_index_cur) {
+	// #ifdef USE_CAMERA_IMX563_4000X3000
+	// 		case SENSOR_IMX563_1984X1488_30FPS:
+	// 		case SENSOR_IMX563_1008X756_120FPS:
+	// 		case SENSOR_IMX563_1984X1488_240FPS:
+	// 		case SENSOR_IMX563_2016X1136_480FPS:
+	// 		case SENSOR_IMX563_1280X720_480FPS:
+	// #else
+			case SENSOR_IMX563_2016X1512_120FPS:
+			case SENSOR_IMX563_2016X1134_120FPS:
+			case SENSOR_IMX563_2016X1134_240FPS:
+	// #endif
+				cis_data->min_coarse_integration_time = 32;
+			break;
+			default:
+				cis_data->min_coarse_integration_time = SENSOR_IMX563_COARSE_INTEGRATION_TIME_MIN;
+			break;
+		}
 	}
 }
 
@@ -280,21 +309,24 @@ int sensor_imx563_cis_select_setfile(struct v4l2_subdev *subdev)
 	switch (rev) {
 	default:
 		info("imx563 sensor revision(%#x)\n", rev);
-#ifndef USE_CAMERA_IMX563_4000X3000
-		sensor_imx563_global = sensor_imx563_setfile_A_Global;
-		sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_A_Global);
-		sensor_imx563_setfiles = sensor_imx563_setfiles_A;
-		sensor_imx563_setfile_sizes = sensor_imx563_setfile_A_sizes;
-		sensor_imx563_pllinfos = sensor_imx563_pllinfos_A;
-		sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_A);
-#else
-		sensor_imx563_global = sensor_imx563_setfile_B_Global;
-		sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_B_Global);
-		sensor_imx563_setfiles = sensor_imx563_setfiles_B;
-		sensor_imx563_setfile_sizes = sensor_imx563_setfile_B_sizes;
-		sensor_imx563_pllinfos = sensor_imx563_pllinfos_B;
-		sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_B);
-#endif
+// #ifndef USE_CAMERA_IMX563_4000X3000
+		if (!sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			sensor_imx563_global = sensor_imx563_setfile_A_Global;
+			sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_A_Global);
+			sensor_imx563_setfiles = sensor_imx563_setfiles_A;
+			sensor_imx563_setfile_sizes = sensor_imx563_setfile_A_sizes;
+			sensor_imx563_pllinfos = sensor_imx563_pllinfos_A;
+			sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_A);
+		} else {
+// #else
+			sensor_imx563_global = sensor_imx563_setfile_B_Global;
+			sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_B_Global);
+			sensor_imx563_setfiles = sensor_imx563_setfiles_B;
+			sensor_imx563_setfile_sizes = sensor_imx563_setfile_B_sizes;
+			sensor_imx563_pllinfos = sensor_imx563_pllinfos_B;
+			sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_B);
+		}
+// #endif
 		break;
 	}
 
@@ -336,8 +368,13 @@ int sensor_imx563_cis_init(struct v4l2_subdev *subdev)
 
 	cis->cis_data->stream_on = false;
 	cis->cis_data->product_name = cis->id;
-	cis->cis_data->cur_width = SENSOR_IMX563_MAX_WIDTH;
-	cis->cis_data->cur_height = SENSOR_IMX563_MAX_HEIGHT;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		cis->cis_data->cur_width = SENSOR_IMX563_MAX_WIDTH_4X;
+		cis->cis_data->cur_height = SENSOR_IMX563_MAX_HEIGHT_4X;
+	} else {
+		cis->cis_data->cur_width = SENSOR_IMX563_MAX_WIDTH;
+		cis->cis_data->cur_height = SENSOR_IMX563_MAX_HEIGHT;
+	}
 	cis->cis_data->low_expo_start = 33000;
 	cis->need_mode_change = false;
 	cis->long_term_mode.sen_strm_off_on_enable = false;
@@ -551,17 +588,18 @@ int sensor_imx563_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 	}
 
 #ifdef USE_CAMERA_IMX563_4000X3000
-	if (mode == SENSOR_IMX563_2016X1136_480FPS
-		|| mode == SENSOR_IMX563_1280X720_480FPS) {
+	if ((mode == SENSOR_IMX563_2016X1136_480FPS
+		|| mode == SENSOR_IMX563_1280X720_480FPS) && sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
 		/* EMB 2 Lines */
 		ret |= is_sensor_write8(cis->client, 0xBCF0, 0x00);
 		ret |= is_sensor_write8(cis->client, 0xBCF1, 0x02);
 
 		/* PD TAIL OFF */
 		ret |= is_sensor_write8(cis->client, 0x3081, 0x00);
-	} else
-#endif
+	} else {
+#else
 	{
+#endif
 		/* EMB OFF */
 		ret |= is_sensor_write8(cis->client, 0xBCF0, 0x00);
 		ret |= is_sensor_write8(cis->client, 0xBCF1, 0x00);
@@ -1011,10 +1049,12 @@ int sensor_imx563_cis_set_exposure_time(struct v4l2_subdev *subdev, struct ae_pa
 			goto p_err_i2c_unlock;
 
 #ifdef USE_CAMERA_IMX563_4000X3000
-		if (cis_data->sens_config_index_cur == SENSOR_IMX563_2016X1136_480FPS
-			|| cis_data->sens_config_index_cur == SENSOR_IMX563_1280X720_480FPS) {
-			ret |= is_sensor_write16(client, 0x0E10, short_coarse_int);
-			ret |= is_sensor_write16(client, 0x0E28, short_coarse_int);
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (cis_data->sens_config_index_cur == SENSOR_IMX563_2016X1136_480FPS
+				|| cis_data->sens_config_index_cur == SENSOR_IMX563_1280X720_480FPS) {
+				ret |= is_sensor_write16(client, 0x0E10, short_coarse_int);
+				ret |= is_sensor_write16(client, 0x0E28, short_coarse_int);
+			}
 		}
 #endif
 	}
@@ -1489,10 +1529,12 @@ int sensor_imx563_cis_set_analog_gain(struct v4l2_subdev *subdev, struct ae_para
 		goto p_err_i2c_unlock;
 
 #ifdef USE_CAMERA_IMX563_4000X3000
-	if (cis->cis_data->sens_config_index_cur == SENSOR_IMX563_2016X1136_480FPS
-		|| cis->cis_data->sens_config_index_cur == SENSOR_IMX563_1280X720_480FPS) {
-		ret |= is_sensor_write16(client, 0x0E12, analog_gain);
-		ret |= is_sensor_write16(client, 0x0E2A, analog_gain);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (cis->cis_data->sens_config_index_cur == SENSOR_IMX563_2016X1136_480FPS
+			|| cis->cis_data->sens_config_index_cur == SENSOR_IMX563_1280X720_480FPS) {
+			ret |= is_sensor_write16(client, 0x0E12, analog_gain);
+			ret |= is_sensor_write16(client, 0x0E2A, analog_gain);
+		}
 	}
 #endif
 
@@ -1727,10 +1769,12 @@ int sensor_imx563_cis_set_digital_gain(struct v4l2_subdev *subdev, struct ae_par
 		goto p_err_i2c_unlock;
 
 #ifdef USE_CAMERA_IMX563_4000X3000
-	if (cis_data->sens_config_index_cur == SENSOR_IMX563_2016X1136_480FPS
-		|| cis_data->sens_config_index_cur == SENSOR_IMX563_1280X720_480FPS) {
-		ret |= is_sensor_write16(client, 0x0E14, short_gain);
-		ret |= is_sensor_write16(client, 0x0E2C, short_gain);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (cis_data->sens_config_index_cur == SENSOR_IMX563_2016X1136_480FPS
+			|| cis_data->sens_config_index_cur == SENSOR_IMX563_1280X720_480FPS) {
+			ret |= is_sensor_write16(client, 0x0E14, short_gain);
+			ret |= is_sensor_write16(client, 0x0E2C, short_gain);
+		}
 	}
 #endif
 
@@ -1921,62 +1965,107 @@ int sensor_imx563_cis_compensate_gain_for_extremely_br(struct v4l2_subdev *subde
 		goto p_err;
 	}
 
-	switch (cis->cis_data->sens_config_index_cur) {
-#ifdef USE_CAMERA_IMX563_4000X3000
-		case SENSOR_IMX563_1984X1488_30FPS:
-		case SENSOR_IMX563_1008X756_120FPS:
-		case SENSOR_IMX563_1984X1488_240FPS:
-		case SENSOR_IMX563_2016X1136_480FPS:
-		case SENSOR_IMX563_1280X720_480FPS:
-#else
-		case SENSOR_IMX563_2016X1512_120FPS:
-		case SENSOR_IMX563_2016X1134_120FPS:
-		case SENSOR_IMX563_2016X1134_240FPS:
-#endif
-			coarse_int = ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int) / line_length_pck;
-			remainder_cit = coarse_int % 4;
-			coarse_int -= remainder_cit;
-			if (coarse_int < cis_data->min_coarse_integration_time) {
-				dbg_sensor(1, "[MOD:D:%d] %s, vsync_cnt(%d), long coarse(%d) min(%d)\n", cis->id, __func__,
-					cis_data->sen_vsync_count, coarse_int, cis_data->min_coarse_integration_time);
-				coarse_int = cis_data->min_coarse_integration_time;
-			}
-			break;
-		default:
-			coarse_int = ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int) / line_length_pck;
-			remainder_cit = coarse_int % 2;
-			coarse_int -= remainder_cit;
-			switch(coarse_int) {
-				case 8:
-				case 16:
-				case 24:
-					coarse_int -= 2;
-					break;
-				default:
-					break;
-			}
-			if (coarse_int < cis_data->min_coarse_integration_time) {
-				dbg_sensor(1, "[MOD:D:%d] %s, vsync_cnt(%d), long coarse(%d) min(%d)\n", cis->id, __func__,
-					cis_data->sen_vsync_count, coarse_int, cis_data->min_coarse_integration_time);
-				coarse_int = cis_data->min_coarse_integration_time;
-			}
-			break;
-	}
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		switch (cis->cis_data->sens_config_index_cur) {
+	// #ifdef USE_CAMERA_IMX563_4000X3000
+			case SENSOR_IMX563_1984X1488_30FPS:
+			case SENSOR_IMX563_1008X756_120FPS:
+			case SENSOR_IMX563_1984X1488_240FPS:
+			case SENSOR_IMX563_2016X1136_480FPS:
+			case SENSOR_IMX563_1280X720_480FPS:
+	// #else
+	// 		case SENSOR_IMX563_2016X1512_120FPS:
+	// 		case SENSOR_IMX563_2016X1134_120FPS:
+	// 		case SENSOR_IMX563_2016X1134_240FPS:
+	// #endif
+				coarse_int = ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int) / line_length_pck;
+				remainder_cit = coarse_int % 4;
+				coarse_int -= remainder_cit;
+				if (coarse_int < cis_data->min_coarse_integration_time) {
+					dbg_sensor(1, "[MOD:D:%d] %s, vsync_cnt(%d), long coarse(%d) min(%d)\n", cis->id, __func__,
+						cis_data->sen_vsync_count, coarse_int, cis_data->min_coarse_integration_time);
+					coarse_int = cis_data->min_coarse_integration_time;
+				}
+				break;
+			default:
+				coarse_int = ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int) / line_length_pck;
+				remainder_cit = coarse_int % 2;
+				coarse_int -= remainder_cit;
+				switch(coarse_int) {
+					case 8:
+					case 16:
+					case 24:
+						coarse_int -= 2;
+						break;
+					default:
+						break;
+				}
+				if (coarse_int < cis_data->min_coarse_integration_time) {
+					dbg_sensor(1, "[MOD:D:%d] %s, vsync_cnt(%d), long coarse(%d) min(%d)\n", cis->id, __func__,
+						cis_data->sen_vsync_count, coarse_int, cis_data->min_coarse_integration_time);
+					coarse_int = cis_data->min_coarse_integration_time;
+				}
+				break;
+		}
+	} else {
 
-	if (coarse_int <= 1024) {
-		compensated_again = (*again * ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int)) / (line_length_pck * coarse_int);
-
-		if (compensated_again < cis_data->min_analog_gain[1]) {
-			*again = cis_data->min_analog_gain[1];
-		} else if (*again >= cis_data->max_analog_gain[1]) {
-			*dgain = (*dgain * ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int)) / (line_length_pck * coarse_int);
-		} else {
-			//*again = compensated_again;
-			*dgain = (*dgain * ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int)) / (line_length_pck * coarse_int);
+		switch (cis->cis_data->sens_config_index_cur) {
+	// #ifdef USE_CAMERA_IMX563_4000X3000
+	// 		case SENSOR_IMX563_1984X1488_30FPS:
+	// 		case SENSOR_IMX563_1008X756_120FPS:
+	// 		case SENSOR_IMX563_1984X1488_240FPS:
+	// 		case SENSOR_IMX563_2016X1136_480FPS:
+	// 		case SENSOR_IMX563_1280X720_480FPS:
+	// #else
+			case SENSOR_IMX563_2016X1512_120FPS:
+			case SENSOR_IMX563_2016X1134_120FPS:
+			case SENSOR_IMX563_2016X1134_240FPS:
+	// #endif
+				coarse_int = ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int) / line_length_pck;
+				remainder_cit = coarse_int % 4;
+				coarse_int -= remainder_cit;
+				if (coarse_int < cis_data->min_coarse_integration_time) {
+					dbg_sensor(1, "[MOD:D:%d] %s, vsync_cnt(%d), long coarse(%d) min(%d)\n", cis->id, __func__,
+						cis_data->sen_vsync_count, coarse_int, cis_data->min_coarse_integration_time);
+					coarse_int = cis_data->min_coarse_integration_time;
+				}
+				break;
+			default:
+				coarse_int = ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int) / line_length_pck;
+				remainder_cit = coarse_int % 2;
+				coarse_int -= remainder_cit;
+				switch(coarse_int) {
+					case 8:
+					case 16:
+					case 24:
+						coarse_int -= 2;
+						break;
+					default:
+						break;
+				}
+				if (coarse_int < cis_data->min_coarse_integration_time) {
+					dbg_sensor(1, "[MOD:D:%d] %s, vsync_cnt(%d), long coarse(%d) min(%d)\n", cis->id, __func__,
+						cis_data->sen_vsync_count, coarse_int, cis_data->min_coarse_integration_time);
+					coarse_int = cis_data->min_coarse_integration_time;
+				}
+				break;
 		}
 
-		dbg_sensor(1, "[%s] exp(%d), again(%d), dgain(%d), coarse_int(%d), compensated_again(%d)\n",
-			__func__, expo, *again, *dgain, coarse_int, compensated_again);
+		if (coarse_int <= 1024) {
+			compensated_again = (*again * ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int)) / (line_length_pck * coarse_int);
+
+			if (compensated_again < cis_data->min_analog_gain[1]) {
+				*again = cis_data->min_analog_gain[1];
+			} else if (*again >= cis_data->max_analog_gain[1]) {
+				*dgain = (*dgain * ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int)) / (line_length_pck * coarse_int);
+			} else {
+				//*again = compensated_again;
+				*dgain = (*dgain * ((expo * vt_pic_clk_freq_khz) / 1000 - min_fine_int)) / (line_length_pck * coarse_int);
+			}
+
+			dbg_sensor(1, "[%s] exp(%d), again(%d), dgain(%d), coarse_int(%d), compensated_again(%d)\n",
+				__func__, expo, *again, *dgain, coarse_int, compensated_again);
+		}
 	}
 
 p_err:
@@ -2188,61 +2277,64 @@ static int cis_imx563_probe(struct i2c_client *client,
 
 	rev = cis->cis_data->cis_rev;
 
-#ifndef USE_CAMERA_IMX563_4000X3000
-	if (strcmp(setfile, "default") == 0 ||
-			strcmp(setfile, "setA") == 0) {
-		probe_info("%s setfile_A\n", __func__);
-		sensor_imx563_global = sensor_imx563_setfile_A_Global;
-		sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_A_Global);
-		sensor_imx563_setfiles = sensor_imx563_setfiles_A;
-		sensor_imx563_setfile_sizes = sensor_imx563_setfile_A_sizes;
-		sensor_imx563_pllinfos = sensor_imx563_pllinfos_A;
-		sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_A);
-		cis->mipi_sensor_mode = sensor_imx563_setfile_A_mipi_sensor_mode;
-		cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_A_mipi_sensor_mode);
-		verify_sensor_mode = sensor_imx563_setfile_A_verify_sensor_mode;
-		verify_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_A_verify_sensor_mode);
+// #ifndef USE_CAMERA_IMX563_4000X3000
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (strcmp(setfile, "default") == 0 ||
+				strcmp(setfile, "setA") == 0) {
+			probe_info("%s setfile_A\n", __func__);
+			sensor_imx563_global = sensor_imx563_setfile_A_Global;
+			sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_A_Global);
+			sensor_imx563_setfiles = sensor_imx563_setfiles_A;
+			sensor_imx563_setfile_sizes = sensor_imx563_setfile_A_sizes;
+			sensor_imx563_pllinfos = sensor_imx563_pllinfos_A;
+			sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_A);
+			cis->mipi_sensor_mode = sensor_imx563_setfile_A_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_A_mipi_sensor_mode);
+			verify_sensor_mode = sensor_imx563_setfile_A_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_A_verify_sensor_mode);
+		} else {
+			err("%s setfile index out of bound, take default (setfile_A)", __func__);
+			sensor_imx563_global = sensor_imx563_setfile_A_Global;
+			sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_A_Global);
+			sensor_imx563_setfiles = sensor_imx563_setfiles_A;
+			sensor_imx563_setfile_sizes = sensor_imx563_setfile_A_sizes;
+			sensor_imx563_pllinfos = sensor_imx563_pllinfos_A;
+			sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_A);
+			cis->mipi_sensor_mode = sensor_imx563_setfile_A_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_A_mipi_sensor_mode);
+			verify_sensor_mode = sensor_imx563_setfile_A_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_A_verify_sensor_mode);
+		}
 	} else {
-		err("%s setfile index out of bound, take default (setfile_A)", __func__);
-		sensor_imx563_global = sensor_imx563_setfile_A_Global;
-		sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_A_Global);
-		sensor_imx563_setfiles = sensor_imx563_setfiles_A;
-		sensor_imx563_setfile_sizes = sensor_imx563_setfile_A_sizes;
-		sensor_imx563_pllinfos = sensor_imx563_pllinfos_A;
-		sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_A);
-		cis->mipi_sensor_mode = sensor_imx563_setfile_A_mipi_sensor_mode;
-		cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_A_mipi_sensor_mode);
-		verify_sensor_mode = sensor_imx563_setfile_A_verify_sensor_mode;
-		verify_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_A_verify_sensor_mode);
+// #else
+		if (strcmp(setfile, "default") == 0 ||
+				strcmp(setfile, "setB") == 0) {
+			probe_info("%s setfile_B\n", __func__);
+			sensor_imx563_global = sensor_imx563_setfile_B_Global;
+			sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_B_Global);
+			sensor_imx563_setfiles = sensor_imx563_setfiles_B;
+			sensor_imx563_setfile_sizes = sensor_imx563_setfile_B_sizes;
+			sensor_imx563_pllinfos = sensor_imx563_pllinfos_B;
+			sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_B);
+			cis->mipi_sensor_mode = sensor_imx563_setfile_B_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_B_mipi_sensor_mode);
+			verify_sensor_mode = sensor_imx563_setfile_B_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_B_verify_sensor_mode);
+		} else {
+			err("%s setfile index out of bound, take default (setfile_B)", __func__);
+			sensor_imx563_global = sensor_imx563_setfile_B_Global;
+			sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_B_Global);
+			sensor_imx563_setfiles = sensor_imx563_setfiles_B;
+			sensor_imx563_setfile_sizes = sensor_imx563_setfile_B_sizes;
+			sensor_imx563_pllinfos = sensor_imx563_pllinfos_B;
+			sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_B);
+			cis->mipi_sensor_mode = sensor_imx563_setfile_B_mipi_sensor_mode;
+			cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_B_mipi_sensor_mode);
+			verify_sensor_mode = sensor_imx563_setfile_B_verify_sensor_mode;
+			verify_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_B_verify_sensor_mode);
+		}
 	}
-#else
-	if (strcmp(setfile, "default") == 0 ||
-			strcmp(setfile, "setB") == 0) {
-		probe_info("%s setfile_B\n", __func__);
-		sensor_imx563_global = sensor_imx563_setfile_B_Global;
-		sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_B_Global);
-		sensor_imx563_setfiles = sensor_imx563_setfiles_B;
-		sensor_imx563_setfile_sizes = sensor_imx563_setfile_B_sizes;
-		sensor_imx563_pllinfos = sensor_imx563_pllinfos_B;
-		sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_B);
-		cis->mipi_sensor_mode = sensor_imx563_setfile_B_mipi_sensor_mode;
-		cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_B_mipi_sensor_mode);
-		verify_sensor_mode = sensor_imx563_setfile_B_verify_sensor_mode;
-		verify_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_B_verify_sensor_mode);
-	} else {
-		err("%s setfile index out of bound, take default (setfile_B)", __func__);
-		sensor_imx563_global = sensor_imx563_setfile_B_Global;
-		sensor_imx563_global_size = ARRAY_SIZE(sensor_imx563_setfile_B_Global);
-		sensor_imx563_setfiles = sensor_imx563_setfiles_B;
-		sensor_imx563_setfile_sizes = sensor_imx563_setfile_B_sizes;
-		sensor_imx563_pllinfos = sensor_imx563_pllinfos_B;
-		sensor_imx563_max_setfile_num = ARRAY_SIZE(sensor_imx563_setfiles_B);
-		cis->mipi_sensor_mode = sensor_imx563_setfile_B_mipi_sensor_mode;
-		cis->mipi_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_B_mipi_sensor_mode);
-		verify_sensor_mode = sensor_imx563_setfile_B_verify_sensor_mode;
-		verify_sensor_mode_size = ARRAY_SIZE(sensor_imx563_setfile_B_verify_sensor_mode);
-	}
-#endif
+// #endif
 
 	if (cis->vendor_use_adaptive_mipi) {
 		for (i = 0; i < verify_sensor_mode_size; i++) {
