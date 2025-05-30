@@ -1036,13 +1036,15 @@ int panel_display_on(struct panel_device *panel)
 #endif
 
 #ifdef CONFIG_SUPPORT_TIG
-	if (panel->state.cur_state == PANEL_STATE_ALPM) {
-		ret = panel_do_seqtbl_by_index(panel, PANEL_TIG_ENABLE_SEQ);
-		if (unlikely(ret < 0)) {
-			panel_err("failed to seqtbl(PANEL_TIG_ENABLE_SEQ)\n");
-			return ret;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_TIG)) {
+		if (panel->state.cur_state == PANEL_STATE_ALPM) {
+			ret = panel_do_seqtbl_by_index(panel, PANEL_TIG_ENABLE_SEQ);
+			if (unlikely(ret < 0)) {
+				panel_err("failed to seqtbl(PANEL_TIG_ENABLE_SEQ)\n");
+				return ret;
+			}
+			usleep_range(17000, 17100);
 		}
-		usleep_range(17000, 17100);
 	}
 #endif
 	ret = __panel_seq_display_on(panel);
@@ -1053,12 +1055,14 @@ int panel_display_on(struct panel_device *panel)
 	state->disp_on = PANEL_DISPLAY_ON;
 
 #ifdef CONFIG_SUPPORT_TIG
-	if (panel->state.cur_state == PANEL_STATE_ALPM) {
-		usleep_range(33400, 33500);
-		ret = panel_do_seqtbl_by_index(panel, PANEL_TIG_DISABLE_SEQ);
-		if (unlikely(ret < 0)) {
-			panel_err("failed to seqtbl(PANEL_TIG_DISABLE_SEQ)\n");
-			return ret;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_TIG)) {
+		if (panel->state.cur_state == PANEL_STATE_ALPM) {
+			usleep_range(33400, 33500);
+			ret = panel_do_seqtbl_by_index(panel, PANEL_TIG_DISABLE_SEQ);
+			if (unlikely(ret < 0)) {
+				panel_err("failed to seqtbl(PANEL_TIG_DISABLE_SEQ)\n");
+				return ret;
+			}
 		}
 	}
 #endif
