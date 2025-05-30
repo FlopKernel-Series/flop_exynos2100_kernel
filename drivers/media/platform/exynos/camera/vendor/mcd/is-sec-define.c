@@ -1943,19 +1943,21 @@ crc_retry:
 	is_sec_parse_rom_info(finfo, buf, rom_id);
 
 #ifdef CAMERA_REAR_TOF
-	if (rom_id == REAR_TOF_ROM_ID) {
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		if (rom_id == REAR_TOF_ROM_ID) {
 #ifdef REAR_TOF_CHECK_SENSOR_ID
-		is_sec_sensorid_find_rear_tof(core);
-		if (specific->rear_tof_sensor_id == SENSOR_NAME_IMX316) {
-			finfo->rom_tof_cal_size_addr_len = 1;
-			if (finfo->cal_map_ver[3] == '1') {
-				finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP001;
-			} else {
-				finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP002;
+			is_sec_sensorid_find_rear_tof(core);
+			if (specific->rear_tof_sensor_id == SENSOR_NAME_IMX316) {
+				finfo->rom_tof_cal_size_addr_len = 1;
+				if (finfo->cal_map_ver[3] == '1') {
+					finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP001;
+				} else {
+					finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP002;
+				}
 			}
-		}
 #endif
-		is_sec_sensor_find_rear_tof_mode_id(core, buf);
+			is_sec_sensor_find_rear_tof_mode_id(core, buf);
+		}
 	}
 #endif
 
@@ -2131,19 +2133,21 @@ crc_retry:
 	is_sec_parse_rom_info(finfo, buf, rom_id);
 
 #ifdef CAMERA_REAR_TOF
-	if (rom_id == REAR_TOF_ROM_ID) {
-#ifdef REAR_TOF_CHECK_SENSOR_ID
-		is_sec_sensorid_find_rear_tof(core);
-		if (specific->rear_tof_sensor_id == SENSOR_NAME_IMX316) {
-			finfo->rom_tof_cal_size_addr_len = 1;
-			if (finfo->cal_map_ver[3] == '1') {
-				finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP001;
-			} else {
-				finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP002;
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		if (rom_id == REAR_TOF_ROM_ID) {
+	#ifdef REAR_TOF_CHECK_SENSOR_ID
+			is_sec_sensorid_find_rear_tof(core);
+			if (specific->rear_tof_sensor_id == SENSOR_NAME_IMX316) {
+				finfo->rom_tof_cal_size_addr_len = 1;
+				if (finfo->cal_map_ver[3] == '1') {
+					finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP001;
+				} else {
+					finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP002;
+				}
 			}
+	#endif
+			is_sec_sensor_find_rear_tof_mode_id(core, buf);
 		}
-#endif
-		is_sec_sensor_find_rear_tof_mode_id(core, buf);
 	}
 #endif
 
@@ -3888,11 +3892,13 @@ int is_sec_sensorid_find_rear_tof(struct is_core *core)
 	struct is_vender_specific *specific = core->vender.private_data;
 	struct is_rom_info *finfo = NULL;
 
-	is_sec_get_sysfs_finfo(&finfo, REAR_TOF_ROM_ID);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		is_sec_get_sysfs_finfo(&finfo, REAR_TOF_ROM_ID);
 
-	if(finfo->header_ver[FW_PIXEL_SIZE+1] == REAR_TOF_CHECK_SENSOR_ID) {
-		specific->rear_tof_sensor_id = SENSOR_NAME_IMX516;
-		info("current sensor is imx316");
+		if(finfo->header_ver[FW_PIXEL_SIZE+1] == REAR_TOF_CHECK_SENSOR_ID) {
+			specific->rear_tof_sensor_id = SENSOR_NAME_IMX516;
+			info("current sensor is imx316");
+		}
 	}
 #endif
 	return 0;
@@ -3904,15 +3910,17 @@ int is_sec_sensor_find_rear_tof_mode_id(struct is_core *core, char *buf)
 	struct is_vender_specific *specific = core->vender.private_data;
 	struct is_rom_info *finfo = NULL;
 
-	is_sec_get_sysfs_finfo(&finfo, REAR_TOF_ROM_ID);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		is_sec_get_sysfs_finfo(&finfo, REAR_TOF_ROM_ID);
 
-	if (finfo->cal_map_ver[3] >= REAR_TOF_CHECK_MAP_VERSION) {
-		specific->rear_tof_mode_id = *((int32_t*)&buf[finfo->rom_tof_cal_mode_id_addr]);
-		info("rear_tof_mode_id: %x\n", specific->rear_tof_mode_id);
-	} else {
-		specific->rear_tof_mode_id = REAR_TOF_DEFAULT_UID;
-		info("rear_tof_mode_id: 0x%x, use default 0x%x", *((int32_t*)&buf[finfo->rom_tof_cal_mode_id_addr]),
-													specific->rear_tof_mode_id);
+		if (finfo->cal_map_ver[3] >= REAR_TOF_CHECK_MAP_VERSION) {
+			specific->rear_tof_mode_id = *((int32_t*)&buf[finfo->rom_tof_cal_mode_id_addr]);
+			info("rear_tof_mode_id: %x\n", specific->rear_tof_mode_id);
+		} else {
+			specific->rear_tof_mode_id = REAR_TOF_DEFAULT_UID;
+			info("rear_tof_mode_id: 0x%x, use default 0x%x", *((int32_t*)&buf[finfo->rom_tof_cal_mode_id_addr]),
+														specific->rear_tof_mode_id);
+		}
 	}
 #endif
 	return 0;

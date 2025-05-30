@@ -121,12 +121,14 @@ int sensor_ak7372_aperture_set_start_value_step1(struct v4l2_subdev *subdev, int
 	}
 
 #ifdef USE_OIS_SHIFT_FOR_APERTURE
-	if (aperture->sensor_peri->subdev_ois) {
-		ret = CALL_OISOPS(aperture->sensor_peri->ois, ois_center_shift, aperture->sensor_peri->subdev_ois);
-		if (ret < 0)
-			err("v4l2_subdev_call(ois_center_shift) is fail(%d)", ret);
+	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU)) {
+		if (aperture->sensor_peri->subdev_ois) {
+			ret = CALL_OISOPS(aperture->sensor_peri->ois, ois_center_shift, aperture->sensor_peri->subdev_ois);
+			if (ret < 0)
+				err("v4l2_subdev_call(ois_center_shift) is fail(%d)", ret);
+		}
+		usleep_range(15000, 16000);
 	}
-	usleep_range(15000, 16000);
 #endif
 
 	switch (value) {
