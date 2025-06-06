@@ -2844,12 +2844,12 @@ static void *unbound3_a3_s0_dummy_cmdtbl[] = {
 	NULL,
 };
 
-#ifdef CONFIG_SUPPORT_GM2_FLASH
-static void *unbound3_a3_s0_gm2_flash_res_init_cmdtbl[] = {
-	// &s6e3had_restbl[RES_GM2_FLASH_VBIAS1],
-	// &s6e3had_restbl[RES_GM2_FLASH_VBIAS2],
-};
-#endif
+// #ifdef CONFIG_SUPPORT_GM2_FLASH
+// static void *unbound3_a3_s0_gm2_flash_res_init_cmdtbl[] = {
+// 	// &s6e3had_restbl[RES_GM2_FLASH_VBIAS1],
+// 	// &s6e3had_restbl[RES_GM2_FLASH_VBIAS2],
+// };
+// #endif
 
 static struct seqinfo unbound3_a3_s0_seqtbl[MAX_PANEL_SEQ] = {
 	[PANEL_INIT_SEQ] = SEQINFO_INIT("init-seq", unbound3_a3_s0_init_cmdtbl),
@@ -2872,9 +2872,9 @@ static struct seqinfo unbound3_a3_s0_seqtbl[MAX_PANEL_SEQ] = {
 	[PANEL_ALPM_EXIT_SEQ] = SEQINFO_INIT("alpm-exit-seq", unbound3_a3_s0_alpm_exit_cmdtbl),
 	[PANEL_CHECK_CONDITION_SEQ] = SEQINFO_INIT("check-condition-seq", unbound3_a3_s0_check_condition_cmdtbl),
 	[PANEL_DUMP_SEQ] = SEQINFO_INIT("dump-seq", unbound3_a3_s0_dump_cmdtbl),
-#ifdef CONFIG_SUPPORT_GM2_FLASH
-	[PANEL_GM2_FLASH_RES_INIT_SEQ] = SEQINFO_INIT("gm2-flash-resource-init-seq", unbound3_a3_s0_gm2_flash_res_init_cmdtbl),
-#endif
+// #ifdef CONFIG_SUPPORT_GM2_FLASH
+// 	[PANEL_GM2_FLASH_RES_INIT_SEQ] = SEQINFO_INIT("gm2-flash-resource-init-seq", unbound3_a3_s0_gm2_flash_res_init_cmdtbl),
+// #endif
 #ifdef CONFIG_SUPPORT_DYNAMIC_HLPM
 	[PANEL_DYNAMIC_HLPM_ON_SEQ] = SEQINFO_INIT("dynamic-hlpm-on-seq", unbound3_a3_s0_dynamic_hlpm_on_cmdtbl),
 	[PANEL_DYNAMIC_HLPM_OFF_SEQ] = SEQINFO_INIT("dynamic-hlpm-off-seq", unbound3_a3_s0_dynamic_hlpm_off_cmdtbl),
