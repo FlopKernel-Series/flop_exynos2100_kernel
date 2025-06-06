@@ -1818,15 +1818,17 @@ static ssize_t poc_store(struct device *dev,
 	}
 
 #ifdef CONFIG_SUPPORT_POC_SPI
-	if (value == POC_OP_SET_SPI_SPEED) {
-		rc = sscanf(buf, "%*u %u", &value);
-		if (rc < 1) {
-			panel_warn("SET_SPI_SPEED need 2 params\n");
-			return -EINVAL;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+		if (value == POC_OP_SET_SPI_SPEED) {
+			rc = sscanf(buf, "%*u %u", &value);
+			if (rc < 1) {
+				panel_warn("SET_SPI_SPEED need 2 params\n");
+				return -EINVAL;
+			}
+			spi_dev->spi_info.speed_hz = value;
+			value = POC_OP_SET_SPI_SPEED;
+			return size;
 		}
-		spi_dev->spi_info.speed_hz = value;
-		value = POC_OP_SET_SPI_SPEED;
-		return size;
 	}
 #endif
 

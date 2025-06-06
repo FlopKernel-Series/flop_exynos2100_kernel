@@ -1870,10 +1870,12 @@ static int _panel_do_seqtbl(struct panel_device *panel,
 			ret = panel_dumpinfo_update(panel, (struct dumpinfo *)cmdtbl[i]);
 			break;
 #ifdef CONFIG_SUPPORT_POC_SPI
-		case SPI_PKT_TYPE_WR:
-		case SPI_PKT_TYPE_SETPARAM:
-			ret = panel_spi_packet(panel, (struct pktinfo *)cmdtbl[i]);
-			break;
+		if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+			case SPI_PKT_TYPE_WR:
+			case SPI_PKT_TYPE_SETPARAM:
+				ret = panel_spi_packet(panel, (struct pktinfo *)cmdtbl[i]);
+				break;
+		}
 #endif
 		case CMD_TYPE_COND_IF:
 			/* skip cmd until next COND_END */
@@ -2270,12 +2272,14 @@ int panel_rx_nbytes(struct panel_device *panel,
 	}
 
 #ifdef CONFIG_SUPPORT_POC_SPI
-	if (type == SPI_PKT_TYPE_RD) {
-		ret = panel_spi_read_data(panel, addr, buf, len);
-		if (ret < 0)
-			return ret;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+		if (type == SPI_PKT_TYPE_RD) {
+			ret = panel_spi_read_data(panel, addr, buf, len);
+			if (ret < 0)
+				return ret;
 
-		return len;
+			return len;
+		}
 	}
 #endif
 

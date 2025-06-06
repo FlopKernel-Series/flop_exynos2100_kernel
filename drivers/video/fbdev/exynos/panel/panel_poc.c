@@ -281,8 +281,10 @@ int poc_erase(struct panel_device *panel, int addr, int len)
 	struct panel_poc_device *poc_dev = &panel->poc_dev;
 	struct panel_poc_info *poc_info = &poc_dev->poc_info;
 
-	if (poc_info->conn_src == POC_CONN_SRC_SPI)
-		return _spi_poc_erase(panel, addr, len);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+		if (poc_info->conn_src == POC_CONN_SRC_SPI)
+			return _spi_poc_erase(panel, addr, len);
+	}
 #endif
 	return _dsi_poc_erase(panel, addr, len);
 }
@@ -445,8 +447,10 @@ int poc_read_data(struct panel_device *panel, u8 *buf, u32 addr, u32 len)
 	struct panel_poc_device *poc_dev = &panel->poc_dev;
 	struct panel_poc_info *poc_info = &poc_dev->poc_info;
 
-	if (poc_info->conn_src == POC_CONN_SRC_SPI)
-		return _spi_poc_read_data(panel, buf, addr, len);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+		if (poc_info->conn_src == POC_CONN_SRC_SPI)
+			return _spi_poc_read_data(panel, buf, addr, len);
+	}
 #endif
 	return _dsi_poc_read_data(panel, buf, addr, len);
 }
@@ -600,8 +604,10 @@ int poc_write_data(struct panel_device *panel, u8 *data, u32 addr, u32 size)
 	struct panel_poc_device *poc_dev = &panel->poc_dev;
 	struct panel_poc_info *poc_info = &poc_dev->poc_info;
 
-	if (poc_info->conn_src == POC_CONN_SRC_SPI)
-		return _spi_poc_write_data(panel, data, addr, size);
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+		if (poc_info->conn_src == POC_CONN_SRC_SPI)
+			return _spi_poc_write_data(panel, data, addr, size);
+	}
 #endif
 	return _dsi_poc_write_data(panel, data, addr, size);
 }
@@ -614,13 +620,16 @@ int poc_memory_initialize(struct panel_device *panel)
 	struct panel_poc_info *poc_info = &poc_dev->poc_info;
 	struct panel_spi_dev *spi_dev = &panel->panel_spi_dev;
 
-	if (poc_info->conn_src != POC_CONN_SRC_SPI)
-		return ret;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
 
-	ret = spi_dev->ops->init(spi_dev);
-	if (ret != 0) {
-		panel_err("failed to initialize memory %d\n", ret);
-		return -EIO;
+		if (poc_info->conn_src != POC_CONN_SRC_SPI)
+			return ret;
+
+		ret = spi_dev->ops->init(spi_dev);
+		if (ret != 0) {
+			panel_err("failed to initialize memory %d\n", ret);
+			return -EIO;
+		}
 	}
 #endif
 	return ret;
@@ -634,13 +643,15 @@ int poc_memory_uninitialize(struct panel_device *panel)
 	struct panel_poc_info *poc_info = &poc_dev->poc_info;
 	struct panel_spi_dev *spi_dev = &panel->panel_spi_dev;
 
-	if (poc_info->conn_src != POC_CONN_SRC_SPI)
-		return ret;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+		if (poc_info->conn_src != POC_CONN_SRC_SPI)
+			return ret;
 
-	ret = spi_dev->ops->exit(spi_dev);
-	if (ret != 0) {
-		panel_err("failed to uninitialize memory %d\n", ret);
-		return -EIO;
+		ret = spi_dev->ops->exit(spi_dev);
+		if (ret != 0) {
+			panel_err("failed to uninitialize memory %d\n", ret);
+			return -EIO;
+		}
 	}
 #endif
 	return ret;
@@ -1250,6 +1261,8 @@ int set_panel_poc(struct panel_poc_device *poc_dev, u32 cmd, void *arg)
 		break;
 #ifdef CONFIG_SUPPORT_POC_SPI
 	case POC_OP_SET_CONN_SRC:
+		if (!sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI))
+			break;
 		ret = sscanf((char *)arg, "%*d %d", &addr);
 		if (unlikely(ret < 1)) {
 			panel_err("failed to get poc set conn params\n");
@@ -1990,7 +2003,8 @@ int panel_poc_probe(struct panel_device *panel, struct panel_poc_data *poc_data)
 	}
 	poc_info->version = poc_data->version;
 #ifdef CONFIG_SUPPORT_POC_SPI
-	poc_info->conn_src = poc_data->conn_src;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI))
+		poc_info->conn_src = poc_data->conn_src;
 #endif
 	poc_info->wdata_len = poc_data->wdata_len;
 	poc_dev->seqtbl = poc_data->seqtbl;

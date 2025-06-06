@@ -659,10 +659,12 @@ static int __panel_seq_res_init(struct panel_device *panel)
 		return ret;
 	}
 #ifdef CONFIG_SUPPORT_GM2_FLASH
-	ret = panel_do_seqtbl_by_index(panel, PANEL_GM2_FLASH_RES_INIT_SEQ);
-	if (unlikely(ret < 0)) {
-		panel_err("failed to seqtbl(PANEL_GM2_FLASH_RES_INIT_SEQ)\n");
-		return ret;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_GM2_FLASH)) {
+		ret = panel_do_seqtbl_by_index(panel, PANEL_GM2_FLASH_RES_INIT_SEQ);
+		if (unlikely(ret < 0)) {
+			panel_err("failed to seqtbl(PANEL_GM2_FLASH_RES_INIT_SEQ)\n");
+			return ret;
+		}
 	}
 #endif
 
@@ -1874,10 +1876,11 @@ int panel_probe(struct panel_device *panel)
 	}
 
 #ifdef CONFIG_SUPPORT_POC_SPI
-	ret = panel_spi_drv_probe(panel, info->spi_data_tbl, info->nr_spi_data_tbl);
-	if (unlikely(ret))
-		panel_err("failed to probe panel spi driver\n");
-
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+		ret = panel_spi_drv_probe(panel, info->spi_data_tbl, info->nr_spi_data_tbl);
+		if (unlikely(ret))
+			panel_err("failed to probe panel spi driver\n");
+	}
 #endif
 
 #ifdef CONFIG_SUPPORT_DDI_FLASH
@@ -2093,10 +2096,12 @@ int panel_remove(struct panel_device *panel)
 #endif /* CONFIG_SUPPORT_DDI_FLASH */
 
 #ifdef CONFIG_SUPPORT_POC_SPI
-	ret = panel_spi_drv_remove(panel);
-	if (ret < 0) {
-		panel_err("failed to remove panel spi driver\n");
-		return ret;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI)) {
+		ret = panel_spi_drv_remove(panel);
+		if (ret < 0) {
+			panel_err("failed to remove panel spi driver\n");
+			return ret;
+		}
 	}
 #endif
 	device_destroy(lcd_class, 0);
