@@ -21,6 +21,7 @@
 #include <linux/io.h>
 #include <linux/proc_fs.h>
 #include <linux/sort.h>
+#include <linux/sec_detect.h>
 
 #include "internal.h"
 
@@ -2202,7 +2203,8 @@ static int memblock_memsize_show(struct seq_file *m, void *private)
 	unsigned long text, rw, ro, bss, etc;
 
 #ifdef CONFIG_ION_RBIN_HEAP
-	system += totalrbin_pages << PAGE_SHIFT;
+	if (sec_get_feat(SEC_FEAT_USES_RBIN))
+		system += totalrbin_pages << PAGE_SHIFT;
 #endif
 	sort(memsize_rgn, memsize_rgn_count,
 	     sizeof(memsize_rgn[0]), memsize_rgn_cmp, NULL);

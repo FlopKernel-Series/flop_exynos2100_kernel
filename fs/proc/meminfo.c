@@ -13,6 +13,7 @@
 #include <linux/vmstat.h>
 #include <linux/atomic.h>
 #include <linux/vmalloc.h>
+#include <linux/sec_detect.h>
 #ifdef CONFIG_CMA
 #include <linux/cma.h>
 #endif
@@ -56,7 +57,8 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	hugepage_pool_pages = total_hugepage_pool_pages();
 #endif
 #ifdef CONFIG_ION_RBIN_HEAP
-	cached += atomic_read(&rbin_cached_pages);
+	if (sec_get_feat(SEC_FEAT_USES_RBIN))
+		cached += atomic_read(&rbin_cached_pages);
 #endif
 	if (cached < 0)
 		cached = 0;
@@ -98,14 +100,16 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 #endif
 
 #ifdef CONFIG_ION_RBIN_HEAP
-	show_val_kb(m, "RbinTotal:      ", totalrbin_pages);
-	show_val_kb(m, "RbinAlloced:    ",
-		    atomic_read(&rbin_allocated_pages)
-		    + atomic_read(&rbin_pool_pages));
-	show_val_kb(m, "RbinPool:       ", atomic_read(&rbin_pool_pages));
-	show_val_kb(m, "RbinFree:       ", rbinfree);
-	show_val_kb(m, "RbinCached:     ",
-		    atomic_read(&rbin_cached_pages));
+	if (sec_get_feat(SEC_FEAT_USES_RBIN)) {
+		show_val_kb(m, "RbinTotal:      ", totalrbin_pages);
+		show_val_kb(m, "RbinAlloced:    ",
+				atomic_read(&rbin_allocated_pages)
+				+ atomic_read(&rbin_pool_pages));
+		show_val_kb(m, "RbinPool:       ", atomic_read(&rbin_pool_pages));
+		show_val_kb(m, "RbinFree:       ", rbinfree);
+		show_val_kb(m, "RbinCached:     ",
+				atomic_read(&rbin_cached_pages));
+	}
 #endif
 #ifdef CONFIG_KZEROD
 	show_val_kb(m, "ZeroedFree:     ", kzerod_get_zeroed_size());

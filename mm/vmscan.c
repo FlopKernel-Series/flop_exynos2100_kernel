@@ -51,6 +51,7 @@
 #include <linux/printk.h>
 #include <linux/dax.h>
 #include <linux/psi.h>
+#include <linux/sec_detect.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -2429,8 +2430,10 @@ static ssize_t mem_boost_mode_store(struct kobject *kobj,
 	mem_boost_mode = mode;
 	last_mode_change = jiffies;
 #ifdef CONFIG_ION_RBIN_HEAP
-	if (mem_boost_mode >= BOOST_HIGH)
-		wake_ion_rbin_heap_prereclaim();
+	if (sec_get_feat(SEC_FEAT_USES_RBIN)) {
+		if (mem_boost_mode >= BOOST_HIGH)
+			wake_ion_rbin_heap_prereclaim();
+	}
 #endif
 #if 0 /* Disabled: mem_boost should not override kswapd affinity */
 #if CONFIG_KSWAPD_CPU

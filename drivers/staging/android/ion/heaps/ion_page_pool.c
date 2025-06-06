@@ -9,6 +9,7 @@
 #include <linux/slab.h>
 #include <linux/swap.h>
 #include <linux/sched/signal.h>
+#include <linux/sec_detect.h>
 
 #include "ion_page_pool.h"
 
@@ -128,11 +129,13 @@ EXPORT_SYMBOL_GPL(ion_page_pool_alloc);
 void ion_page_pool_free(struct ion_page_pool *pool, struct page *page)
 {
 #ifndef CONFIG_ION_RBIN_HEAP
-       /*
-        * ION RBIN heap can utilize ion_page_pool_free() for pages which are
-        * not compound pages. Thus, comment out the below line.
-        */
-	BUG_ON(pool->order != compound_order(page));
+	if (sec_get_feat(SEC_FEAT_USES_RBIN)) {
+		/*
+		 * ION RBIN heap can utilize ion_page_pool_free() for pages which
+		 * are not compound pages. Thus, comment out the below line.
+		 */
+		BUG_ON(pool->order != compound_order(page));
+	}
 #endif
 
 	ion_page_pool_add(pool, page);

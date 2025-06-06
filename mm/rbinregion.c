@@ -10,7 +10,9 @@
  */
 
 #include <linux/rbinregion.h>
+#include <linux/sec_detect.h>
 #include <linux/vmalloc.h>
+#include <linux/sec_detect.h>
 
 unsigned long totalrbin_pages __read_mostly;
 atomic_t rbin_free_pages = ATOMIC_INIT(0);
@@ -247,8 +249,10 @@ bool try_get_rbincache(void)
 	spin_lock_irqsave(&region.region_lock, flags);
 	if (region.timeout < jiffies) {
 #ifdef CONFIG_ION_RBIN_HEAP
-		if (region.rc_disabled == true)
-			wake_ion_rbin_heap_shrink();
+		if (sec_get_feat(SEC_FEAT_USES_RBIN)) {
+			if (region.rc_disabled == true)
+				wake_ion_rbin_heap_shrink();
+		}
 #endif
 		region.rc_disabled = false;
 	}

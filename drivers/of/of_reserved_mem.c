@@ -21,6 +21,7 @@
 #include <linux/sort.h>
 #include <linux/slab.h>
 #include <linux/memblock.h>
+#include <linux/sec_detect.h>
 
 #define MAX_RESERVED_REGIONS	64
 static struct reserved_mem reserved_mem[MAX_RESERVED_REGIONS];
@@ -382,8 +383,10 @@ void __init fdt_init_reserved_mem(void)
 					memblock_add(rmem->base, rmem->size);
 			} else {
 #ifdef CONFIG_ION_RBIN_HEAP
-				if (of_get_flat_dt_prop(node, "ion,recyclable", NULL))
-					reusable = true;
+				if (sec_get_feat(SEC_FEAT_USES_RBIN)) {
+					if (of_get_flat_dt_prop(node, "ion,recyclable", NULL))
+						reusable = true;
+				}
 #endif
 				memblock_memsize_record(rmem->name, rmem->base,
 							rmem->size, nomap,

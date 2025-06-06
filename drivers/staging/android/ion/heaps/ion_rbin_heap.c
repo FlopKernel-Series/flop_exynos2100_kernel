@@ -27,6 +27,7 @@
 #include <linux/freezer.h>
 #include <linux/ion.h>
 #include <asm/cacheflush.h>
+#include <linux/sec_detect.h>
 
 #ifndef CONFIG_ION_MSM_HEAPS
 #define CREATE_TRACE_POINTS
@@ -474,6 +475,10 @@ static struct platform_driver ion_rbin_heap_driver = {
 
 int __init ion_rbin_heap_init(void)
 {
+	if (!sec_get_feat(SEC_FEAT_USES_RBIN)) {
+		SEC_DETECT_LOG("This device cannot use rbin heap, disabling it\n");
+		return 0;
+	}
 	return platform_driver_register(&ion_rbin_heap_driver);
 }
 

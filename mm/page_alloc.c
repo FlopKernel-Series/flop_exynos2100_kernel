@@ -76,6 +76,8 @@
 #include <asm/div64.h>
 #include "internal.h"
 #include "shuffle.h"
+#include <linux/binfmts.h>
+#include <linux/sec_detect.h>
 
 /* prevent >1 _updater_ of zone percpu pageset ->high and ->batch fields */
 static DEFINE_MUTEX(pcp_batch_high_lock);
@@ -5392,7 +5394,8 @@ long si_mem_available(void)
 			global_node_page_state(NR_KERNEL_MISC_RECLAIMABLE);
 	available += reclaimable - min(reclaimable / 2, wmark_low);
 #ifdef CONFIG_ION_RBIN_HEAP
-	available += atomic_read(&rbin_cached_pages);
+	if (sec_get_feat(SEC_FEAT_USES_RBIN))
+		available += atomic_read(&rbin_cached_pages);
 #endif
 
 	if (available < 0)
@@ -5405,7 +5408,8 @@ void si_meminfo(struct sysinfo *val)
 {
 	val->totalram = totalram_pages();
 #ifdef CONFIG_ION_RBIN_HEAP
-	val->totalram += totalrbin_pages;
+	if (sec_get_feat(SEC_FEAT_USES_RBIN))
+		val->totalram += totalrbin_pages;
 #endif
 	val->sharedram = global_node_page_state(NR_SHMEM);
 	val->freeram = global_zone_page_state(NR_FREE_PAGES);
