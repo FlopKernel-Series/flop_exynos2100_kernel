@@ -357,10 +357,12 @@ int __mockable panel_set_gpio_irq(struct panel_gpio *gpio, bool enable)
 		panel_info("disable_irq %s\n", gpio->name);
 		disable_irq(gpio->irq);
 #ifdef CONFIG_EVASION_DISP_DET
-		if (!strcmp(gpio->name, PANEL_GPIO_NAME_DISP_DET)) {
-			panel = container_of(gpio, struct panel_device, gpio[PANEL_GPIO_DISP_DET]);
-			if (panel)
-				cancel_delayed_work_sync(&panel->work[PANEL_WORK_EVASION_DISP_DET].dwork);
+		if (sec_get_feat(SEC_FEAT_EVASION_DISP_DET)) {
+			if (!strcmp(gpio->name, PANEL_GPIO_NAME_DISP_DET)) {
+				panel = container_of(gpio, struct panel_device, gpio[PANEL_GPIO_DISP_DET]);
+				if (panel)
+					cancel_delayed_work_sync(&panel->work[PANEL_WORK_EVASION_DISP_DET].dwork);
+			}
 		}
 #endif
 	}
@@ -833,9 +835,11 @@ static int __panel_seq_exit_alpm(struct panel_device *panel)
 	mutex_lock(&panel->op_lock);
 
 #ifdef CONFIG_EVASION_DISP_DET
-	ret = panel_set_gpio_irq(&panel->gpio[PANEL_GPIO_DISP_DET], false);
-	if (ret < 0)
-		panel_warn("do not support irq\n");
+	if (sec_get_feat(SEC_FEAT_EVASION_DISP_DET)) {
+		ret = panel_set_gpio_irq(&panel->gpio[PANEL_GPIO_DISP_DET], false);
+		if (ret < 0)
+			panel_warn("do not support irq\n");
+	}
 #endif
 	ret = panel_regulator_set_voltage(panel, PANEL_STATE_NORMAL);
 	if (ret < 0)
@@ -857,8 +861,10 @@ static int __panel_seq_exit_alpm(struct panel_device *panel)
 	msleep(34);
 
 #ifdef CONFIG_EVASION_DISP_DET
-	queue_delayed_work(panel->work[PANEL_WORK_EVASION_DISP_DET].wq,
-		&panel->work[PANEL_WORK_EVASION_DISP_DET].dwork, msecs_to_jiffies(100));
+	if (sec_get_feat(SEC_FEAT_EVASION_DISP_DET)) {
+		queue_delayed_work(panel->work[PANEL_WORK_EVASION_DISP_DET].wq,
+			&panel->work[PANEL_WORK_EVASION_DISP_DET].dwork, msecs_to_jiffies(100));
+	}
 #endif
 
 	return ret;
@@ -917,9 +923,11 @@ static int __panel_seq_set_alpm(struct panel_device *panel)
 	mutex_lock(&panel->op_lock);
 
 #ifdef CONFIG_EVASION_DISP_DET
-	ret = panel_set_gpio_irq(&panel->gpio[PANEL_GPIO_DISP_DET], false);
-	if (ret < 0)
-		panel_warn("do not support irq\n");
+	if (sec_get_feat(SEC_FEAT_EVASION_DISP_DET)) {
+		ret = panel_set_gpio_irq(&panel->gpio[PANEL_GPIO_DISP_DET], false);
+		if (ret < 0)
+			panel_warn("do not support irq\n");
+	}
 #endif
 
 	ret = panel_do_seqtbl_by_index_nolock(panel, PANEL_ALPM_ENTER_SEQ);
@@ -945,8 +953,10 @@ static int __panel_seq_set_alpm(struct panel_device *panel)
 #endif
 
 #ifdef CONFIG_EVASION_DISP_DET
-	queue_delayed_work(panel->work[PANEL_WORK_EVASION_DISP_DET].wq,
-			&panel->work[PANEL_WORK_EVASION_DISP_DET].dwork, msecs_to_jiffies(34*2));
+	if (sec_get_feat(SEC_FEAT_EVASION_DISP_DET)) {
+		queue_delayed_work(panel->work[PANEL_WORK_EVASION_DISP_DET].wq,
+				&panel->work[PANEL_WORK_EVASION_DISP_DET].dwork, msecs_to_jiffies(34*2));
+	}
 #endif
 	return 0;
 }

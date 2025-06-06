@@ -3998,9 +3998,11 @@ static ssize_t enable_fd_store(struct device *dev,
 	mutex_unlock(&panel->op_lock);
 
 #ifdef CONFIG_EVASION_DISP_DET
-	ret = panel_set_gpio_irq(&panel->gpio[PANEL_GPIO_DISP_DET], false);
-	if (ret < 0)
-		panel_warn("do not support irq\n");
+	if (sec_get_feat(SEC_FEAT_EVASION_DISP_DET)) {
+		ret = panel_set_gpio_irq(&panel->gpio[PANEL_GPIO_DISP_DET], false);
+		if (ret < 0)
+			panel_warn("do not support irq\n");
+	}
 #endif
 	ret = panel_fast_discharge_set(panel);
 	if (unlikely(ret < 0)) {
@@ -4012,8 +4014,10 @@ static ssize_t enable_fd_store(struct device *dev,
 	}
 
 #ifdef CONFIG_EVASION_DISP_DET
-	queue_delayed_work(panel->work[PANEL_WORK_EVASION_DISP_DET].wq,
-		&panel->work[PANEL_WORK_EVASION_DISP_DET].dwork, msecs_to_jiffies(34));
+	if (sec_get_feat(SEC_FEAT_EVASION_DISP_DET)) {
+		queue_delayed_work(panel->work[PANEL_WORK_EVASION_DISP_DET].wq,
+			&panel->work[PANEL_WORK_EVASION_DISP_DET].dwork, msecs_to_jiffies(34));
+	}
 #endif
 	panel_info("fast discharge set to %s\n", panel_data->props.enable_fd ? "on" : "off");
 
