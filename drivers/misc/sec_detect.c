@@ -145,6 +145,8 @@ static inline void print_sec_variables(const char *machine_name)
 		       sec_get_feat(SEC_FEAT_SUPPORT_POC_SPI) ? "true" : "false");
 	SEC_DETECT_LOG("sec_feat_evasion_disp_det = %s\n",
 		       sec_get_feat(SEC_FEAT_EVASION_DISP_DET) ? "true" : "false");
+	SEC_DETECT_LOG("sec_feat_uses_rbin = %s\n",
+		       sec_get_feat(SEC_FEAT_USES_RBIN) ? "true" : "false");
 	SEC_DETECT_LOG("mcd_feat_type_rsu = %s\n",
 		       sec_get_mcd_feat(MCD_FEAT_TYPE_RSU) ? "true" : "false");
 	SEC_DETECT_LOG("mcd_feat_type_usu = %s\n",
@@ -196,6 +198,7 @@ static int __init sec_detect_init(void)
 		sec_feat_flags[SEC_FEAT_SUPPORT_TIG] = true;
 		sec_feat_flags[SEC_FEAT_USES_SSP_R9S] = true;
 		sec_feat_flags[SEC_FEAT_USES_BCM4375] = true;
+		sec_feat_flags[SEC_FEAT_USES_RBIN] = true;
 	} else if (strstr(machine_name, "O1S") != NULL) {
 		g_sec_current_device = SEC_O1S;
 		strscpy(g_sec_current_device_name, "o1s",
@@ -208,6 +211,7 @@ static int __init sec_detect_init(void)
 		sec_feat_flags[SEC_FEAT_SUPPORT_GM2_FLASH] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_POC_SPI] = true;
 		sec_feat_flags[SEC_FEAT_EVASION_DISP_DET] = true;
+		sec_feat_flags[SEC_FEAT_USES_RBIN] = true;
 	} else if (strstr(machine_name, "P3S") != NULL) {
 		g_sec_current_device = SEC_P3S;
 		strscpy(g_sec_current_device_name, "p3s",
@@ -228,6 +232,7 @@ static int __init sec_detect_init(void)
 		sec_feat_flags[SEC_FEAT_SUPPORT_GM2_FLASH] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_POC_SPI] = true;
 		sec_feat_flags[SEC_FEAT_EVASION_DISP_DET] = true;
+		sec_feat_flags[SEC_FEAT_USES_RBIN] = true;
 	}
 
 	setup_camera_params();
