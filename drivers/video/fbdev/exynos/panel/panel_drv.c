@@ -1482,10 +1482,12 @@ int panel_reprobe(struct panel_device *panel)
 	}
 
 #ifdef CONFIG_SUPPORT_DDI_FLASH
-	ret = panel_poc_probe(panel, info->poc_data);
-	if (unlikely(ret)) {
-		panel_err("failed to probe poc driver\n");
-		return -ENODEV;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_DDI_FLASH)) {
+		ret = panel_poc_probe(panel, info->poc_data);
+		if (unlikely(ret)) {
+			panel_err("failed to probe poc driver\n");
+			return -ENODEV;
+		}
 	}
 #endif /* CONFIG_SUPPORT_DDI_FLASH */
 
@@ -1879,9 +1881,11 @@ int panel_probe(struct panel_device *panel)
 #endif
 
 #ifdef CONFIG_SUPPORT_DDI_FLASH
-	ret = panel_poc_probe(panel, info->poc_data);
-	if (unlikely(ret))
-		panel_err("failed to probe poc driver\n");
+	if (sec_get_feat(SEC_FEAT_SUPPORT_DDI_FLASH)) {
+		ret = panel_poc_probe(panel, info->poc_data);
+		if (unlikely(ret))
+			panel_err("failed to probe poc driver\n");
+	}
 
 #endif /* CONFIG_SUPPORT_DDI_FLASH */
 
@@ -2079,10 +2083,12 @@ int panel_remove(struct panel_device *panel)
 	}
 
 #ifdef CONFIG_SUPPORT_DDI_FLASH
-	ret = panel_poc_remove(panel);
-	if (ret < 0) {
-		panel_err("failed to remove poc driver\n");
-		return ret;
+	if (sec_get_feat(SEC_FEAT_SUPPORT_DDI_FLASH)) {
+		ret = panel_poc_remove(panel);
+		if (ret < 0) {
+			panel_err("failed to remove poc driver\n");
+			return ret;
+		}
 	}
 #endif /* CONFIG_SUPPORT_DDI_FLASH */
 

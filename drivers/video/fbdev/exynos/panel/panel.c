@@ -2421,10 +2421,14 @@ int panel_rdinfo_update(struct panel_device *panel, struct rdinfo *rdi)
 		return -ENOMEM;
 
 #ifdef CONFIG_SUPPORT_DDI_FLASH
-	if (rdi->type == DSI_PKT_TYPE_RD_POC)
-		ret = copy_poc_partition(&panel->poc_dev, rdi->data, rdi->addr, rdi->offset, rdi->len);
-	else
+	if (sec_get_feat(SEC_FEAT_SUPPORT_DDI_FLASH)) {
+		if (rdi->type == DSI_PKT_TYPE_RD_POC)
+			ret = copy_poc_partition(&panel->poc_dev, rdi->data, rdi->addr, rdi->offset, rdi->len);
+		else
+			ret = panel_rx_nbytes(panel, rdi->type, rdi->data, rdi->addr, rdi->offset, rdi->len);
+	} else {
 		ret = panel_rx_nbytes(panel, rdi->type, rdi->data, rdi->addr, rdi->offset, rdi->len);
+	}
 #else
 	ret = panel_rx_nbytes(panel, rdi->type, rdi->data, rdi->addr, rdi->offset, rdi->len);
 #endif

@@ -1216,31 +1216,33 @@ static ssize_t mcd_resistance_store(struct device *dev,
 					panel_data->props.mcd_rs_range[i][1]);
 
 #ifdef CONFIG_SUPPORT_DDI_FLASH
-		ret = set_panel_poc(&panel->poc_dev, POC_OP_MCD_READ, NULL);
-		if (unlikely(ret)) {
-			panel_err("failed to read mcd(ret %d)\n", ret);
-			return ret;
-		}
-		ret = panel_resource_update_by_name(panel, "flash_mcd");
-		if (unlikely(ret < 0)) {
-			panel_err("failed to update flash_mcd res (ret %d)\n", ret);
-			return ret;
-		}
+		if (sec_get_feat(SEC_FEAT_SUPPORT_DDI_FLASH)) {
+			ret = set_panel_poc(&panel->poc_dev, POC_OP_MCD_READ, NULL);
+			if (unlikely(ret)) {
+				panel_err("failed to read mcd(ret %d)\n", ret);
+				return ret;
+			}
+			ret = panel_resource_update_by_name(panel, "flash_mcd");
+			if (unlikely(ret < 0)) {
+				panel_err("failed to update flash_mcd res (ret %d)\n", ret);
+				return ret;
+			}
 
-		ret = resource_copy_by_name(&panel->panel_data, flash_mcd, "flash_mcd");
-		if (unlikely(ret < 0)) {
-			panel_err("failed to copy flash_mcd res (ret %d)\n", ret);
-			return ret;
-		}
+			ret = resource_copy_by_name(&panel->panel_data, flash_mcd, "flash_mcd");
+			if (unlikely(ret < 0)) {
+				panel_err("failed to copy flash_mcd res (ret %d)\n", ret);
+				return ret;
+			}
 
-		panel_data->props.mcd_rs_flash_range[MCD_RS_1_RIGHT][1] = flash_mcd[0];
-		panel_data->props.mcd_rs_flash_range[MCD_RS_2_RIGHT][1] = flash_mcd[1];
-		panel_data->props.mcd_rs_flash_range[MCD_RS_1_LEFT][1] = flash_mcd[4];
-		panel_data->props.mcd_rs_flash_range[MCD_RS_2_LEFT][1] = flash_mcd[5];
-		for (i = 0; i < MAX_MCD_RS; i++)
-			panel_info("SDC_%s:(%d, %d)\n", mcd_rs_name[i],
-					panel_data->props.mcd_rs_flash_range[i][0],
-					panel_data->props.mcd_rs_flash_range[i][1]);
+			panel_data->props.mcd_rs_flash_range[MCD_RS_1_RIGHT][1] = flash_mcd[0];
+			panel_data->props.mcd_rs_flash_range[MCD_RS_2_RIGHT][1] = flash_mcd[1];
+			panel_data->props.mcd_rs_flash_range[MCD_RS_1_LEFT][1] = flash_mcd[4];
+			panel_data->props.mcd_rs_flash_range[MCD_RS_2_LEFT][1] = flash_mcd[5];
+			for (i = 0; i < MAX_MCD_RS; i++)
+				panel_info("SDC_%s:(%d, %d)\n", mcd_rs_name[i],
+						panel_data->props.mcd_rs_flash_range[i][0],
+						panel_data->props.mcd_rs_flash_range[i][1]);
+		}
 #endif
 	}
 
@@ -4313,4 +4315,3 @@ exit:
 
 	return retVal;
 }
-
