@@ -42,6 +42,7 @@
 #include <linux/power_supply.h>
 #include <linux/proc_fs.h>
 #include <linux/version.h>
+#include <linux/workarounds.h>
 #if IS_ENABLED(CONFIG_SEC_ABC)
 #include <linux/sti/abc_common.h>
 #endif
