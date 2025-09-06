@@ -1189,14 +1189,16 @@ static inline void fuse_freezer_count(void) {}
 	fuse_freezer_count();							\
 })
 
-#define fuse_wait_event_killable(wq, condition)					\
+#define __fuse_wait_event_killable(wq_head, condition)				\
+	___wait_event(wq_head, condition, TASK_KILLABLE, 0, 0,			\
+		     freezable_schedule())
+
+#define fuse_wait_event_killable(wq_head, condition)				\
 ({										\
 	int __ret = 0;								\
-										\
-	fuse_freezer_do_not_count();						\
-	__ret = wait_event_killable(wq, condition);				\
-	fuse_freezer_count();							\
-										\
+	might_sleep();								\
+	if (!(condition))							\
+		__ret = __fuse_wait_event_killable(wq_head, condition);		\
 	__ret;									\
 })
 
