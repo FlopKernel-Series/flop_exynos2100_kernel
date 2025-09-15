@@ -23,6 +23,7 @@
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
 #include <linux/usb/exynos_usb_audio.h>
 #endif
+#include <linux/workarounds.h>
 
 #include "../core/phy.h"
 #include "xhci.h"
@@ -544,26 +545,30 @@ skip_uram:
 		goto dealloc_usb2_hcd;
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	ret = of_property_read_u32(parent->of_node,
-				"usb_audio_offloading", &value);
-	if (ret == 0 && value == 1) {
-		ret = exynos_usb_audio_init(parent, pdev);
-		if (ret) {
-			dev_err(&pdev->dev, "USB Audio INIT fail\n");
-			return ret;
-		} else {
-			dev_info(&pdev->dev, "USB Audio offloading is supported\n");
-		}
+	if (is_aosp_mode()) {
+		dev_info(&pdev->dev, "AOSP mode: disable USB Audio offloading\n");
 	} else {
-		dev_err(&pdev->dev, "No usb offloading, err = %d\n",
-					ret);
-		return ret;
-	}
+		ret = of_property_read_u32(parent->of_node,
+					"usb_audio_offloading", &value);
+		if (ret == 0 && value == 1) {
+			ret = exynos_usb_audio_init(parent, pdev);
+			if (ret) {
+				dev_err(&pdev->dev, "USB Audio INIT fail\n");
+				return ret;
+			} else {
+				dev_info(&pdev->dev, "USB Audio offloading is supported\n");
+			}
+		} else {
+			dev_err(&pdev->dev, "No usb offloading, err = %d\n",
+						ret);
+			return ret;
+		}
 
-	xhci->out_dma = xhci_data.out_data_dma;
-	xhci->out_addr = xhci_data.out_data_addr;
-	xhci->in_dma = xhci_data.in_data_dma;
-	xhci->in_addr = xhci_data.in_data_addr;
+		xhci->out_dma = xhci_data.out_data_dma;
+		xhci->out_addr = xhci_data.out_data_addr;
+		xhci->in_dma = xhci_data.in_data_dma;
+		xhci->in_addr = xhci_data.in_data_addr;
+	}
 #endif
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &xhci_plat_attr_group);
