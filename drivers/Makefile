@@ -200,9 +200,6 @@ obj-${CONFIG_VISION_SUPPORT}	+= vision/
 
 obj-y				+= samsung/
 
-# uH
-obj-$(CONFIG_UH)		+= uh/
-
 obj-y				+= knox/
 
 #Sensor

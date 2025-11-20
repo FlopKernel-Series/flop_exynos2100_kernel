@@ -406,9 +406,4 @@ int is_dump_regs_array(int target_hw_id, int instance, u32 fcount, struct cr_set
 
 int is_file_read(const char *ppath, const char *pfname, void **pdata, u32 *size);
 
-unsigned long _uh_call2(u64 app_id, u64 command, u64 arg0, u64 arg1, u64 arg2, u64 arg3);
-static inline void uh_call2(u64 app_id, u64 command, u64 arg0, u64 arg1, u64 arg2, u64 arg3)
-{
-	_uh_call2(app_id | command, arg0, arg1, arg2, arg3, 0);
-}
 #endif
