@@ -3429,11 +3429,47 @@ static ssize_t disksize_store(struct device *dev,
 		goto out_unlock;
 	}
 
-#ifndef CONFIG_ZRAM_SIZE_OVERRIDE
-	disksize = PAGE_ALIGN(disksize);
-#else
+#ifdef CONFIG_ZRAM_SIZE_AUTO
+	{
+		/*
+		 * Dynamic ZRAM size detection:
+		 * totalram_pages() returns usable pages.
+		 *
+		 * Use fixed sizes for known RAM variants and fall back to
+		 * rounded 50% sizing for anything unexpected.
+		 */
+		unsigned long total_ram_mb =
+			totalram_pages() * (PAGE_SIZE / 1024) / 1024;
+		u64 rounded_half_gb;
+
+		if (total_ram_mb > 14000) {
+			disksize = 8ULL * SZ_1G;
+			pr_info("Detected 16GB RAM variant (usable: %lu MB), setting ZRAM to 8GB (50%%)",
+				total_ram_mb);
+		} else if (total_ram_mb > 10000) {
+			disksize = 6ULL * SZ_1G;
+			pr_info("Detected 12GB RAM variant (usable: %lu MB), setting ZRAM to 6GB (50%%)",
+				total_ram_mb);
+		} else if (total_ram_mb > 6200) {
+			disksize = 4ULL * SZ_1G;
+			pr_info("Detected 8GB RAM variant (usable: %lu MB), setting ZRAM to 4GB (50%%)",
+				total_ram_mb);
+		} else if (total_ram_mb > 4200) {
+			disksize = 3ULL * SZ_1G;
+			pr_info("Detected 6GB RAM variant (usable: %lu MB), setting ZRAM to 3GB (50%%)",
+				total_ram_mb);
+		} else {
+			rounded_half_gb = DIV_ROUND_CLOSEST_ULL((u64)total_ram_mb, 2048);
+			if (!rounded_half_gb)
+				rounded_half_gb = 1;
+			disksize = rounded_half_gb * SZ_1G;
+			pr_info("Detected unknown RAM variant (usable: %lu MB), setting ZRAM to %lluGB (~50%% rounded)",
+				total_ram_mb, rounded_half_gb);
+		}
+	}
+#elif defined(CONFIG_ZRAM_SIZE_OVERRIDE)
 	disksize = (u64)SZ_1 * CONFIG_ZRAM_SIZE_OVERRIDE;
-	pr_info("Overriding zram size to %li", disksize);
+	pr_info("Overriding zram size to %llu", disksize);
 #endif
 	if (!zram_meta_alloc(zram, disksize)) {
 		err = -ENOMEM;
