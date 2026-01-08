@@ -885,7 +885,7 @@ __visible_for_testing int max77705_set_otg(struct max77705_charger_data *charger
 __visible_for_testing void max77705_check_slow_charging(struct max77705_charger_data *charger,
 					int input_current)
 {
-	union power_supply_propval value;
+	union power_supply_propval value = {0, };
 
 	/* under 400mA considered as slow charging concept for VZW */
 	if (input_current <= SLOW_CHARGING_CURRENT_STANDARD &&
@@ -1958,7 +1958,7 @@ static irqreturn_t max77705_chg_irq_thread(int irq, void *irq_data)
 static irqreturn_t max77705_batp_irq(int irq, void *data)
 {
 	struct max77705_charger_data *charger = data;
-	union power_supply_propval value;
+	union power_supply_propval value = {0, };
 	u8 reg_data;
 
 	pr_info("%s : irq(%d)\n", __func__, irq);
@@ -2226,7 +2226,7 @@ __visible_for_testing void max77705_wc_chg_current_work(struct work_struct *work
 static irqreturn_t max77705_sysovlo_irq(int irq, void *data)
 {
 	struct max77705_charger_data *charger = data;
-	union power_supply_propval value;
+	union power_supply_propval value = {0, };
 
 	pr_info("%s\n", __func__);
 	__pm_wakeup_event(charger->sysovlo_ws, jiffies_to_msecs(HZ * 5));
