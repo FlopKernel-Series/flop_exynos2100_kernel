@@ -3280,7 +3280,7 @@ static void mfc_wpc_i2c_error_work(struct work_struct *work)
 
 	if (charger->wc_w_state &&
 		gpio_get_value(charger->pdata->wpc_det)) {
-		union power_supply_propval value;
+		union power_supply_propval value = {0, };
 
 		psy_do_property("battery", set,
 			POWER_SUPPLY_EXT_PROP_WC_CONTROL, value);
