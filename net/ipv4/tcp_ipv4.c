@@ -1061,9 +1061,6 @@ void tcp_v4_reqsk_send_ack(const struct sock *sk, struct sk_buff *skb,
  *	This still operates on a request_sock only, not on a big
  *	socket.
  */
-#ifndef CONFIG_MPTCP
-static
-#endif
 static int tcp_v4_send_synack(const struct sock *sk, struct dst_entry *dst,
 			      struct flowi *fl,
 			      struct request_sock *req,
