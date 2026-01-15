@@ -78,9 +78,6 @@ const char *selinux_policycap_names[__POLICYDB_CAPABILITY_MAX] = {
 
 static struct selinux_ss selinux_ss;
 
-// [ SEC_SELINUX_PORTING_COMMON
-int ss_initialized;
-// [ SEC_SELINUX_PORTING_COMMON
 
 void selinux_ss_init(struct selinux_ss **ss)
 {
@@ -744,14 +741,8 @@ out:
 	kfree(n);
 	kfree(t);
 
-// [ SEC_SELINUX_PORTING_COMMON
-#ifdef CONFIG_ALWAYS_ENFORCE
-    	selinux_enforcing = 1;
-#endif
-	
-	if (!selinux_enforcing) // SEC_SELINUX_PORTING_COMMON Change to use RKP 
+	if (!enforcing_enabled(state))
 		return 0;
-// ] SEC_SELINUX_PORTING_COMMON
 	return -EPERM;
 }
 
@@ -1224,9 +1215,6 @@ static int context_struct_to_string(struct policydb *p,
 				    char **scontext, u32 *scontext_len)
 {
 	char *scontextp;
-// [ SEC_SELINUX_PORTING_COMMON 
-	gfp_t kmalloc_flag = GFP_ATOMIC;
-// ] SEC_SELINUX_PORTING_COMMON 
 
 	if (scontext)
 		*scontext = NULL;
@@ -1252,11 +1240,7 @@ static int context_struct_to_string(struct policydb *p,
 		return 0;
 
 	/* Allocate space for the context; caller must free this space. */
-// [ SEC_SELINUX_PORTING_COMMON 
-	if (!in_interrupt() && !in_atomic())
-		kmalloc_flag = GFP_KERNEL;
-	scontextp = kmalloc(*scontext_len, kmalloc_flag);
-// ] SEC_SELINUX_PORTING_COMMON 	
+	scontextp = kmalloc(*scontext_len, GFP_ATOMIC);
 	if (!scontextp)
 		return -ENOMEM;
 	*scontext = scontextp;

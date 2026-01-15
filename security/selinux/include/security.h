@@ -131,18 +131,6 @@ static inline void selinux_mark_initialized(struct selinux_state *state)
 	smp_store_release(&state->initialized, true);
 }
 
-#ifdef CONFIG_SECURITY_SELINUX_DEVELOP
-extern int selinux_enforcing;
-static inline bool enforcing_enabled(struct selinux_state *state)
-{
-	return selinux_enforcing; // SEC_SELINUX_PORTING_COMMON Change to use RKP 
-}
-
-static inline void enforcing_set(struct selinux_state *state, bool value)
-{
-	selinux_enforcing = value; // SEC_SELINUX_PORTING_COMMON Change to use RKP
-}
-#else
 static inline bool enforcing_enabled(struct selinux_state *state)
 {
 	return true;
@@ -151,7 +139,6 @@ static inline bool enforcing_enabled(struct selinux_state *state)
 static inline void enforcing_set(struct selinux_state *state, bool value)
 {
 }
-#endif
 
 #ifdef CONFIG_SECURITY_SELINUX_DISABLE
 static inline bool selinux_disabled(struct selinux_state *state)
