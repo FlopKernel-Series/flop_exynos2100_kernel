@@ -270,12 +270,14 @@ void report_light_data(struct ssp_data *data, int sensor_type, struct sensor_val
 {
 	report_iio_data(data, sensor_type, lightdata);
 	if (data->light_log_cnt < 8) {
+#if SSP_DBG
 		char *header = sensor_type == UNCAL_LIGHT_SENSOR ? "#>UL" : "#>L";
 		ssp_dbg("[SSP] %s lux=%u cct=%d r=%d g=%d b=%d c=%d atime=%d again=%d brightness=%d min_lux_flag=%d",
 			header, data->buf[sensor_type].light_t.lux, data->buf[sensor_type].light_t.cct,
 			data->buf[sensor_type].light_t.r, data->buf[sensor_type].light_t.g, data->buf[sensor_type].light_t.b,
 			data->buf[sensor_type].light_t.w, data->buf[sensor_type].light_t.a_time, data->buf[sensor_type].light_t.a_gain,
 			data->buf[sensor_type].light_t.brightness, data->buf[sensor_type].light_t.min_lux_flag);
+#endif
 		data->light_log_cnt++;
 	}
 }

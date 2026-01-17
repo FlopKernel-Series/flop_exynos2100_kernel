@@ -561,7 +561,9 @@ bool ssp_check_buffer(struct ssp_data *data)
 
 void ssp_batch_resume_check(struct ssp_data *data)
 {
+#if SSP_DBG
 	u64 acc_offset = 0, uncal_mag_offset = 0, press_offset = 0, grv_offset = 0, proxi_offset = 0;
+#endif
 	//if suspend -> wakeup case. calc. FIFO last timestamp
 	if (data->bIsResumed) {
 		u8 sensor_type = 0;
@@ -612,8 +614,10 @@ void ssp_batch_resume_check(struct ssp_data *data)
 			idx_data += 8;
 		}
 
+#if SSP_DBG
 		ssp_dbg("[SSP_BAT] resume calc. acc %lld. uncalmag %lld. pressure %lld. GRV %lld proxi %lld\n",
 			acc_offset, uncal_mag_offset, press_offset, grv_offset, proxi_offset);
+#endif
 	}
 	data->bIsResumed = false;
 	data->resumeTimestamp = 0ULL;
