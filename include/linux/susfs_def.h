@@ -48,7 +48,7 @@
 #define VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT 0x80000000 /* used for mounts that are unshared by ksu process */
 
 /*
- * inode->i_mapping->flags => A 'unsigned long' type storing flag 'AS_FLAGS_', bit 1 to 31 is not usable since 6.12
+ * inode->i_state => A 'unsigned long' type storing flag 'AS_FLAGS_', bit 1 to 31 is not usable since 6.12
  * nd->state => storing flag 'ND_STATE_'
  * nd->flags => storing flag 'ND_FLAGS_'
  * task_struct->thread_info.flags => storing flag 'TIF_'
@@ -133,19 +133,16 @@ static inline bool susfs_is_current_proc_umounted_app(void) {
 
 #define SUSFS_IS_INODE_SUS_MAP(inode) \
 		inode && \
-		inode->i_mapping && \
-		unlikely(test_bit(AS_FLAGS_SUS_MAP, &inode->i_mapping->flags)) && \
+		unlikely(test_bit(AS_FLAGS_SUS_MAP, &inode->i_state)) && \
 		susfs_is_current_proc_umounted_app()
 
 #define SUSFS_IS_INODE_OPEN_REDIRECT_WITHOUT_UID_CHECK(inode) \
 		inode && \
-		inode->i_mapping && \
-		unlikely(test_bit(AS_FLAGS_OPEN_REDIRECT, &inode->i_mapping->flags))
+		unlikely(test_bit(AS_FLAGS_OPEN_REDIRECT, &inode->i_state))
 
 #define SUSFS_IS_INODE_OPEN_REDIRECT(inode) \
 		inode && \
-		inode->i_mapping && \
-		unlikely(test_bit(AS_FLAGS_OPEN_REDIRECT, &inode->i_mapping->flags)) && \
+		unlikely(test_bit(AS_FLAGS_OPEN_REDIRECT, &inode->i_state)) && \
 		susfs_is_current_proc_umounted_app()
 
 #endif // #ifndef KSU_SUSFS_DEF_H
