@@ -487,6 +487,15 @@ config USB_CONFIGFS_F_UAC1
 	  received from the USB Host and choose to provide whatever it
 	  wants as audio data to the USB Host.
 
+config USB_UAC1_DEVICE_NAME
+	string "UAC1 device name"
+	depends on USB_CONFIGFS_F_UAC1
+	default "AC Interface"
+	help
+	  This option sets the device name string that appears in the
+	  USB interface association descriptor for the UAC1 gadget.
+	  The default is "AC Interface".
+
 config USB_CONFIGFS_F_UAC1_LEGACY
 	bool "Audio Class 1.0 (legacy implementation)"
 	depends on USB_CONFIGFS

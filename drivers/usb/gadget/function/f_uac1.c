@@ -1685,7 +1685,7 @@ static struct usb_function_instance *f_audio_alloc_inst(void)
 
 	opts->req_number = UAC1_DEF_REQ_NUM;
 
-	snprintf(opts->function_name, sizeof(opts->function_name), "AC Interface");
+	snprintf(opts->function_name, sizeof(opts->function_name), "%s", CONFIG_USB_UAC1_DEVICE_NAME);
 
 	return &opts->func_inst;
 }
