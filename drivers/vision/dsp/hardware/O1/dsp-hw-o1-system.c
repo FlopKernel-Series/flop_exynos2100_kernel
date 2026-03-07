@@ -985,7 +985,7 @@ static void __dsp_hw_o1_system_master_load_async(const struct firmware *fw,
 #if KERNEL_VERSION(4, 18, 0) > LINUX_VERSION_CODE
 			ret = request_firmware_direct(&fw, full_name, sys->dev);
 #else
-			ret = firmware_request_nowarn(&fw, full_name, sys->dev);
+			ret = request_firmware(&fw, full_name, sys->dev);
 #endif
 			if (ret >= 0)
 				break;
@@ -993,7 +993,7 @@ static void __dsp_hw_o1_system_master_load_async(const struct firmware *fw,
 			msleep(500);
 		}
 		if (ret < 0) {
-			dsp_err("Failed to request binary[%s]\n", full_name);
+			dsp_err("dsp_hw_o1: Failed to request binary[%s]\n", full_name);
 			return;
 		}
 	}
@@ -1001,14 +1001,14 @@ static void __dsp_hw_o1_system_master_load_async(const struct firmware *fw,
 	sys_sub->boot_bin = vmalloc(fw->size);
 	if (!sys_sub->boot_bin) {
 		release_firmware(fw);
-		dsp_err("Failed to malloc memory for master bin\n");
+		dsp_err("dsp_hw_o1: Failed to malloc memory for master bin\n");
 		return;
 	}
 
 	memcpy(sys_sub->boot_bin, fw->data, fw->size);
 	sys_sub->boot_bin_size = fw->size;
 	release_firmware(fw);
-	dsp_info("binary[%s/%zu] is loaded\n",
+	dsp_info("dsp_hw_o1: binary[%s/%zu] is loaded\n",
 			full_name, sys_sub->boot_bin_size);
 	dsp_leave();
 }
