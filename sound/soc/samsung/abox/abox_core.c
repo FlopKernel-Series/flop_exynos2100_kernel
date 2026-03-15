@@ -16,10 +16,8 @@
 #include <linux/sched/clock.h>
 #include <linux/pm_runtime.h>
 #include <soc/samsung/exynos-pmu-if.h>
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 #include <soc/samsung/imgloader.h>
 #include <soc/samsung/exynos-s2mpu.h>
-#endif
 #include "abox_util.h"
 #include "abox_gic.h"
 #include "abox.h"
@@ -38,12 +36,10 @@ struct abox_core_firmware {
 	const char *name;
 	enum abox_core_area area;
 	unsigned int offset;
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 	/* Exynos Image Loader */
 	bool code_signed;
 	struct imgloader_desc   *fw_imgloader_desc;
 	unsigned int fw_id;
-#endif
 };
 
 struct abox_core {
@@ -393,7 +389,6 @@ u32 abox_core_read_gpr_dump(int core_id, int gpr_id, unsigned int *dump)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 int abox_imgloader_mem_setup(struct imgloader_desc *desc, const u8 *metadata, size_t size,
 		phys_addr_t *fw_phys_base, size_t *fw_bin_size, size_t *fw_mem_size)
 {
@@ -488,7 +483,7 @@ static int abox_core_imgloader_desc_init(struct abox_core *core, struct abox_cor
 
 	return imgloader_desc_init(desc);
 }
-#endif
+
 static int abox_core_load_firmware(struct abox_core *core,
 		struct abox_core_firmware *fw)
 {
@@ -602,6 +597,7 @@ static void abox_core_check_firmware(const struct firmware *fw, void *context)
 
 	abox_dbg(dev, "%s\n", __func__);
 
+	if (data->cmpnt)
 	pm_runtime_resume(dev);
 }
 

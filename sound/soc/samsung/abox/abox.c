@@ -2874,6 +2874,27 @@ err:
 	return ret;
 }
 
+int abox_add_extra_firmware_controls(struct abox_data *data)
+{
+	struct device *dev = data->dev;
+	struct snd_soc_component *cmpnt = data->cmpnt;
+	struct abox_extra_firmware *efw;
+
+	abox_dbg(dev, "%s\n", __func__);
+
+	if (!cmpnt)
+		return -EINVAL;
+
+	snd_soc_add_component_controls(cmpnt, &abox_ext_bin_reload_all_control, 1);
+
+	list_for_each_entry(efw, &data->firmware_extra, list) {
+		if (efw->changeable)
+			abox_ext_bin_add_controls(cmpnt, efw);
+	}
+
+	return 0;
+}
+
 static struct abox_extra_firmware *abox_get_extra_firmware(
 		struct abox_data *data, unsigned int idx)
 {
@@ -2946,8 +2967,6 @@ static void abox_request_extra_firmware(struct abox_data *data)
 			continue;
 
 		abox_ext_bin_request(dev, efw);
-		if (efw->changeable)
-			abox_ext_bin_add_controls(data->cmpnt, efw);
 	}
 }
 
