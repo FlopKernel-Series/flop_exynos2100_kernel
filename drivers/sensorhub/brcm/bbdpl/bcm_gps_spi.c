@@ -246,8 +246,6 @@ static int bcm_spi_open(struct inode *inode, struct file *filp)
 
 	spin_unlock_irqrestore(&priv->irq_lock, flags);
 
-	priv->irq_wakeup_enabled = (enable_irq_wake(priv->spi->irq) == 0);
-
 	filp->private_data = priv;
 #ifdef DEBUG_1HZ_STAT
 	bbd_enable_stat();
@@ -359,8 +357,10 @@ static int bcm_spi_release(struct inode *inode, struct file *filp)
 
 	spin_unlock_irqrestore(&priv->irq_lock, flags);
 
-	if (priv->irq_wakeup_enabled)
+	if (priv->irq_wakeup_enabled) {
 		disable_irq_wake(priv->spi->irq);
+		priv->irq_wakeup_enabled = false;
+	}
 
 	pr_info("%s--\n", __func__);
 	return 0;
@@ -1079,6 +1079,11 @@ static int bcm_spi_suspend(struct device *dev)
 
 	spin_unlock_irqrestore(&priv->irq_lock, flags);
 
+	if (priv->irq_wakeup_enabled) {
+		disable_irq_wake(spi->irq);
+		priv->irq_wakeup_enabled = false;
+	}
+
 	if (priv->serial_wq)
 		flush_workqueue(priv->serial_wq);
 
@@ -1163,6 +1168,11 @@ static void bcm_spi_shutdown(struct spi_device *spi)
 	spin_unlock_irqrestore(&priv->irq_lock, flags);
 
 	pr_info("[SSPBBD]: %s **\n", __func__);
+
+	if (priv->irq_wakeup_enabled) {
+		disable_irq_wake(spi->irq);
+		priv->irq_wakeup_enabled = false;
+	}
 
 	if (priv->serial_wq) {
 		// SWGNSSAND-1735 : flush_workqueue(priv->serial_wq);
@@ -1404,6 +1414,11 @@ static int bcm_spi_remove(struct spi_device *spi)
 	/* Flush work */
 	flush_workqueue(priv->serial_wq);
 	destroy_workqueue(priv->serial_wq);
+
+	if (priv->irq_wakeup_enabled) {
+		disable_irq_wake(spi->irq);
+		priv->irq_wakeup_enabled = false;
+	}
 
 	/* Free everything */
 	free_irq(spi->irq, priv);
