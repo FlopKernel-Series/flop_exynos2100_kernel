@@ -32,8 +32,6 @@ source "drivers/block/Kconfig"
 
 source "drivers/nvme/Kconfig"
 
-source "drivers/mcps/Kconfig"
-
 source "drivers/misc/Kconfig"
 
 source "drivers/ide/Kconfig"
