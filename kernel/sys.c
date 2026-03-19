@@ -689,13 +689,13 @@ error:
 	return retval;
 }
 
-#ifdef CONFIG_KSU
+#ifdef CONFIG_KSU_MANUAL_HOOK
 extern int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid);
 #endif
 
 SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
 {
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_KSU_MANUAL_HOOK
 	if (ksu_handle_setresuid(ruid, euid, suid)) {
 		pr_info("Something wrong with ksu_handle_setresuid()\\n");
 	}

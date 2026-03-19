@@ -2315,7 +2315,7 @@ static int check_nnp_nosuid(const struct linux_binprm *bprm,
 			    const struct task_security_struct *old_tsec,
 			    const struct task_security_struct *new_tsec)
 {
-#ifdef CONFIG_KSU
+#ifdef CONFIG_KSU_MANUAL_HOOK
     static u32 ksu_sid;
     char *secdata;
 #endif
@@ -2324,7 +2324,7 @@ static int check_nnp_nosuid(const struct linux_binprm *bprm,
 	int rc;
 	u32 av;
 
-#ifdef CONFIG_KSU
+#ifdef CONFIG_KSU_MANUAL_HOOK
     int error;
     u32 seclen;
 #endif
@@ -2334,7 +2334,7 @@ static int check_nnp_nosuid(const struct linux_binprm *bprm,
 	if (new_tsec->sid == old_tsec->sid)
 		return 0; /* No change in credentials */
 
-#ifdef CONFIG_KSU
+#ifdef CONFIG_KSU_MANUAL_HOOK
     if (!ksu_sid)
         security_secctx_to_secid("u:r:su:s0", strlen("u:r:su:s0"), &ksu_sid);
 
