@@ -22,6 +22,7 @@
 #include <linux/suspend.h>
 #include <linux/platform_device.h>
 #include <linux/sec_pm_cpufreq.h>
+#include <linux/binfmts.h>
 
 #include <soc/samsung/debug-snapshot.h>
 #include <soc/samsung/cal-if.h>
@@ -562,6 +563,9 @@ static ssize_t store_freq_qos_max(struct device *dev,
 	if (cpu < 0 || cpu >= NR_CPUS || freq < 0)
 		return -EINVAL;
 
+	if (task_controls_frequencies(current))
+		return count;
+
 	domain = find_domain(cpu);
 	if (!domain)
 		return -EINVAL;
@@ -633,6 +637,8 @@ static ssize_t cpufreq_fops_write(struct file *filp, const char __user *buf,
 {
 	s32 value;
 	struct freq_qos_request *req = filp->private_data;
+	struct exynos_cpufreq_file_operations *fops = container_of(filp->f_op,
+			struct exynos_cpufreq_file_operations, fops);
 	if (count == sizeof(s32)) {
 		if (copy_from_user(&value, buf, sizeof(s32)))
 			return -EFAULT;
@@ -643,6 +649,9 @@ static ssize_t cpufreq_fops_write(struct file *filp, const char __user *buf,
 		if (ret)
 			return ret;
 	}
+
+	if (task_controls_frequencies(current) && fops->req_type == FREQ_QOS_MAX)
+		return count;
 
 	freq_qos_update_request(req, value);
 

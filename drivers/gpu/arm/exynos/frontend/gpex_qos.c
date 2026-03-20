@@ -22,6 +22,7 @@
 #include <linux/device.h>
 #include <linux/spinlock.h>
 #include <linux/slab.h>
+#include <linux/binfmts.h>
 
 #include <gpexbe_devicetree.h>
 #include <gpex_utils.h>
@@ -98,6 +99,9 @@ int gpex_qos_set(gpex_qos_flag flags, int val)
 		return -ENOENT;
 	}
 
+	if (task_controls_frequencies(current) && (flags & PMQOS_MAX))
+		return 0;
+
 	gpexbe_qos_request_update((mali_pmqos_flags)flags, val);
 
 	/* TODO: record PMQOS state somewhere */
@@ -111,6 +115,7 @@ int gpex_qos_unset(gpex_qos_flag flags)
 		GPU_LOG(MALI_EXYNOS_ERROR, "%s: PM QOS ERROR : pm_qos not initialized\n", __func__);
 		return -ENOENT;
 	}
+
 	gpexbe_qos_request_unset((mali_pmqos_flags)flags);
 
 	/* TODO: record PMQOS state somewhere */

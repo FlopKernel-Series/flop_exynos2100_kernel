@@ -21,6 +21,7 @@
 #include <linux/cpufreq.h>
 #include <linux/pm_opp.h>
 #include <linux/ems.h>
+#include <linux/binfmts.h>
 
 #include <soc/samsung/exynos-cpupm.h>
 #include <soc/samsung/exynos-ufcc.h>
@@ -1028,6 +1029,9 @@ static ssize_t cpufreq_max_limit_store(struct device *dev,
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
 
+	if (task_controls_frequencies(current))
+		return count;
+
 	ufc.last_max_input = input;
 
 	ufc_update_max_limit();
@@ -1090,6 +1094,9 @@ static ssize_t cpufreq_max_limit_strict_store(struct device *dev,
 
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
+
+	if (task_controls_frequencies(current))
+		return count;
 
 	/* Save the input for sse change */
 	ufc.last_max_strict_input = input;

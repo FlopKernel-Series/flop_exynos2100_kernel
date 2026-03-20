@@ -18,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/jiffies.h>
+#include <linux/binfmts.h>
 
 #include "thermal_core.h"
 
@@ -714,6 +715,9 @@ cur_state_store(struct device *dev, struct device_attribute *attr,
 
 	if ((long)state < 0)
 		return -EINVAL;
+
+	if (task_controls_frequencies(current))
+		return count;
 
 	mutex_lock(&cdev->lock);
 
