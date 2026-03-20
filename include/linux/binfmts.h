@@ -158,6 +158,7 @@ extern int do_execveat(int, struct filename *,
 		       const char __user * const __user *,
 		       int);
 int do_execve_file(struct file *file, void *__argv, void *__envp);
+bool freq_control_blocking_enabled(void);
 
 static inline bool task_is_booster(struct task_struct *tsk)
 {
@@ -179,6 +180,9 @@ static inline bool task_is_booster(struct task_struct *tsk)
 static inline bool task_controls_frequencies(struct task_struct *tsk)
 {
 	char comm[sizeof(tsk->comm)];
+
+	if (!freq_control_blocking_enabled())
+		return false;
 
 	if (task_is_booster(tsk))
 		return true;
