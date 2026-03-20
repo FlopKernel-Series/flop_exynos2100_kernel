@@ -22,6 +22,7 @@
 #include <linux/pm_opp.h>
 #include <linux/ems.h>
 #include <linux/binfmts.h>
+#include <linux/sched/signal.h>
 
 #include <soc/samsung/exynos-cpupm.h>
 #include <soc/samsung/exynos-ufcc.h>
@@ -616,6 +617,64 @@ static struct ufc_table_info *get_table_info(int ctrl_type)
 static void ufc_update_max_limit(void);
 static void ufc_update_min_limit(void);
 
+/*
+ * Blocked userspace throttlers should not leave a stale UFC max cap armed
+ * for later reapplication through the strict/min-limit path.
+ */
+static void ufc_reset_max_limit_state(void)
+{
+	ufc.last_max_input = -1;
+	ufc.last_max_strict_input = -1;
+}
+
+static void ufc_clear_max_limit_state(void)
+{
+	if (ufc.last_max_input < 0 && ufc.last_max_strict_input < 0)
+		return;
+
+	ufc_reset_max_limit_state();
+	ufc_update_max_limit();
+}
+
+static const char *ufc_task_control_reason(struct task_struct *tsk)
+{
+	char comm[sizeof(tsk->comm)];
+
+	get_task_comm(comm, tsk);
+
+	if (task_is_booster(tsk))
+		return "task_is_booster";
+	if (!strcmp(comm, "HyPerThread"))
+		return "HyPerThread";
+	if (!strcmp(comm, "argosd"))
+		return "argosd";
+
+	return NULL;
+}
+
+static bool ufc_group_controls_frequencies(struct task_struct *tsk)
+{
+	struct task_struct *thread;
+
+	if (!freq_control_blocking_enabled())
+		return false;
+
+	if (ufc_task_control_reason(tsk))
+		return true;
+
+	rcu_read_lock();
+	for_each_thread(tsk->group_leader, thread) {
+		if (!ufc_task_control_reason(thread))
+			continue;
+
+		rcu_read_unlock();
+		return true;
+	}
+	rcu_read_unlock();
+
+	return false;
+}
+
 /**
  * PLIST_HEAD_INIT - static struct flist_head initializer
  * @head:	struct flist_head variable name
@@ -926,10 +985,15 @@ static void ufc_update_max_limit(void)
 		return;
 	}
 
-	target_freq = ufc_determine_max_limit();
-
-	if (target_freq <= 0)
+	if (ufc_group_controls_frequencies(current)) {
+		ufc_reset_max_limit_state();
 		target_freq = ufc.max_vfreq;
+	} else {
+		target_freq = ufc_determine_max_limit();
+
+		if (target_freq <= 0)
+			target_freq = ufc.max_vfreq;
+	}
 
 	target_idx = ufc_get_proper_table_index(target_freq,
 				table_info, PM_QOS_MAX_LIMIT);
@@ -1029,8 +1093,10 @@ static ssize_t cpufreq_max_limit_store(struct device *dev,
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
 
-	if (task_controls_frequencies(current))
+	if (ufc_group_controls_frequencies(current)) {
+		ufc_clear_max_limit_state();
 		return count;
+	}
 
 	ufc.last_max_input = input;
 
@@ -1095,8 +1161,10 @@ static ssize_t cpufreq_max_limit_strict_store(struct device *dev,
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
 
-	if (task_controls_frequencies(current))
+	if (ufc_group_controls_frequencies(current)) {
+		ufc_clear_max_limit_state();
 		return count;
+	}
 
 	/* Save the input for sse change */
 	ufc.last_max_strict_input = input;
