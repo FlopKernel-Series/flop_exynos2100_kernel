@@ -394,8 +394,9 @@ static void esgov_iowait_boost(struct esgov_cpu *esg_cpu, u64 time,
 		return;
 	}
 
-	/* First wakeup after IO: start with minimum boost */
-	esg_cpu->iowait_boost = esg_cpu->min;
+	/* First wakeup after IO: start from a useful burst-processing floor */
+	esg_cpu->iowait_boost =
+		max_t(unsigned long, esg_cpu->min, SCHED_CAPACITY_SCALE >> 1);
 }
 
 /**
@@ -742,7 +743,7 @@ complete_esg_init:
 	esg_policy->uclamp_min = 0;
 	esg_policy->uclamp_max = SCHED_CAPACITY_SCALE;
 	esg_policy->uclamp_monitor_len = 1;	/* Default 1 window == 4ms */
-	esg_policy->uclamp_busy_ratio = 80;	/* Default 80% */
+	esg_policy->uclamp_busy_ratio = 60;	/* Default 60% */
 	up_write(&esg_policy->rwsem);
 
 	return 0;
@@ -1013,8 +1014,16 @@ static void esgov_update_cpu_util(struct esgov_policy *esg_policy, u64 time, uns
 static bool esgov_check_rate_delay(struct esgov_policy *esg_policy, u64 time)
 {
 	s64 delta_ns = time - esg_policy->last_freq_update_time;
+	u64 min_delay_ns;
 
-	if (delta_ns < esg_policy->rate_delay_ns)
+	/*
+	 * Do not let the generic front gate hide the shorter up-ramp window.
+	 * The direction-aware postpone logic below still handles the slower
+	 * downscale path and the multi-level smoothing heuristics.
+	 */
+	min_delay_ns = min_t(u64, esg_policy->rate_delay_ns, NSEC_PER_MSEC);
+
+	if (delta_ns < min_delay_ns)
 		return false;
 
 	return true;
@@ -1045,12 +1054,10 @@ static bool esgov_postpone_freq_update(struct esgov_policy *esg_policy,
 
 	/* In this point target_freq is different with cur freq */
 	if (esg_policy->policy->cur < target_freq) {
-		u64 ramp_up_bound = esg_policy->up_rate_limit_ns;
-
 		if (rapid_scale == RAPID_SCALE_UP)
 			return false;
 
-		if (elapsed < ramp_up_bound)
+		if (elapsed < (1 * NSEC_PER_MSEC))
 			return true;
 	} else {
 		u64 ramp_down_bound = esg_policy->down_rate_limit_ns;
