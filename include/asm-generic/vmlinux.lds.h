@@ -956,6 +956,7 @@
 	/DISCARD/ : {							\
 	EXIT_DISCARDS							\
 	EXIT_CALL							\
+	*(.discard.ksym)						\
 	*(.discard)							\
 	*(.discard.*)							\
 	*(.modinfo)							\
