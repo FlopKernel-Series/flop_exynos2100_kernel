@@ -14466,7 +14466,7 @@
 
 		ontime {
 			root = <0x00>;
-			foreground = <0x00>;
+			foreground = <0x01>;
 			background = <0x00>;
 			top-app = <0x01>;
 
