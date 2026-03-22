@@ -197,6 +197,7 @@ static void __update_cur_set(struct emstune_set *next_set)
 	update_cur_set_field(frt);
 	update_cur_set_field(ecs);
 	update_cur_set_field(tiny_cd_sched);
+	update_cur_set_field(support_uclamp);
 
 	emstune_notify_mode_update();
 }
@@ -532,6 +533,14 @@ int emstune_tiny_cd_sched(struct task_struct *p)
 	return cur_set.tiny_cd_sched.enabled[st_idx];
 }
 
+int emstune_support_uclamp(void)
+{
+	if (unlikely(!emstune_initialized))
+		return 0;
+
+	return cur_set.support_uclamp.enabled;
+}
+
 static void init_ontime_list(struct emstune_ontime *ontime)
 {
 	INIT_LIST_HEAD(&ontime->dom_list);
@@ -669,6 +678,21 @@ parse_tiny_cd_sched(struct device_node *dn, struct emstune_set *set)
 	tiny_cd_sched->overriding = true;
 
 fail:
+	of_node_put(dn);
+
+	return 0;
+}
+
+static int
+parse_support_uclamp(struct device_node *dn, struct emstune_set *set)
+{
+	struct emstune_support_uclamp *support_uclamp = &set->support_uclamp;
+
+	if (of_property_read_u32(dn, "enabled", &support_uclamp->enabled))
+		support_uclamp->enabled = 1;
+
+	support_uclamp->overriding = true;
+
 	of_node_put(dn);
 
 	return 0;
@@ -1322,6 +1346,10 @@ show_cur_set(struct kobject *k, struct kobj_attribute *attr, char *buf)
 		ret += scnprintf(buf + ret, PAGE_SIZE - ret, "%5d", cur_set.tiny_cd_sched.enabled[group]);
 	ret += scnprintf(buf + ret, PAGE_SIZE - ret, "\n");
 
+	ret += scnprintf(buf + ret, PAGE_SIZE - ret, "\n[support uclamp]\n");
+	ret += scnprintf(buf + ret, PAGE_SIZE - ret, "enabled : %d\n",
+			cur_set.support_uclamp.enabled);
+
 	return ret;
 }
 
@@ -1885,6 +1913,8 @@ emstune_set_init(struct device_node *dn, struct emstune_set *set)
 	if (of_property_read_string(dn, "desc", &set->desc))
 		return -ENODATA;
 
+	set->support_uclamp.enabled = 1;
+
 #define parse(_name)					\
 	child = of_get_child_by_name(dn, #_name);	\
 	if (child)					\
@@ -1902,6 +1932,7 @@ emstune_set_init(struct device_node *dn, struct emstune_set *set)
 	parse(frt);
 	parse(ecs);
 	parse(tiny_cd_sched);
+	parse(support_uclamp);
 
 	return 0;
 }

@@ -240,6 +240,12 @@ struct emstune_tiny_cd_sched {
 	int enabled[STUNE_GROUP_COUNT];
 };
 
+/* emstune - support uclamp-aware task placement */
+struct emstune_support_uclamp {
+	bool overriding;
+	int enabled;
+};
+
 /* emstune - priority pinning */
 struct emstune_prio_pinning {
 	bool overriding;
@@ -295,6 +301,7 @@ struct emstune_set {
 	struct emstune_frt		frt;
 	struct emstune_ecs		ecs;
 	struct emstune_tiny_cd_sched	tiny_cd_sched;
+	struct emstune_support_uclamp	support_uclamp;
 
 	struct kobject	  		kobj;
 };
@@ -315,6 +322,7 @@ extern const struct cpumask *emstune_cpus_allowed(struct task_struct *p);
 extern int emstune_sched_policy(struct task_struct *p);
 extern int emstune_ontime(struct task_struct *p);
 extern int emstune_tiny_cd_sched(struct task_struct *p);
+extern int emstune_support_uclamp(void);
 extern int emstune_util_est(struct task_struct *p);
 extern int emstune_init_util(struct task_struct *p);
 extern int emstune_wakeup_boost(int group, int cpu);

@@ -75,11 +75,19 @@ static inline int check_migrate_slower(int src, int dst)
 		return false;
 }
 
+static inline unsigned long ontime_task_util(struct task_struct *p)
+{
+	if (emstune_support_uclamp())
+		return ml_uclamp_task_util(p);
+
+	return ml_task_util(p);
+}
+
 void ontime_select_fit_cpus(struct task_struct *p, struct cpumask *fit_cpus)
 {
 	struct ontime_dom *dom;
 	int src_cpu = task_cpu(p);
-	u32 util = ml_task_util(p);
+	u32 util = ontime_task_util(p);
 	struct cpumask mask;
 	struct list_head *list = dom_list;
 
@@ -160,7 +168,7 @@ pick_heavy_task(struct sched_entity *se)
 	 * check first that current task is heavy.
 	 */
 	if (emstune_ontime(p)) {
-		util = ml_task_util(p);
+		util = ontime_task_util(p);
 		if (util >= get_upper_boundary(task_cpu(p), p)) {
 			heaviest_task = p;
 			max_util = util;
@@ -187,7 +195,7 @@ pick_heavy_task(struct sched_entity *se)
 		 * wait tiem is too long (hungry state) or whose util is
 		 * greater than the upper boundary.
 		 */
-		util = ml_task_util(p);
+		util = ontime_task_util(p);
 		if (ml_task_hungry(p) ||
 		    util >= get_upper_boundary(task_cpu(p), p)) {
 			if (util > max_util) {

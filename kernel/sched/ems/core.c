@@ -22,6 +22,14 @@ extern int emstune_cur_level;
 #define TINY_TASK_RATIO_SHIFT	3	/* 12.5% */
 #define BUSY_GROUP_RATIO_SHIFT  2	/* 25% */
 
+static inline unsigned long ems_task_util(struct task_struct *p)
+{
+	if (emstune_support_uclamp())
+		return ml_uclamp_task_util(p);
+
+	return ml_task_util_est(p);
+}
+
 static bool ems_initialized;
 
 #define MAX_CLUSTER_NUM 3
@@ -100,7 +108,7 @@ static void select_fit_cpus(struct tp_env *env)
 	for_each_cpu(cpu, &cpus_allowed) {
 		unsigned long new_util;
 
-		new_util = ml_cpu_util_without(cpu, p) + ml_task_util(p);
+		new_util = ml_cpu_util_without(cpu, p) + ems_task_util(p);
 		if (new_util > capacity_cpu(cpu))
 			cpumask_set_cpu(cpu, &overcap_cpus);
 	}
@@ -163,7 +171,7 @@ combine_cpumask:
 	}
 
 finish:
-	if (emstune_cur_level == 1 && ml_task_util(p) < 100) {
+	if (emstune_cur_level == 1 && ems_task_util(p) < 100) {
 		cpumask_set_cpu(7, &mask_big_cpu);
 		cpumask_andnot(&fit_cpus, &fit_cpus, &mask_big_cpu);
 	}
@@ -180,7 +188,7 @@ finish:
 static void get_util_snapshot(struct tp_env *env)
 {
 	int cpu;
-	int task_util_est = (int)ml_task_util_est(env->p);
+	int task_util_est = (int)ems_task_util(env->p);
 
 	/*
 	 * We don't agree setting 0 for task util
@@ -268,7 +276,7 @@ static void get_ready_env(struct tp_env *env)
 	 * 3) tasks is worker thread.
 	 */
 	if ((env->sched_policy == SCHED_POLICY_EFF_TINY &&
-	     ml_task_util_est(env->p) <= tiny_threshold) ||
+	     env->task_util <= tiny_threshold) ||
 	    (env->p->flags & PF_WQ_WORKER))
 		env->sched_policy = SCHED_POLICY_ENERGY;
 

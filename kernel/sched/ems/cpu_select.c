@@ -497,7 +497,7 @@ static int find_best_eff_cpu(struct tp_env *env)
 	struct cpumask cd_candidates;
 
 	if (emstune_tiny_cd_sched(env->p) &&
-		ml_task_util(env->p) <= tiny_ratio) {
+		env->task_util <= tiny_ratio) {
 		cpumask_clear(&cd_candidates);
 
 		for_each_cpu(cpu, &env->fit_cpus) {
@@ -691,7 +691,7 @@ static int find_best_perf_cpu(struct tp_env *env)
 	cpumask_clear(&idle_candidates);
 	cpumask_clear(&active_candidates);
 
-	task_util = ml_task_util_est(env->p);
+	task_util = env->task_util;
 	for_each_cpu(cpu, cpu_active_mask) {
 		/* get the ml cpu util wo */
 		cpu_util_wo[cpu] = ml_cpu_util(cpu);
