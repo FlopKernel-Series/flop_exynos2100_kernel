@@ -716,17 +716,11 @@ static int u32_set_parms(struct net *net, struct tcf_proto *tp,
 			 struct nlattr *est, bool ovr,
 			 struct netlink_ext_ack *extack)
 {
-	int err, ifindex = -1;
+	int err;
 
 	err = tcf_exts_validate(net, tp, tb, est, &n->exts, ovr, true, extack);
 	if (err < 0)
 		return err;
-
-	if (tb[TCA_U32_INDEV]) {
-		ifindex = tcf_change_indev(net, tb[TCA_U32_INDEV], extack);
-		if (ifindex < 0)
-			return -EINVAL;
-	}
 
 	if (tb[TCA_U32_LINK]) {
 		u32 handle = nla_get_u32(tb[TCA_U32_LINK]);
@@ -762,9 +756,13 @@ static int u32_set_parms(struct net *net, struct tcf_proto *tp,
 		tcf_bind_filter(tp, &n->res, base);
 	}
 
-	if (ifindex >= 0)
-		n->ifindex = ifindex;
-
+	if (tb[TCA_U32_INDEV]) {
+		int ret;
+		ret = tcf_change_indev(net, tb[TCA_U32_INDEV], extack);
+		if (ret < 0)
+			return -EINVAL;
+		n->ifindex = ret;
+	}
 	return 0;
 }
 
