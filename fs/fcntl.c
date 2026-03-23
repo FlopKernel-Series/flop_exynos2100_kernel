@@ -25,7 +25,6 @@
 #include <linux/user_namespace.h>
 #include <linux/memfd.h>
 #include <linux/compat.h>
-
 #include <linux/poll.h>
 #include <asm/siginfo.h>
 #include <linux/uaccess.h>
