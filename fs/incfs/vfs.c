@@ -1644,29 +1644,24 @@ static int incfs_setattr(struct dentry *dentry, struct iattr *ia)
 	return simple_setattr(dentry, ia);
 }
 
-
 static int incfs_getattr(const struct path *path,
 			 struct kstat *stat, u32 request_mask,
 			 unsigned int query_flags)
 {
 	struct inode *inode = d_inode(path->dentry);
-
 	generic_fillattr(inode, stat);
-
+	generic_fillattr(inode, stat);
 	if (inode->i_ino < INCFS_START_INO_RANGE)
 		return 0;
-
 	stat->attributes &= ~STATX_ATTR_VERITY;
 	if (IS_VERITY(inode))
 		stat->attributes |= STATX_ATTR_VERITY;
 	stat->attributes_mask |= STATX_ATTR_VERITY;
-
 	if (request_mask & STATX_BLOCKS) {
 		struct kstat backing_kstat;
 		struct dentry_info *di = get_incfs_dentry(path->dentry);
 		int error = 0;
 		struct path *backing_path;
-
 		if (!di)
 			return -EFSCORRUPTED;
 		backing_path = &di->backing_path;
@@ -1674,10 +1669,8 @@ static int incfs_getattr(const struct path *path,
 				    AT_STATX_SYNC_AS_STAT);
 		if (error)
 			return error;
-
 		stat->blocks = backing_kstat.blocks;
 	}
-
 	return 0;
 }
 

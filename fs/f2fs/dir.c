@@ -15,6 +15,130 @@
 #include "acl.h"
 #include "xattr.h"
 #include <trace/events/f2fs.h>
+#include <linux/iversion.h>
+
+/* an workaround patch for handling hash corruption for casefold file names */
+#ifdef CONFIG_F2FS_SEC_ENC_STRICT_MODE
+#define SEC_CASEFOLD_NR_RETRY			(2)
+#define SEC_PANIC_ON_CASEFOLD_TC_FAILED	(1)
+#define DENTRY_FULLSCAN_LEVEL			(0)
+
+static const struct {
+	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
+	unsigned char str[30];
+	unsigned char ncf[30];
+} nfdicf_test_data[] = {
+	/* Trivial sequences */
+	{
+		/* "ABba" folds to lowercase */
+		.str = {0x41, 0x42, 0x62, 0x61, 0x00},
+		.ncf = {0x61, 0x62, 0x62, 0x61, 0x00},
+	},
+	{
+		/* All ASCII folds to lower-case */
+		.str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0.1",
+		.ncf = "abcdefghijklmnopqrstuvwxyz0.1",
+	},
+	{
+		/* Special case for android */
+		.str = "Android.DCIM.Camera",
+		.ncf = "android.dcim.camera",
+	}
+
+};
+
+static int f2fs_check_utf8_comparisons(struct f2fs_sb_info *sbi)
+{
+	int i;
+	struct unicode_map *table = sbi->sb->s_encoding;
+
+	if (IS_ERR(table)) {
+		f2fs_err(sbi, "Error on unicode map table\n");
+		return -1;
+	}
+
+	f2fs_info(sbi, "Test casefold using encoding defined by SB: %s %d.%d.%d\n",
+			table->charset,
+			(table->version >> 16) & 0xff,
+			(table->version >> 8) & 0xff,
+			(table->version & 0xff));
+
+	for (i = 0; i < ARRAY_SIZE(nfdicf_test_data); i++) {
+		const struct qstr s1 = {.name = nfdicf_test_data[i].str,
+					.len = sizeof(nfdicf_test_data[i].str)};
+		const struct qstr s2 = {.name = nfdicf_test_data[i].ncf,
+					.len = sizeof(nfdicf_test_data[i].ncf)};
+
+		if (utf8_strncasecmp(table, &s1, &s2)) {
+			f2fs_err(sbi, "Casefold test - comparison mismatch : %s %s\n",
+					s1.name, s2.name);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/* If @dir is casefolded, initialize @fname->cf_name from @fname->usr_fname. */
+static int __f2fs_init_casefolded_name(const struct inode *dir,
+			      struct f2fs_filename *fname)
+{
+	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
+
+	if (IS_CASEFOLDED(dir)) {
+			int ret = SEC_CASEFOLD_NR_RETRY;
+
+		fname->cf_name.name = f2fs_kmalloc(sbi, F2FS_NAME_LEN,
+						   GFP_NOFS);
+		if (!fname->cf_name.name)
+			return -ENOMEM;
+
+retry_casefold:
+		fname->cf_name.len = utf8_casefold(sbi->sb->s_encoding,
+						   fname->usr_fname,
+						   fname->cf_name.name,
+						   F2FS_NAME_LEN);
+		if ((int)fname->cf_name.len <= 0) {
+			ret--;
+			if (f2fs_check_utf8_comparisons(sbi) < 0) {
+				ST_LOG("[F2FS](%s[%d:%d]): utf8-%d.%d.%d Casefold TC failed, "
+					   "retry=%d\n",
+						sbi->sb->s_id,
+						MAJOR(sbi->sb->s_bdev->bd_dev),
+						MINOR(sbi->sb->s_bdev->bd_dev),
+						(sbi->sb->s_encoding->version >> 16) & 0xff,
+						(sbi->sb->s_encoding->version >> 8) & 0xff,
+						(sbi->sb->s_encoding->version & 0xff),
+						SEC_CASEFOLD_NR_RETRY - ret);
+#if SEC_PANIC_ON_CASEFOLD_TC_FAILED
+				f2fs_bug_on(sbi, 1);
+#endif
+				ret = -EINVAL;
+			}
+
+			if (ret > 0)
+				goto retry_casefold;
+
+			kfree(fname->cf_name.name);
+			fname->cf_name.name = NULL;
+
+				if (sb_has_enc_strict_mode(dir->i_sb))
+					return -EINVAL;
+				/* fall back to treating name as opaque byte sequence */
+			}
+
+			if (ret > 0 && ret != SEC_CASEFOLD_NR_RETRY)
+				ST_LOG("[F2FS](%s[%d:%d]): Casefold recovered\n",
+					sbi->sb->s_id,
+					MAJOR(sbi->sb->s_bdev->bd_dev),
+					MINOR(sbi->sb->s_bdev->bd_dev));
+
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}
+#endif   /* CONFIG_F2FS_SEC_ENC_STRICT_MODE */
 
 static inline bool f2fs_should_fallback_to_linear(struct inode *dir)
 {
@@ -94,6 +218,9 @@ unsigned char f2fs_get_de_type(struct f2fs_dir_entry *de)
 int f2fs_init_casefolded_name(const struct inode *dir,
 			      struct f2fs_filename *fname)
 {
+#ifdef CONFIG_F2FS_SEC_ENC_STRICT_MODE
+	return __f2fs_init_casefolded_name(dir, fname);
+#else
 #ifdef CONFIG_UNICODE
 	struct super_block *sb = dir->i_sb;
 
@@ -117,6 +244,7 @@ int f2fs_init_casefolded_name(const struct inode *dir,
 	}
 #endif
 	return 0;
+#endif
 }
 
 static int __f2fs_setup_filename(const struct inode *dir,
@@ -307,6 +435,13 @@ struct f2fs_dir_entry *f2fs_find_target_dentry(const struct f2fs_dentry_ptr *d,
 	unsigned long bit_pos = 0;
 	int max_len = 0;
 	int res = 0;
+#ifdef CONFIG_F2FS_SEC_ENC_STRICT_MODE
+	bool skip_hash = false;
+
+	/* in case of inline dentry, max_slots == NULL, else = level */
+	if (!max_slots || *max_slots <= DENTRY_FULLSCAN_LEVEL)
+		skip_hash = true;
+#endif
 
 	if (max_slots)
 		*max_slots = 0;
@@ -324,7 +459,11 @@ struct f2fs_dir_entry *f2fs_find_target_dentry(const struct f2fs_dentry_ptr *d,
 			continue;
 		}
 
-		if (!use_hash || de->hash_code == fname->hash) {
+		if (!use_hash ||
+#ifdef CONFIG_F2FS_SEC_ENC_STRICT_MODE
+		    skip_hash ||
+#endif
+		    de->hash_code == fname->hash) {
 			res = f2fs_match_name(d->inode, fname,
 					      d->filename[bit_pos],
 					      le16_to_cpu(de->name_len));
@@ -361,6 +500,9 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	struct f2fs_dir_entry *de = NULL;
 	bool room = false;
 	int max_slots;
+#ifdef CONFIG_F2FS_SEC_ENC_STRICT_MODE
+	unsigned int start_idx;
+#endif
 
 	nbucket = dir_buckets(level, F2FS_I(dir)->i_dir_level);
 	nblock = bucket_blocks(level);
@@ -368,9 +510,29 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	bucket_no = use_hash ? le32_to_cpu(fname->hash) % nbucket : 0;
 
 start_find_bucket:
-	bidx = dir_block_index(level, F2FS_I(dir)->i_dir_level,
-			       bucket_no);
-	end_block = bidx + nblock;
+	if (use_hash) {
+#ifdef CONFIG_F2FS_SEC_ENC_STRICT_MODE
+		if (level <= DENTRY_FULLSCAN_LEVEL) {
+			start_idx = 0;
+			bidx = dir_block_index(level, F2FS_I(dir)->i_dir_level,
+					       start_idx);
+			end_block = bidx + (nblock * nbucket);
+		} else {
+			start_idx = le32_to_cpu(fname->hash) % nbucket;
+			bidx = dir_block_index(level, F2FS_I(dir)->i_dir_level,
+					       start_idx);
+			end_block = bidx + nblock;
+		}
+#else
+		bidx = dir_block_index(level, F2FS_I(dir)->i_dir_level,
+				       bucket_no);
+		end_block = bidx + nblock;
+#endif
+	} else {
+		bidx = dir_block_index(level, F2FS_I(dir)->i_dir_level,
+				       bucket_no);
+		end_block = bidx + nblock;
+	}
 
 	for (; bidx < end_block; bidx++) {
 		/* no need to allocate new dentry pages to all the indices */
@@ -385,6 +547,9 @@ start_find_bucket:
 			}
 		}
 
+#ifdef CONFIG_F2FS_SEC_ENC_STRICT_MODE
+		max_slots = level;
+#endif
 		de = find_in_block(dir, dentry_page, fname, &max_slots, use_hash);
 		if (IS_ERR(de)) {
 			*res_page = ERR_CAST(de);
@@ -1145,6 +1310,9 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
 		goto out_free;
 	}
 
+	if (!inode_eq_iversion(inode, file->f_version))
+		file->f_version = inode_query_iversion(inode);
+
 	for (; n < npages; n++, ctx->pos = n * NR_DENTRY_IN_BLOCK) {
 
 		/* allow readdir() to be interrupted */
@@ -1177,6 +1345,14 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
 		err = f2fs_fill_dentries(ctx, &d,
 				n * NR_DENTRY_IN_BLOCK, &fstr);
 		if (err) {
+			struct f2fs_sb_info *sbi = F2FS_P_SB(dentry_page);
+
+			if (err == -EINVAL) {
+				print_block_data(sbi->sb, n,
+					page_address(dentry_page), 0, F2FS_BLKSIZE);
+				f2fs_bug_on(sbi, 1);
+			}
+
 			f2fs_put_page(dentry_page, 0);
 			break;
 		}
