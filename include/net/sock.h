@@ -842,6 +842,9 @@ enum sock_flags {
 	SOCK_TXTIME,
 	SOCK_XDP, /* XDP is attached */
 	SOCK_TSTAMP_NEW, /* Indicates 64 bit timestamps always */
+#ifdef CONFIG_MPTCP
+	SOCK_MPTCP, /* MPTCP set on this socket */
+#endif
 };
 
 #define SK_FLAGS_TIMESTAMP ((1UL << SOCK_TIMESTAMP) | (1UL << SOCK_TIMESTAMPING_RX_SOFTWARE))
@@ -1154,7 +1157,9 @@ struct proto {
 	void			(*unhash)(struct sock *sk);
 	void			(*rehash)(struct sock *sk);
 	int			(*get_port)(struct sock *sk, unsigned short snum);
-
+#ifdef CONFIG_MPTCP
+	void			(*clear_sk)(struct sock *sk, int size);
+#endif
 	/* Keeping track of sockets in use */
 #ifdef CONFIG_PROC_FS
 	unsigned int		inuse_idx;
@@ -1920,18 +1925,19 @@ sk_dst_get(struct sock *sk)
 
 static inline void dst_negative_advice(struct sock *sk)
 {
-	struct dst_entry *ndst, *dst = __sk_dst_get(sk);
+	/* *** ANDROID FIXUP ***
+	 * See b/343727534 for more details why this typedef is needed here.
+	 * *** ANDROID FIXUP ***
+	 */
+	android_dst_ops_negative_advice_new_t negative_advice;
+
+	struct dst_entry *dst = __sk_dst_get(sk);
 
 	sk_rethink_txhash(sk);
 
 	if (dst && dst->ops->negative_advice) {
-		ndst = dst->ops->negative_advice(dst);
-
-		if (ndst != dst) {
-			rcu_assign_pointer(sk->sk_dst_cache, ndst);
-			sk_tx_queue_clear(sk);
-			sk->sk_dst_pending_confirm = 0;
-		}
+		negative_advice = (android_dst_ops_negative_advice_new_t)dst->ops->negative_advice;
+		negative_advice(sk, dst);
 	}
 }
 
