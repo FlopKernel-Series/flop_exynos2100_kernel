@@ -36,6 +36,9 @@ extern struct cred init_cred;
 #define INIT_PREV_CPUTIME(x)
 #endif
 
+#define INIT_INTEGRITY(tsk)
+#define INIT_TASK_INTEGRITY(integrity)
+
 #define INIT_TASK_COMM "swapper"
 
 /* Attach to the init_task data structure for proper alignment */

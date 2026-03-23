@@ -850,6 +850,9 @@ enum sock_flags {
 	SOCK_TXTIME,
 	SOCK_XDP, /* XDP is attached */
 	SOCK_TSTAMP_NEW, /* Indicates 64 bit timestamps always */
+#ifdef CONFIG_MPTCP
+	SOCK_MPTCP, /* MPTCP set on this socket */
+#endif
 };
 
 #define SK_FLAGS_TIMESTAMP ((1UL << SOCK_TIMESTAMP) | (1UL << SOCK_TIMESTAMPING_RX_SOFTWARE))
@@ -1170,7 +1173,9 @@ struct proto {
 	void			(*unhash)(struct sock *sk);
 	void			(*rehash)(struct sock *sk);
 	int			(*get_port)(struct sock *sk, unsigned short snum);
-
+#ifdef CONFIG_MPTCP
+	void			(*clear_sk)(struct sock *sk, int size);
+#endif
 	/* Keeping track of sockets in use */
 #ifdef CONFIG_PROC_FS
 	unsigned int		inuse_idx;
