@@ -341,4 +341,3 @@ bool snd_usb_validate_midi_desc(void *p)
 {
 	return validate_desc(p, UAC_VERSION_1, midi_validators);
 }
-
