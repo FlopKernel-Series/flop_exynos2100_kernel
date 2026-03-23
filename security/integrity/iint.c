@@ -234,6 +234,7 @@ int integrity_kernel_read(struct file *file, loff_t offset,
 
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
+
 	ret = __vfs_read(file, buf, count, &offset);
 	set_fs(old_fs);
 
