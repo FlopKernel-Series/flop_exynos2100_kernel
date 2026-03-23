@@ -283,8 +283,8 @@ static inline void put_cred(const struct cred *_cred)
 
 	if (cred) {
 		validate_creds(cred);
-		if (atomic_dec_and_test(&(cred)->usage))
-			__put_cred(cred);
+			if (atomic_dec_and_test(&(cred)->usage))
+				__put_cred(cred);
 	}
 }
 
