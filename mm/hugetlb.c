@@ -5370,4 +5370,3 @@ void hugetlb_unshare_all_pmds(struct vm_area_struct *vma)
 	 */
 	mmu_notifier_invalidate_range_end(&range);
 }
-
