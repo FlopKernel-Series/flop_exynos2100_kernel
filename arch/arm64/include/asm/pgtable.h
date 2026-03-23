@@ -12,7 +12,6 @@
 #include <asm/pgtable-hwdef.h>
 #include <asm/pgtable-prot.h>
 #include <asm/tlbflush.h>
-
 /*
  * VMALLOC range.
  *

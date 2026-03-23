@@ -985,7 +985,6 @@ skip_init_ctx:
 	prog->bpf_func = (void *)ctx.image;
 	prog->jited = 1;
 	prog->jited_len = image_size;
-
 	if (!prog->is_func || extra_pass) {
 		int i;
 
