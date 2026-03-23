@@ -276,6 +276,9 @@ config ZONE_DMA32
 config ARCH_ENABLE_MEMORY_HOTPLUG
 	def_bool y
 
+config ARCH_ENABLE_MEMORY_HOTREMOVE
+	def_bool y
+
 config SMP
 	def_bool y
 
@@ -944,6 +947,11 @@ config NR_CPUS
 	int "Maximum number of CPUs (2-4096)"
 	range 2 4096
 	default "256"
+
+config VENDOR_NR_CPUS
+	int "Maximum number of CPUs (2-4096) governed by vendor"
+	range 2 4096
+	default "8"
 
 config HOTPLUG_CPU
 	bool "Support for hot-pluggable CPUs"
