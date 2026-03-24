@@ -595,8 +595,9 @@ static void __sec_bigdata_init_value(struct f2fs_sb_info *sbi,
 		sbi->sec_stat.max_inmem_pages = 0;
 		sbi->sec_stat.drop_inmem_all = 0;
 		sbi->sec_stat.drop_inmem_files = 0;
-		if (sbi->sb->s_bdev->bd_part)
-			sbi->sec_stat.kwritten_byte = BD_PART_WRITTEN(sbi);
+		sbi->sec_stat.kwritten_byte = sbi->kbytes_written +
+			((f2fs_get_sectors_written(sbi) -
+			  sbi->sectors_written_start) >> 1);
 		sbi->sec_stat.fs_por_error = 0;
 		sbi->sec_stat.fs_error = 0;
 		sbi->sec_stat.max_undiscard_blks = 0;
@@ -674,9 +675,10 @@ static ssize_t f2fs_sbi_show(struct f2fs_attr *a,
 		u64 kbytes_written = 0;
 		int len = 0;
 
-		if (sbi->sb->s_bdev->bd_part)
-			kbytes_written = BD_PART_WRITTEN(sbi) -
-					 sbi->sec_stat.kwritten_byte;
+		kbytes_written = sbi->kbytes_written +
+			((f2fs_get_sectors_written(sbi) -
+			  sbi->sectors_written_start) >> 1);
+		kbytes_written -= sbi->sec_stat.kwritten_byte;
 
 		len = snprintf(buf, PAGE_SIZE, "\"%s\":\"%llu\",\"%s\":\"%llu\","
 		"\"%s\":\"%llu\",\"%s\":\"%llu\",\"%s\":\"%llu\",\"%s\":\"%llu\","
