@@ -6,6 +6,7 @@
  */
 
 #include <linux/slab.h>
+#include <linux/compat.h>
 #include <linux/uaccess.h>
 #include <linux/dma-buf.h>
 #include <linux/miscdevice.h>
