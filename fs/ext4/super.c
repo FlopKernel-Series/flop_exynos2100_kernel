@@ -1439,6 +1439,10 @@ retry:
 }
 
 static const union fscrypt_policy *ext4_get_dummy_policy(struct super_block *sb)
+{
+	return EXT4_SB(sb)->s_dummy_enc_policy.policy;
+}
+
 #if defined(CONFIG_DDAR) || defined(CONFIG_FSCRYPT_SDP)
 static inline int ext4_get_knox_context(struct inode *inode,
 		const char *name, void *buffer, size_t buffer_size) {
@@ -1454,7 +1458,7 @@ static inline int ext4_set_knox_context(struct inode *inode,
 static const union fscrypt_context *
 ext4_get_dummy_context(struct super_block *sb)
 {
-	return EXT4_SB(sb)->s_dummy_enc_policy.policy;
+	return (const union fscrypt_context *)EXT4_SB(sb)->s_dummy_enc_policy.policy;
 }
 
 static bool ext4_has_stable_inodes(struct super_block *sb)
