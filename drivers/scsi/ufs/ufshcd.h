@@ -319,6 +319,8 @@ struct ufs_pwr_mode_info {
  *			to be set.
  * @setup_xfer_req: called before any transfer request is issued
  *                  to set some things
+ * @compl_xfer_req: called after any transfer request is completed
+ *                  to update vendor specific state
  * @setup_task_mgmt: called before any task management request is issued
  *                  to set some things
  * @hibern8_notify: called around hibern8 enter/exit
@@ -349,6 +351,7 @@ struct ufs_hba_variant_ops {
 					struct ufs_pa_layer_attr *,
 					struct ufs_pa_layer_attr *);
 	void	(*setup_xfer_req)(struct ufs_hba *, int, bool);
+	ANDROID_KABI_USE(1, void (*compl_xfer_req)(struct ufs_hba *, int, bool));
 	void	(*setup_task_mgmt)(struct ufs_hba *, int, u8);
 	void    (*hibern8_notify)(struct ufs_hba *, enum uic_cmd_dme,
 					enum ufs_notify_change_status);
@@ -365,7 +368,6 @@ struct ufs_hba_variant_ops {
 	int	(*program_key)(struct ufs_hba *hba,
 			       const union ufs_crypto_cfg_entry *cfg, int slot);
 
-	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
@@ -699,6 +701,12 @@ struct ufs_hba {
 	 * OCS FATAL ERROR with device error through sense data
 	 */
 	#define UFSHCD_QUIRK_BROKEN_OCS_FATAL_ERROR		0x1000
+
+	/*
+	 * This quirk needs to be enabled if the host controller handles
+	 * WriteBooster flush control internally and manual toggling breaks it.
+	 */
+	#define UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL		0x4000
 
 	/*
 	 * This quirk needs to be enabled if the host controller supports inline
@@ -1188,6 +1196,13 @@ static inline void ufshcd_vops_setup_xfer_req(struct ufs_hba *hba, int tag,
 		return hba->vops->setup_xfer_req(hba, tag, is_scsi_cmd);
 }
 
+static inline void ufshcd_vops_compl_xfer_req(struct ufs_hba *hba,
+					      int tag, bool is_scsi)
+{
+	if (hba->vops && hba->vops->compl_xfer_req)
+		hba->vops->compl_xfer_req(hba, tag, is_scsi);
+}
+
 static inline void ufshcd_vops_setup_task_mgmt(struct ufs_hba *hba,
 					int tag, u8 tm_function)
 {
@@ -1278,6 +1293,8 @@ static inline u8 ufshcd_scsi_to_upiu_lun(unsigned int scsi_lun)
 
 int ufshcd_dump_regs(struct ufs_hba *hba, size_t offset, size_t len,
 		     const char *prefix);
+bool ufshcd_any_tag_in_use(struct ufs_hba *hba);
+int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable);
 int ufshcd_uic_hibern8_enter(struct ufs_hba *hba);
 int ufshcd_uic_hibern8_exit(struct ufs_hba *hba);
 #endif /* End of Header */
