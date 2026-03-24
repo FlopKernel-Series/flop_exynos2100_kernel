@@ -6,6 +6,7 @@
  */
 
 #include <linux/slab.h>
+#include <linux/compat.h>
 #include <linux/uaccess.h>
 #include <linux/device.h>
 #include <linux/mm_types.h>
