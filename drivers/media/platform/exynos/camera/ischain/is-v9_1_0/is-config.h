@@ -408,5 +408,5 @@
 #define META_ITF_VER_20192003
 
 #define CONFIG_DISABLE_CAMERA_MEM_ATTR
-#define VH_FPSIMD_API
+#define LOCAL_FPSIMD_API
 #endif /* #ifndef IS_CONFIG_H */
