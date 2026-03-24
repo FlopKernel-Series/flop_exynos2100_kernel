@@ -377,7 +377,7 @@ void is_hw_djag_adjust_out_size(struct is_device_ischain *ischain,
  * ************
  */
 #if defined(ENABLE_FPSIMD_FOR_USER)
-#if defined(VH_FPSIMD_API) /* Using android vendor hook to save and restore fpsimd regs */
+#if defined(VH_FPSIMD_API) || defined(LOCAL_FPSIMD_API)
 extern void is_fpsimd_save_state(struct is_fpsimd_state *state);
 extern void is_fpsimd_load_state(struct is_fpsimd_state *state);
 void is_fpsimd_get_isr(void);

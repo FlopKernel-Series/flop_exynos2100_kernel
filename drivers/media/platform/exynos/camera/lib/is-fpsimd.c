@@ -11,14 +11,17 @@
 
 #include <asm/fpsimd.h>
 #include <asm/neon.h>
+#include "is-config.h"
+#ifdef VH_FPSIMD_API
 #include <trace/hooks/fpsimd.h>
+#endif
 #include <linux/sched.h>
 
 #include "is-hw.h"
-#include "is-config.h"
 
-/* Using android vendor hook to save and restore fpsimd regs */
-#if defined(ENABLE_FPSIMD_FOR_USER) && defined(VH_FPSIMD_API)
+/* Using vendor hook or local save/restore helpers to manage fpsimd regs */
+#if defined(ENABLE_FPSIMD_FOR_USER) && \
+	(defined(VH_FPSIMD_API) || defined(LOCAL_FPSIMD_API))
 #define NUM_OF_MAX_DEPTH	10
 
 struct is_percpu_fpsimd_state_struct {
@@ -81,6 +84,7 @@ void is_fpsimd_put_task(void)
 
 }
 
+#ifdef VH_FPSIMD_API
 static void is_fpsimd_save(void *data, struct task_struct *prev, struct task_struct *next)
 {
 	struct is_kernel_fpsimd_state *cur_kst =
@@ -108,13 +112,16 @@ static void is_fpsimd_save(void *data, struct task_struct *prev, struct task_str
 			next->pid, next->comm);
 	}
 }
+#endif
 
 int is_fpsimd_probe(void)
 {
 	int i;
 	struct is_percpu_fpsimd_state_struct *p;
 
+#ifdef VH_FPSIMD_API
 	register_trace_android_vh_is_fpsimd_save(is_fpsimd_save, NULL);
+#endif
 
 	is_percpu_fpsimd_state = alloc_percpu(struct is_percpu_fpsimd_state_struct);
 	if (!is_percpu_fpsimd_state) {
@@ -132,6 +139,7 @@ int is_fpsimd_probe(void)
 
 void is_fpsimd_set_task_using(struct task_struct *t, struct is_kernel_fpsimd_state *kst)
 {
+#ifdef VH_FPSIMD_API
 	if (t->thread.android_vendor_data1 || !kst)
 		return;
 
@@ -140,5 +148,10 @@ void is_fpsimd_set_task_using(struct task_struct *t, struct is_kernel_fpsimd_sta
 
 	dbg_lib(5, "[@][%d][VH] %s: pid %d is set as camera task\n",
 		smp_processor_id(), __func__, t->pid);
+#else
+	/* LOCAL_FPSIMD_API only uses explicit save/restore wrappers. */
+	(void)t;
+	(void)kst;
+#endif
 }
 #endif
