@@ -1,0 +1,29 @@
+# Soft dependencies extracted from modules themselves.
+softdep exynos_pd_el3 pre: exynos-el2
+softdep is_device_otprom pre: fimc-is
+softdep sec_hard_reset_hook pre: pinctrl-samsung-core
+softdep mali_kbase pre: memory_group_manager
+softdep mali_kbase pre: exynos-acme
+softdep dpu pre: cmupmucal clk_exynos exynos-pmu-if pinctrl-samsung-core fb phy-exynos-mipi exynos-pd exynos-pd-dbg samsung-iommu
+softdep softdog pre: s3c2410_wdt
+softdep fimc_is pre: cmupmucal clk_exynos exynos-pmu-if pinctrl-samsung-core phy-exynos-mipi samsung-iommu samsung-iommu-group
+softdep mcd_panel pre: s2dos05_regulator s2mps24-regulator spi-s3c64xx
+softdep is_cis_hi847 pre: fimc-is
+softdep tsmux pre: repeater
+softdep exynos_devfreq pre: exynos_dm exynos_thermal  post: exynos-acme mali_kbase
+softdep exynos_afm pre: exynos-acme
+softdep exynos_ufcc pre: exynos-acme
+softdep exynos_pm_dvs pre: acpm-mfd-bus
+softdep is_cis_2ld pre: fimc-is
+softdep sec_pm_debug pre: acpm-mfd-bus
+softdep synaptics_ts pre: acpm-mfd-bus
+softdep is_actuator_ak737x pre: fimc-is
+softdep exynos_pd pre: clk_exynos
+softdep samsung_iommu pre: samsung-iommu-group
+softdep is_device_eeprom pre: fimc-is
+softdep exynos_reboot pre: exynos-chipid_v2
+softdep exynos_gpu_profiler pre: exynos-migov
+softdep exynos_dsufreq pre: exynos-acme
+softdep is_cis_imx616 pre: fimc-is
+softdep is_flash_ktd2692 pre: fimc-is
+softdep is_cis_imx258 pre: fimc-is
