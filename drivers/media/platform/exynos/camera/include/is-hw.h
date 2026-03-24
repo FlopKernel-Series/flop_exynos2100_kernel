@@ -12,6 +12,7 @@
 #ifndef IS_HW_H
 #define IS_HW_H
 
+#include <asm/neon.h>
 #include <linux/phy/phy.h>
 
 #include "is-type.h"
@@ -391,11 +392,11 @@ int is_fpsimd_probe(void);
 #else
 #define is_fpsimd_get_isr()			kernel_neon_begin()
 #define is_fpsimd_put_isr()			kernel_neon_end()
-#define is_fpsimd_get_func()			fpsimd_get()
-#define is_fpsimd_put_func()			fpsimd_put()
+#define is_fpsimd_get_func()			kernel_neon_begin()
+#define is_fpsimd_put_func()			kernel_neon_end()
 #define is_fpsimd_get_task()			do { } while(0)
 #define is_fpsimd_put_task()			do { } while(0)
-#define is_fpsimd_set_task_using(t, kst)	fpsimd_set_task_using(t)
+#define is_fpsimd_set_task_using(t, kst)	do { } while(0)
 #define is_fpsimd_probe()			({0;})
 #endif
 #else
