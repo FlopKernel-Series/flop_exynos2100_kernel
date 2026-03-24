@@ -1717,8 +1717,6 @@ int f2fs_sync_fs(struct super_block *sb, int sync)
 		}
 
 	}
-	f2fs_trace_ios(NULL, 1);
-
 	return err;
 }
 
@@ -3099,7 +3097,8 @@ static int f2fs_set_knox_context(struct inode *inode, const char *name, const vo
 static const union fscrypt_context *
 f2fs_get_dummy_context(struct super_block *sb)
 {
-	return F2FS_OPTION(F2FS_SB(sb)).dummy_enc_policy.policy;
+	return (const union fscrypt_context *)
+		F2FS_OPTION(F2FS_SB(sb)).dummy_enc_policy.policy;
 }
 
 static bool f2fs_has_stable_inodes(struct super_block *sb)
