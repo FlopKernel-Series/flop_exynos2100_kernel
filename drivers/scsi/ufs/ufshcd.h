@@ -317,6 +317,8 @@ struct ufs_pwr_mode_info {
  * @pwr_change_notify: called before and after a power mode change
  *			is carried out to allow vendor spesific capabilities
  *			to be set.
+ * @fill_prdt: called after the PRDT entries are populated so variant
+ *	       drivers can append controller-specific metadata
  * @setup_xfer_req: called before any transfer request is issued
  *                  to set some things
  * @compl_xfer_req: called after any transfer request is completed
@@ -350,6 +352,8 @@ struct ufs_hba_variant_ops {
 					enum ufs_notify_change_status status,
 					struct ufs_pa_layer_attr *,
 					struct ufs_pa_layer_attr *);
+	ANDROID_KABI_USE(2, int (*fill_prdt)(struct ufs_hba *,
+					     struct ufshcd_lrb *));
 	void	(*setup_xfer_req)(struct ufs_hba *, int, bool);
 	ANDROID_KABI_USE(1, void (*compl_xfer_req)(struct ufs_hba *, int, bool));
 	void	(*setup_task_mgmt)(struct ufs_hba *, int, u8);
@@ -368,7 +372,6 @@ struct ufs_hba_variant_ops {
 	int	(*program_key)(struct ufs_hba *hba,
 			       const union ufs_crypto_cfg_entry *cfg, int slot);
 
-	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
 };
@@ -1187,6 +1190,15 @@ static inline int ufshcd_vops_pwr_change_notify(struct ufs_hba *hba,
 					dev_max_params, dev_req_params);
 
 	return -ENOTSUPP;
+}
+
+static inline int ufshcd_vops_fill_prdt(struct ufs_hba *hba,
+					struct ufshcd_lrb *lrbp)
+{
+	if (hba->vops && hba->vops->fill_prdt)
+		return hba->vops->fill_prdt(hba, lrbp);
+
+	return 0;
 }
 
 static inline void ufshcd_vops_setup_xfer_req(struct ufs_hba *hba, int tag,

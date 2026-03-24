@@ -2287,8 +2287,16 @@ static int ufshcd_map_sg(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		lrbp->utr_descriptor_ptr->prd_table_length = 0;
 	}
 
+	err = ufshcd_vops_fill_prdt(hba, lrbp);
+	if (err) {
+		scsi_dma_unmap(cmd);
+		return err;
+	}
+
 	err = 0;
 	trace_android_vh_ufs_fill_prdt(hba, lrbp, sg_segments, &err);
+	if (err)
+		scsi_dma_unmap(cmd);
 	return err;
 }
 
