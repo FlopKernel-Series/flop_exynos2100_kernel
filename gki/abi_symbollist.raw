@@ -1743,7 +1743,6 @@ find_vma
 find_vpid
 finish_wait
 firmware_request_nowarn
-five_hook_heads
 fixed_phy_register
 fixed_phy_unregister
 fixed_size_llseek
@@ -3448,7 +3447,6 @@ register_chrdev_region
 register_console
 register_die_notifier
 register_filesystem
-register_five_tee_driver
 register_inet6addr_notifier
 register_inetaddr_notifier
 register_key_type
@@ -4476,7 +4474,6 @@ unregister_chrdev_region
 unregister_console
 unregister_die_notifier
 unregister_filesystem
-unregister_five_tee_driver
 unregister_gadget_item
 unregister_inet6addr_notifier
 unregister_inetaddr_notifier

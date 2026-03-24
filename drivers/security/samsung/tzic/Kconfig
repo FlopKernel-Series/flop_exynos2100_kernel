@@ -4,8 +4,7 @@
 
 config TZIC
     tristate "TZIC Driver"
-    depends on FIVE
-    default y
+    default n
     help
       Enable TZIC Driver support.
 
