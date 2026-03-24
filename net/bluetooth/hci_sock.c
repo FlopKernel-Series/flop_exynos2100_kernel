@@ -977,7 +977,7 @@ static int hci_sock_ioctl(struct socket *sock, unsigned int cmd,
 
 	BT_DBG("cmd %x arg %lx", cmd, arg);
 
-	/* Make sure the cmd is valid before doing anything */
+	// Make sure the cmd is valid before doing anything
 	switch (cmd) {
 	case HCIGETDEVLIST:
 	case HCIGETDEVINFO:
