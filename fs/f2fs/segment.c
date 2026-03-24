@@ -3346,9 +3346,9 @@ static int __get_segment_type_6(struct f2fs_io_info *fio)
 			else
 				return CURSEG_COLD_DATA;
 		}
-		if (is_cold_data(fio->page) || file_is_cold(inode) ||
-				f2fs_need_compress_data(inode))
-			return CURSEG_COLD_DATA;
+			if (file_is_cold(inode) ||
+					f2fs_need_compress_data(inode))
+				return CURSEG_COLD_DATA;
 		if (file_is_hot(inode) ||
 				is_inode_flag_set(inode, FI_HOT_DATA) ||
 				f2fs_is_atomic_file(inode) ||
@@ -3790,19 +3790,19 @@ void __update_summary_of_block(struct f2fs_sb_info *sbi,
 	old_blkoff = curseg->next_blkoff;
 
 	/* change the current segment */
-	if (segno != curseg->segno) {
-		curseg->next_segno = segno;
-		change_curseg(sbi, type);
-	}
+		if (segno != curseg->segno) {
+			curseg->next_segno = segno;
+			change_curseg(sbi, type, true);
+		}
 
 	curseg->next_blkoff = GET_BLKOFF_FROM_SEG0(sbi, blkaddr);
 	__add_sum_entry(sbi, type, sum);
 
 	/* restore current segment */
-	if (old_cursegno != curseg->segno) {
-		curseg->next_segno = old_cursegno;
-		change_curseg(sbi, type);
-	}
+		if (old_cursegno != curseg->segno) {
+			curseg->next_segno = old_cursegno;
+			change_curseg(sbi, type, true);
+		}
 	curseg->next_blkoff = old_blkoff;
 
 	up_write(&sit_i->sentry_lock);
