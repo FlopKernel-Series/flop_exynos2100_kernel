@@ -63,6 +63,7 @@ static void sec_free_rdx_bootdev(phys_addr_t paddr, u64 size)
 {
 /* caution : this fuction should be called in rdx_bootdev_mutex protected region. */
 	int ret;
+	unsigned long pfn_start, pfn_end, pfn_idx;
 
 	pr_info("start (0x%llx, 0x%llx)\n", paddr, size);
 
@@ -94,15 +95,10 @@ static void sec_free_rdx_bootdev(phys_addr_t paddr, u64 size)
 		goto out;
 	}
 
-#if 0
-	free_memsize_reserved(paddr, size);
-
 	pfn_start = paddr >> PAGE_SHIFT;
 	pfn_end = (paddr + size) >> PAGE_SHIFT;
 	for (pfn_idx = pfn_start; pfn_idx < pfn_end; pfn_idx++)
 		free_reserved_page(pfn_to_page(pfn_idx));
-#endif
-	free_reserved_area(phys_to_virt(paddr), phys_to_virt(paddr) + size, -1, "sec_rdx_bootdev");
 
 	if (sec_rdx_bootdev_paddr == paddr) {
 		sec_rdx_bootdev_paddr = 0;
