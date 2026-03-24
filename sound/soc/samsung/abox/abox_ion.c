@@ -11,6 +11,7 @@
 #include <sound/samsung/abox.h>
 #include <sound/sounddev_abox.h>
 
+#include <linux/compat.h>
 #include <linux/ion.h>
 #include <linux/dma-buf.h>
 
