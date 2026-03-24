@@ -1653,7 +1653,8 @@ static int is_probe(struct platform_device *pdev)
 		goto p_err3;
 #endif
 
-#if defined(ENABLE_FPSIMD_FOR_USER) && defined(VH_FPSIMD_API)
+#if defined(ENABLE_FPSIMD_FOR_USER) && \
+	(defined(VH_FPSIMD_API) || defined(LOCAL_FPSIMD_API))
 	ret = is_fpsimd_probe();
 	if (ret)
 		goto p_err3;
