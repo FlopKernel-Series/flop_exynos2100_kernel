@@ -12,6 +12,7 @@
  */
 
 #include <linux/anon_inodes.h>
+#include <linux/compat.h>
 #include <linux/completion.h>
 #include <linux/fs.h>
 #include <linux/init.h>

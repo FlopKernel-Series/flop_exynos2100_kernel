@@ -18,6 +18,7 @@
 #define _DEBUG_VERSION_STR_ "03SIrel"
 
 #include <linux/module.h>
+#include <linux/compat.h>
 #include <linux/kernel.h>
 #include <linux/version.h>
 #include <linux/errno.h>
