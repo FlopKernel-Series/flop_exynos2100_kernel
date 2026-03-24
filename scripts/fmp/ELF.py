@@ -660,21 +660,14 @@ class ELF:
 			__shdr.calc_syms_info(__strtab)
 
 	def find_section_names(self):
-		__str_offset_sechdr_lst = []
-		for __shdr in self.shdr:
-			if __shdr.sh_type == SHT_STRTAB:
-				__start_bin_idx = __shdr.sh_offset
-				__end_bin_idx = __shdr.sh_offset + __shdr.sh_size
-				__temp_lst = find_pattern(self.binary_img[__start_bin_idx: __end_bin_idx],
-										  string_to_bytearray(DEFAULT_NAME_SECTION_SHSTRTAB))
-				if len(__temp_lst) > 0:
-					__str_offset_sechdr_lst.append([__shdr, __temp_lst])
-
-		if len(__str_offset_sechdr_lst) != 1 or len(__str_offset_sechdr_lst[0][1]) != 1:
-			log_e(" ERROR: something wrong with section name string search ")
+		__shstr_idx = self.ehdr.e_shstrndx
+		if (__shstr_idx <= 0 or __shstr_idx >= len(self.shdr)):
+			log_e(" ERROR: invalid section name string table index ")
 			raise RuntimeError
-
-		__sh_strtab = __str_offset_sechdr_lst[0][0]
+		__sh_strtab = self.shdr[__shstr_idx]
+		if __sh_strtab.sh_type != SHT_STRTAB:
+			log_e(" ERROR: section name string table has invalid type ")
+			raise RuntimeError
 		for __shdr in self.shdr:
 			__shdr.sh_set_name(self.binary_img[__sh_strtab.sh_offset:
 											__sh_strtab.sh_offset + __sh_strtab.sh_size ])
