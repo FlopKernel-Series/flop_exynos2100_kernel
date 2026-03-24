@@ -13,6 +13,7 @@
 #include <linux/ktime.h>
 #include <linux/delay.h>
 #include <linux/atomic.h>
+#include <linux/jiffies.h>
 #include <linux/sec_hard_reset_hook.h>
 #include <linux/module.h>
 #ifdef CONFIG_OF
@@ -49,6 +50,13 @@ static struct hrtimer hard_reset_hook_timer;
 static bool hard_reset_occurred;
 static int all_pressed;
 static int num_keys;
+#if IS_ENABLED(CONFIG_SEC_HARD_RESET_HOOK_CUSTOM_COMBO)
+static unsigned int alt_reset_tap_count;
+static unsigned long alt_reset_last_tap_jiffies;
+
+#define ALT_HARD_RESET_TAPS		5
+#define ALT_HARD_RESET_TAP_GAP_MS	3000
+#endif
 
 /* Proc node to enable hard reset */
 static bool hard_reset_hook_enable = 1;
@@ -64,6 +72,69 @@ static bool is_hard_reset_key(unsigned int code)
 			return true;
 	return false;
 }
+
+static void trigger_hard_reset(const char *reason)
+{
+	if (reason)
+		pr_err("Hard Reset (%s)\n", reason);
+	else
+		pr_err("Hard Reset\n");
+	hard_reset_occurred = true;
+	panic("Hard Reset Hook");
+}
+
+#if IS_ENABLED(CONFIG_SEC_HARD_RESET_HOOK_CUSTOM_COMBO)
+static bool is_alt_hard_reset_ready(void)
+{
+	return atomic_read(&hold_keys) & 0x1;
+}
+
+static void reset_alt_hard_reset_state(void)
+{
+	alt_reset_tap_count = 0;
+	alt_reset_last_tap_jiffies = 0;
+}
+
+static bool check_alt_hard_reset(unsigned int code, int pressed)
+{
+	unsigned long now = jiffies;
+
+	if (code == KEY_POWER && !pressed) {
+		reset_alt_hard_reset_state();
+		return false;
+	}
+
+	if (code != KEY_VOLUMEDOWN || !pressed)
+		return false;
+
+	if (!is_alt_hard_reset_ready()) {
+		reset_alt_hard_reset_state();
+		return false;
+	}
+
+	if (!alt_reset_last_tap_jiffies ||
+	    time_after(now, alt_reset_last_tap_jiffies +
+		       msecs_to_jiffies(ALT_HARD_RESET_TAP_GAP_MS)))
+		alt_reset_tap_count = 0;
+
+	alt_reset_last_tap_jiffies = now;
+	alt_reset_tap_count++;
+
+	pr_info("%s: alternate hard reset tap %u/%u\n", __func__,
+		alt_reset_tap_count, ALT_HARD_RESET_TAPS);
+
+	if (alt_reset_tap_count < ALT_HARD_RESET_TAPS)
+		return false;
+
+	reset_alt_hard_reset_state();
+	return true;
+}
+#else
+static bool check_alt_hard_reset(unsigned int code, int pressed)
+{
+	return false;
+}
+#endif
 
 static int hard_reset_key_set(unsigned int code)
 {
@@ -81,7 +152,7 @@ static int hard_reset_key_unset(unsigned int code)
 
 	for (i = 0; i < ARRAY_SIZE(hard_reset_keys); i++)
 		if (code == hard_reset_keys[i])
-			atomic_and(~(0x1) << i, &hold_keys);
+			atomic_and(~(0x1 << i), &hold_keys);
 
 	return atomic_read(&hold_keys);
 }
@@ -153,9 +224,7 @@ static enum hrtimer_restart hard_reset_hook_callback(struct hrtimer *hrtimer)
 		return HRTIMER_NORESTART;
 	}
 
-	pr_err("Hard Reset\n");
-	hard_reset_occurred = true;
-	panic("Hard Reset Hook");
+	trigger_hard_reset("power + vol-down hold");
 	return HRTIMER_RESTART;
 }
 
@@ -261,6 +330,11 @@ static int hard_reset_hook(struct notifier_block *nb,
 		hard_reset_key_set(code);
 	else
 		hard_reset_key_unset(code);
+
+	if (check_alt_hard_reset(code, pressed)) {
+		hrtimer_try_to_cancel(&hard_reset_hook_timer);
+		trigger_hard_reset("power hold + vol-down x5");
+	}
 
 	if (hard_reset_key_all_pressed()) {
 		hrtimer_start(&hard_reset_hook_timer,

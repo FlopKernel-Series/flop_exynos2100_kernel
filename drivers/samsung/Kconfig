@@ -38,6 +38,14 @@ config SEC_KEY_NOTIFIER
 	help
 	  Samsung Key input event notifier
 
+config SEC_HARD_RESET_HOOK_CUSTOM_COMBO
+	bool "Enable custom hard reset key combo"
+	depends on SEC_KEY_NOTIFIER
+	default n
+	help
+	  Enable the alternate hard reset key combo implemented by
+	  sec_hard_reset_hook.
+
 config SEC_PARAM
 	tristate "Enable Param modification"
 	default n
@@ -97,4 +105,3 @@ config SAMSUNG_PRODUCT_SHIP
 endmenu
 source "drivers/samsung/misc/Kconfig"
 source "drivers/samsung/pm/Kconfig"
-
