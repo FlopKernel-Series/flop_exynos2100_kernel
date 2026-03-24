@@ -111,6 +111,14 @@ enum mock_type {
 	MOCK_TYPE_STRICT
 };
 
+/*
+ * For Samsung KUnit.
+ */
+struct test_post_condition {
+	void (*validate)(struct test_post_condition *condition);
+	struct list_head node;
+};
+
 struct mock {
 	struct test_post_condition parent;
 	struct test *test;
