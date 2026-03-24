@@ -24,7 +24,7 @@
 
 #include <linux/blkdev.h>
 #include <linux/bio.h>
-#include <linux/bio-crypt-ctx.h>
+#include <linux/blk-crypto.h>
 
 #include <linux/delay.h>
 #include <linux/kthread.h>
