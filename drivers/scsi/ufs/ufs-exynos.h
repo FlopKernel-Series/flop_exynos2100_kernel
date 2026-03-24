@@ -335,6 +335,8 @@ void exynos_ufs_cmd_log_start(struct ufs_vs_handle *,
 void exynos_ufs_cmd_log_end(struct ufs_vs_handle *,
 				struct ufs_hba *hba, int tag);
 void exynos_ufs_fmp_config(struct ufs_hba *hba, bool init);
+int exynos_ufs_fmp_fill_prdt(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
+void exynos_ufs_fmp_clear_prdt(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
 
 bool exynos_ufs_srpmb_get_wlun_uac(void);
 void exynos_ufs_srpmb_set_wlun_uac(bool flag);
