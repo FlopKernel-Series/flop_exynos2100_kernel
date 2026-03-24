@@ -1965,14 +1965,6 @@ static void flush_remained_ckpt_reqs(struct f2fs_sb_info *sbi,
 	}
 }
 
-static void init_ckpt_req(struct ckpt_req *req)
-{
-	memset(req, 0, sizeof(struct ckpt_req));
-
-	init_completion(&req->wait);
-	req->queue_time = ktime_get();
-}
-
 /* @fs.sec -- 9f109bc9f7bdd952c961240c6e2e05ca -- */
 static int issue_checkpoint_cmd_thread(void *data)
 {
@@ -2087,45 +2079,53 @@ int f2fs_set_issue_ckpt_ioprio(struct f2fs_sb_info *sbi, unsigned int ioprio)
 
 int f2fs_issue_checkpoint(struct f2fs_sb_info *sbi)
 {
-	struct ckpt_req_control *cprc = &sbi->cprc_info;
-	struct ckpt_req req;
-	struct cp_control cpc;
+	struct f2fs_ckpt_cmd_control *ccc = sbi->ccc_info;
+	struct checkpoint_cmd cmd;
+	int ret;
 
-	cpc.reason = __get_cp_reason(sbi);
-	if (!test_opt(sbi, MERGE_CHECKPOINT) || cpc.reason != CP_SYNC) {
-		int ret;
+	if (!ccc || !ccc->ckpt_task)
+		return __write_checkpoint_sync(sbi, NULL, true);
 
-		down_write(&sbi->gc_lock);
-		ret = f2fs_write_checkpoint(sbi, &cpc);
-		up_write(&sbi->gc_lock);
+	/*
+	 * If current_task is the first one that triggers checkpoint and if it has
+	 * enough cpu time for checkpointing, it tries checkpoint itself.
+	 * Otherwise, a checkpoint should be offloaded to issue_checkpoint_cmd_thread.
+	 */
+	atomic_inc(&ccc->accum_ckpt);
+	if (atomic_inc_return(&ccc->issing_ckpt) == 1 && nice_cpu_sched()) {
+		/* If checkpoint is in progress by other context, just queue it. */
+		ret = __write_checkpoint_sync(sbi, NULL, false);
+		if (ret == -EBUSY)
+			goto queue_cmd;
 
+		atomic_dec(&ccc->issing_ckpt);
+		atomic_inc(&ccc->issued_ckpt);
 		return ret;
 	}
 
-	if (!cprc->f2fs_issue_ckpt)
-		return __write_checkpoint_sync(sbi, NULL, true);
-
-	init_ckpt_req(&req);
-
-	llist_add(&req.llnode, &cprc->issue_list);
-	atomic_inc(&cprc->queued_ckpt);
+queue_cmd:
+	init_checkpoint_cmd(&cmd);
+	set_cmd_queue_time(&cmd);
+	llist_add(&cmd.llnode, &ccc->issue_list);
 
 	/*
-	 * update issue_list before we wake up issue_checkpoint thread,
-	 * this smp_mb() pairs with another barrier in ___wait_event(),
-	 * see more details in comments of waitqueue_active().
+	 * Update issue_list before waking the checkpoint thread.
+	 * This smp_mb() pairs with another barrier in ___wait_event();
+	 * see waitqueue_active() for details.
 	 */
 	smp_mb();
 
-	if (waitqueue_active(&cprc->ckpt_wait_queue))
-		wake_up(&cprc->ckpt_wait_queue);
+	if (waitqueue_active(&ccc->ckpt_wait_queue))
+		wake_up(&ccc->ckpt_wait_queue);
 
-	if (cprc->f2fs_issue_ckpt)
-		wait_for_completion(&req.wait);
-	else
-		flush_remained_ckpt_reqs(sbi, &req);
+	if (ccc->ckpt_task) {
+		wait_for_completion(&cmd.wait);
+		atomic_dec(&ccc->issing_ckpt);
+	} else {
+		flush_remained_checkpoint_cmd(sbi, &cmd);
+	}
 
-	return req.ret;
+	return cmd.ret;
 }
 
 int f2fs_start_ckpt_thread(struct f2fs_sb_info *sbi)
