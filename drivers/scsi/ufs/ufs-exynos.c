@@ -1844,6 +1844,8 @@ static void exynos_ufs_compl_nexus_t_xfer_req(struct ufs_hba *hba,
 		else
 			return;
 
+		exynos_ufs_fmp_clear_prdt(hba, lrbp);
+
 		/* sense err check */
 		sense_key = lrbp->ucd_rsp_ptr->sr.sense_data[2] & 0x0F;
 		if ((sense_key == 0x3) || (sense_key == 0x4)) {
@@ -2120,6 +2122,7 @@ static struct ufs_hba_variant_ops exynos_ufs_ops = {
 	.hce_enable_notify = exynos_ufs_hce_enable_notify,
 	.link_startup_notify = exynos_ufs_link_startup_notify,
 	.pwr_change_notify = exynos_ufs_pwr_change_notify,
+	.fill_prdt = exynos_ufs_fmp_fill_prdt,
 	.setup_xfer_req = exynos_ufs_set_nexus_t_xfer_req,
 	.compl_xfer_req = exynos_ufs_compl_nexus_t_xfer_req,
 	.setup_task_mgmt = exynos_ufs_set_nexus_t_task_mgmt,
