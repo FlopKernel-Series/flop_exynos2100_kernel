@@ -282,7 +282,7 @@ static inline int ufshcd_config_vreg_hpm(struct ufs_hba *hba,
 static int ufshcd_try_to_abort_task(struct ufs_hba *hba, int tag);
 static int ufshcd_wb_buf_flush_enable(struct ufs_hba *hba);
 static int ufshcd_wb_buf_flush_disable(struct ufs_hba *hba);
-static int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable);
+int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable);
 static int ufshcd_wb_toggle_flush_during_h8(struct ufs_hba *hba, bool set);
 static inline void ufshcd_wb_toggle_flush(struct ufs_hba *hba, bool enable);
 
@@ -1372,7 +1372,7 @@ static bool ufshcd_is_busy(struct request *req, void *priv, bool reserved)
 }
 
 /* Whether or not any tag is in use by a request that is in progress. */
-static bool ufshcd_any_tag_in_use(struct ufs_hba *hba)
+bool ufshcd_any_tag_in_use(struct ufs_hba *hba)
 {
 	struct request_queue *q = hba->cmd_queue;
 	int busy = 0;
@@ -1380,6 +1380,7 @@ static bool ufshcd_any_tag_in_use(struct ufs_hba *hba)
 	blk_mq_tagset_busy_iter(q->tag_set, ufshcd_is_busy, &busy);
 	return busy;
 }
+EXPORT_SYMBOL_GPL(ufshcd_any_tag_in_use);
 
 static int ufshcd_devfreq_get_dev_status(struct device *dev,
 		struct devfreq_dev_status *stat)
@@ -5109,6 +5110,7 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	for_each_set_bit(index, &completed_reqs, hba->nutrs) {
 		lrbp = &hba->lrb[index];
 		cmd = lrbp->cmd;
+		ufshcd_vops_compl_xfer_req(hba, index, cmd ? true : false);
 		if (cmd) {
 			trace_android_vh_ufs_compl_command(hba, lrbp);
 			ufshcd_add_command_trace(hba, index, "complete");
@@ -5450,7 +5452,7 @@ out:
 				__func__, err);
 }
 
-static int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable)
+int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable)
 {
 	int ret;
 	u8 index;
@@ -5481,6 +5483,7 @@ static int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable)
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(ufshcd_wb_ctrl);
 
 static int ufshcd_wb_toggle_flush_during_h8(struct ufs_hba *hba, bool set)
 {
@@ -5500,6 +5503,9 @@ static int ufshcd_wb_toggle_flush_during_h8(struct ufs_hba *hba, bool set)
 
 static inline void ufshcd_wb_toggle_flush(struct ufs_hba *hba, bool enable)
 {
+	if (hba->quirks & UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL)
+		return;
+
 	if (enable)
 		ufshcd_wb_buf_flush_enable(hba);
 	else
