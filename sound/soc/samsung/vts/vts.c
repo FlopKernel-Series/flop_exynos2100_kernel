@@ -16,6 +16,7 @@
 #include <linux/of_platform.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/pm_runtime.h>
+#include <linux/compat.h>
 #include <linux/firmware.h>
 #include <linux/dma-mapping.h>
 #include <linux/proc_fs.h>
