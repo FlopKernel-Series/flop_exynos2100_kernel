@@ -567,7 +567,7 @@ int __f2fs_get_node_info(struct f2fs_sb_info *sbi, nid_t nid,
 
 	//readahead && cp_mutex locked?
 	if (unlikely((op_flags & REQ_RAHEAD) &&
-				mutex_is_locked(&sbi->cp_mutex))) {
+				rwsem_is_locked(&sbi->cp_global_sem))) {
 		up_read(&nm_i->nat_tree_lock);
 		return -EBUSY;
 	}
@@ -2042,8 +2042,8 @@ continue_unlock:
 				goto write_node;
 
 			/* flush inline_data */
-			if (is_inline_node(page)) {
-				clear_inline_node(page);
+			if (page_private_inline(page)) {
+				clear_page_private_inline(page);
 				unlock_page(page);
 				flush_inline_data(sbi, ino_of_node(page));
 				goto lock_node;
