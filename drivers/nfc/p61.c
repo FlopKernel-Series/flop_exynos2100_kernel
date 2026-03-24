@@ -33,6 +33,7 @@
 #include <linux/gpio.h>
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
+#include <linux/compat.h>
 #include <linux/spi/spi.h>
 #include <linux/sched.h>
 #include <linux/poll.h>

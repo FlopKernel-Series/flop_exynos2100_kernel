@@ -18,6 +18,7 @@
 #include <linux/kmod.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
+#include <linux/compat.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/bug.h>
