@@ -559,13 +559,17 @@ static int lv2set_page(sysmmu_pte_t *pent, phys_addr_t paddr,
 }
 
 static int samsung_sysmmu_map(struct iommu_domain *dom, unsigned long l_iova,
-			      phys_addr_t paddr, size_t size, int prot)
+			      phys_addr_t paddr, size_t size, int prot,
+			      gfp_t gfp)
 {
 	struct samsung_sysmmu_domain *domain = to_sysmmu_domain(dom);
 	sysmmu_iova_t iova = (sysmmu_iova_t)l_iova;
 	atomic_t *lv2entcnt = &domain->lv2entcnt[lv1ent_offset(iova)];
 	sysmmu_pte_t *entry;
 	int ret = -ENOMEM;
+
+	/* The current iommu_ops ABI passes an allocation context; SYSMMU ignores it. */
+	(void)gfp;
 
 	/* Do not use IO coherency if iOMMU_PRIV exists */
 	if (!!(prot & IOMMU_PRIV))
