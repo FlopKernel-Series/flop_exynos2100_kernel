@@ -500,7 +500,7 @@ static void exynos_ufs_set_features(struct ufs_hba *hba)
 	hba->quirks = UFSHCD_QUIRK_PRDT_BYTE_GRAN |
 			UFSHCI_QUIRK_SKIP_RESET_INTR_AGGR |
 			UFSHCI_QUIRK_BROKEN_REQ_LIST_CLR |
-			UFSHCD_QUIRK_BROKEN_CRYPTO |
+			UFSHCD_QUIRK_BROKEN_CRYPTO_ENABLE |
 			UFSHCD_QUIRK_BROKEN_OCS_FATAL_ERROR |
 			UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL;
 }
@@ -2005,7 +2005,8 @@ static int __exynos_ufs_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 			ufs->h_state != H_SUSPEND)
 		PRINT_STATES(ufs);
 
-	if ((!hba->lrb_in_use) && (hba->clk_gating.active_reqs != 1)) {
+	if (!ufshcd_any_tag_in_use(hba) &&
+	    (hba->clk_gating.active_reqs != 1)) {
 		dev_err(hba->dev, "%s: hba->clk_gating.active_reqs = %d\n",
 				__func__, hba->clk_gating.active_reqs);
 #if IS_ENABLED(CONFIG_SCSI_UFS_TEST_MODE)
