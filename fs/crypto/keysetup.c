@@ -624,6 +624,7 @@ fscrypt_setup_encryption_info(struct inode *inode,
 		}
 		}
 		have_ctx = true;
+#endif
 	}
 
 	crypt_info = kmem_cache_zalloc(fscrypt_info_cachep, GFP_NOFS);
@@ -1008,7 +1009,7 @@ static inline int __find_and_derive_fskey(
 		return PTR_ERR(key);
 
 	mk = key->payload.data[0];
-	down_read(&mk->mk_secret_sem);
+	down_read(&key->sem);
 
 	/* Has the secret been removed (via FS_IOC_REMOVE_ENCRYPTION_KEY)? */
 	if (!is_master_key_secret_present(&mk->mk_secret)) {
@@ -1067,7 +1068,7 @@ static inline int __find_and_derive_fskey(
 	}
 
 out_release_key:
-	up_read(&mk->mk_secret_sem);
+	up_read(&key->sem);
 	key_put(key);
 	return err;
 }
