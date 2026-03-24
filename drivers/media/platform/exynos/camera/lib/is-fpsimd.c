@@ -11,11 +11,13 @@
 
 #include <asm/fpsimd.h>
 #include <asm/neon.h>
+#include "is-config.h"
+#ifdef VH_FPSIMD_API
 #include <trace/hooks/fpsimd.h>
+#endif
 #include <linux/sched.h>
 
 #include "is-hw.h"
-#include "is-config.h"
 
 /* Using android vendor hook to save and restore fpsimd regs */
 #if defined(ENABLE_FPSIMD_FOR_USER) && defined(VH_FPSIMD_API)
