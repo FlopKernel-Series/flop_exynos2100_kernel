@@ -1,0 +1,42 @@
+CAPTION_BUILD="Build info:
+*Device*: \`${DEVICE} [${CODENAME}]\`
+*Kernel Version*: \`${LINUX_VER}\`
+*Compiler*: \`${KBUILD_COMPILER_STRING}\`
+*Build host*: \`${BUILD_HOST}\`
+*Commit / Branch*: [($(git rev-parse HEAD | cut -c -7))]($(echo $KERNEL_URL)/commit/$(git rev-parse HEAD)) / \`$(git rev-parse --abbrev-ref HEAD)\`
+*Build variant*: \`${FK_TYPE}\` / \`${BUILD_TYPE}$( [ "$DO_CLEAN" -eq 1 ] && echo " (clean)" || echo " (dirty)")\`
+*Timestamp*: \`${DATE}\`
+"
+
+tgs() {
+    local FILE="$1"
+    local MD5=$(md5sum "$FILE" | cut -d' ' -f1)
+    local CAPTION_FINAL="${CAPTION_BUILD}*MD5*: \`${MD5}\`"
+    curl -fsSL -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+        -F chat_id="${TELEGRAM_CHAT_ID}" \
+        -F document=@"$FILE" \
+        -F parse_mode="Markdown" \
+        -F disable_web_page_preview="true" \
+        -F caption="${CAPTION_FINAL}" &>/dev/null
+}
+
+upload() {
+    cd "$KDIR"
+
+    local FILE="${PACKAGE_PATH:-}"
+    if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
+        log_warn "No packaged build artifact available for upload"
+        return 0
+    fi
+
+    if [ "$DO_BASHUP" = "1" ]; then
+        echo -e "\n$(log_info "Uploading build and log to bashupload.com")\n"
+        curl -T "$FILE" bashupload.com || log_warn "bashupload operation failed (ignored)"
+        curl -T log.txt bashupload.com || log_warn "bashupload operation failed (ignored)"
+    fi
+
+    if [ "$DO_TG" = "1" ]; then
+        echo -e "\n$(log_info "Uploading to Telegram")\n"
+        tgs "$FILE"
+    fi
+}

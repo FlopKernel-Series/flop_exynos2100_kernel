@@ -148,11 +148,14 @@ x509.genkey
 
 *.tar
 /build/tmp
+/build/images/
 *__pycache__*
 *.br
 /build/*.zip
 /build/*.img
 !/build/vboot/vendor/firmware/*.bin
+/modules.load.gen
+/modules_out/
 log.txt
 *.pyc
 build/mkbootimg/gki/__pycache__/*.pyc
