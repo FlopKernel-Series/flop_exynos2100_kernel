@@ -122,7 +122,7 @@ retry_casefold:
 			kfree(fname->cf_name.name);
 			fname->cf_name.name = NULL;
 
-				if (sb_has_enc_strict_mode(dir->i_sb))
+				if (sb_has_strict_encoding(dir->i_sb))
 					return -EINVAL;
 				/* fall back to treating name as opaque byte sequence */
 			}
