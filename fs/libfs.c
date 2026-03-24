@@ -1484,7 +1484,7 @@ void generic_set_encrypted_ci_d_ops(struct dentry *dentry)
 	}
 #endif
 #ifdef CONFIG_FSCRYPT_SDP
-	if (dir->i_crypt_info) {
+	if (d_inode(dentry) && d_inode(dentry)->i_crypt_info) {
 		d_set_d_op(dentry, &sdp_dentry_ops);
 		return;
 	}
