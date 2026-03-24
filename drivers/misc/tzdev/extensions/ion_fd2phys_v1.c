@@ -15,6 +15,7 @@
 /* #define DEBUG */
 
 #include <linux/uaccess.h>
+#include <linux/compat.h>
 #include <linux/device.h>
 #include <linux/dma-buf.h>
 #include <linux/ioctl.h>

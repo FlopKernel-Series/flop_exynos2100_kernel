@@ -48,6 +48,7 @@
 #include <linux/usb/gadget.h>
 #include <linux/hardirq.h>
 #include <linux/sched.h>
+#include <linux/compat.h>
 #include <linux/usb/f_accessory.h>
 #include <asm-generic/siginfo.h>
 #include <linux/kernel.h>
