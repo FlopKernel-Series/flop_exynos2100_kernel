@@ -27,7 +27,7 @@ build_images() {
         exit 1
     }
 
-    local BOOT_OS_VERSION="${BOOT_OS_VERSION:-11.0.0}"
+    local BOOT_OS_VERSION="${BOOT_OS_VERSION:-16.0.0}"
     local BOOT_OS_PATCH_LEVEL="${BOOT_OS_PATCH_LEVEL:-$MONTH}"
     local BOOT_HEADER_VERSION="${BOOT_HEADER_VERSION:-3}"
     local VENDOR_CMDLINE="${VENDOR_CMDLINE:-loop.max_part=7}"
