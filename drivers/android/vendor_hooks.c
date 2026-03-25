@@ -12,6 +12,7 @@
 #include <trace/hooks/dtask.h>
 #include <trace/hooks/net.h>
 #include <trace/hooks/binder.h>
+#include <trace/hooks/fpsimd.h>
 #include <trace/hooks/rwsem.h>
 #include <trace/hooks/futex.h>
 #include <trace/hooks/topology.h>
@@ -33,6 +34,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_select_task_rq_fair);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_select_task_rq_rt);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_select_fallback_rq);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_scheduler_tick);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_is_fpsimd_save);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_enqueue_task);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_dequeue_task);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_can_migrate_task);
