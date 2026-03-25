@@ -1676,7 +1676,9 @@ void exynos_usbdrd_ldo_control(struct exynos_usbdrd_phy *phy_drd, int on)
 {
 	int ret1, ret2, ret3;
 
-	if (phy_drd->vdd085_usb == NULL || phy_drd->vdd18_usb == NULL || phy_drd->vdd33_usb == NULL) {
+	if (IS_ERR_OR_NULL(phy_drd->vdd085_usb) ||
+	    IS_ERR_OR_NULL(phy_drd->vdd18_usb) ||
+	    IS_ERR_OR_NULL(phy_drd->vdd33_usb)) {
 		dev_err(phy_drd->dev, "%s: not define regulator\n", __func__);
 		return;
 	}
@@ -1736,6 +1738,11 @@ void exynos_usbdrd_phy_vol_set(struct phy *phy, int voltage)
 {
 	struct phy_usb_instance *inst = phy_get_drvdata(phy);
 	struct exynos_usbdrd_phy *phy_drd = to_usbdrd_phy(inst);
+
+	if (IS_ERR_OR_NULL(phy_drd->vdd085_usb)) {
+		dev_err(phy_drd->dev, "%s: not define regulator\n", __func__);
+		return;
+	}
 
 	regulator_set_voltage(phy_drd->vdd085_usb, voltage, voltage);
 	dev_info(phy_drd->dev, "USB 0.85 PHY: %dmV\n", voltage);
@@ -2328,12 +2335,14 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(phy_drd->vdd085_usb) || phy_drd->vdd085_usb == NULL) {
 		dev_err(dev, "%s - vdd085_usb regulator_get fail %p %d\n",
 			__func__, phy_drd->vdd085_usb, IS_ERR(phy_drd->vdd085_usb));
+		phy_drd->vdd085_usb = NULL;
 	}
 
 	phy_drd->vdd18_usb = regulator_get(dev, "vdd18_usb");
 	if (IS_ERR(phy_drd->vdd18_usb) || phy_drd->vdd18_usb == NULL) {
 		dev_err(dev, "%s - vdd18_usb regulator_get fail %p %d\n",
 			__func__, phy_drd->vdd18_usb, IS_ERR(phy_drd->vdd18_usb));
+		phy_drd->vdd18_usb = NULL;
 	}
 
 	for (i = 0; i < 5; i++) {
@@ -2341,6 +2350,7 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 		if (IS_ERR(phy_drd->vdd33_usb) || phy_drd->vdd33_usb == NULL) {
 			dev_err(dev, "%s - vdd33_usb regulator_get fail %p %d\n",
 					__func__, phy_drd->vdd33_usb, IS_ERR(phy_drd->vdd33_usb));
+			phy_drd->vdd33_usb = NULL;
 			mdelay(100);
 		} else
 			break;
