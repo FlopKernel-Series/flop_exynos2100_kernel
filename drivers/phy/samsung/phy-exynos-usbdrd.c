@@ -2333,23 +2333,32 @@ static int exynos_usbdrd_phy_probe(struct platform_device *pdev)
 	dev_info(dev, "Get USB LDO!\n");
 	phy_drd->vdd085_usb = regulator_get(dev, "vdd085_usb");
 	if (IS_ERR(phy_drd->vdd085_usb) || phy_drd->vdd085_usb == NULL) {
+		ret = IS_ERR(phy_drd->vdd085_usb) ? PTR_ERR(phy_drd->vdd085_usb) : -EINVAL;
 		dev_err(dev, "%s - vdd085_usb regulator_get fail %p %d\n",
 			__func__, phy_drd->vdd085_usb, IS_ERR(phy_drd->vdd085_usb));
+		if (ret == -EPROBE_DEFER)
+			return ret;
 		phy_drd->vdd085_usb = NULL;
 	}
 
 	phy_drd->vdd18_usb = regulator_get(dev, "vdd18_usb");
 	if (IS_ERR(phy_drd->vdd18_usb) || phy_drd->vdd18_usb == NULL) {
+		ret = IS_ERR(phy_drd->vdd18_usb) ? PTR_ERR(phy_drd->vdd18_usb) : -EINVAL;
 		dev_err(dev, "%s - vdd18_usb regulator_get fail %p %d\n",
 			__func__, phy_drd->vdd18_usb, IS_ERR(phy_drd->vdd18_usb));
+		if (ret == -EPROBE_DEFER)
+			return ret;
 		phy_drd->vdd18_usb = NULL;
 	}
 
 	for (i = 0; i < 5; i++) {
 		phy_drd->vdd33_usb = regulator_get(dev, "vdd33_usb");
 		if (IS_ERR(phy_drd->vdd33_usb) || phy_drd->vdd33_usb == NULL) {
+			ret = IS_ERR(phy_drd->vdd33_usb) ? PTR_ERR(phy_drd->vdd33_usb) : -EINVAL;
 			dev_err(dev, "%s - vdd33_usb regulator_get fail %p %d\n",
 					__func__, phy_drd->vdd33_usb, IS_ERR(phy_drd->vdd33_usb));
+			if (ret == -EPROBE_DEFER)
+				return ret;
 			phy_drd->vdd33_usb = NULL;
 			mdelay(100);
 		} else
