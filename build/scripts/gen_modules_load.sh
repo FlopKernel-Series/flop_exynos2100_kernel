@@ -40,6 +40,12 @@ PRIORITY_MODULES=(
     "exynos_mct.ko"
     "s3c2410_wdt.ko"
     "i2c-exynos5.ko"
+    "acpm-mfd-bus.ko"
+    "s2mps24_mfd.ko"
+    "s2mps23_mfd.ko"
+    "pmic_class.ko"
+    "s2mps23-regulator.ko"
+    "s2mps24-regulator.ko"
 )
 
 # Module load order exceptions (module -> load_after_module)
