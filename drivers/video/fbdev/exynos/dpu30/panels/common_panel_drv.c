@@ -456,7 +456,6 @@ int __mockable exynos_panel_find_panel_drv(struct exynos_panel_device *panel)
 	drv = driver_find(PANEL_DRV_NAME, &platform_bus_type);
 	if (IS_ERR_OR_NULL(drv)) {
 		DPU_ERR_PANEL("%s:failed to find driver\n", __func__);
-		BUG();
 		return -ENODEV;
 	}
 
