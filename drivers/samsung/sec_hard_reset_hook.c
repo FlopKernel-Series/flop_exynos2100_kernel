@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/atomic.h>
 #include <linux/jiffies.h>
+#include <linux/sysrq.h>
 #include <linux/sec_hard_reset_hook.h>
 #include <linux/module.h>
 #ifdef CONFIG_OF
@@ -88,6 +89,17 @@ static void trigger_hard_reset(const char *reason)
 		pr_err("Hard Reset (%s)\n", reason);
 	else
 		pr_err("Hard Reset\n");
+
+	/*
+	 * When the device is wedged enough that userspace logging is gone, dump
+	 * blocked tasks and the broader task/workqueue state before panicking so
+	 * the preserved panic log contains something actionable.
+	 */
+	pr_emerg("Hard Reset Hook: dumping blocked tasks (SysRq-w)\n");
+	handle_sysrq('w');
+	pr_emerg("Hard Reset Hook: dumping task/workqueue state (SysRq-t)\n");
+	handle_sysrq('t');
+
 	hard_reset_occurred = true;
 	panic("Hard Reset Hook");
 }
