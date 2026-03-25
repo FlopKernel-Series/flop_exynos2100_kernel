@@ -778,7 +778,9 @@ int __mockable dsim_read_data(struct dsim_device *dsim, u32 id, u32 addr, u32 cn
 
 	if (!wait_for_completion_timeout(&dsim->rd_comp, MIPI_RD_TIMEOUT)) {
 		dsim_err("MIPI DSIM read Timeout!\n");
-		if (dsim_reg_get_datalane_status(dsim->id) == DSIM_DATALANE_STATUS_BTA) {
+		if (decon_is_bypass(decon)) {
+			dsim_warn("skip nested recovery while bypass is active\n");
+		} else if (dsim_reg_get_datalane_status(dsim->id) == DSIM_DATALANE_STATUS_BTA) {
 			if (decon_reg_get_run_status(decon->id)) {
 				dsim_reset_panel(dsim);
 				dpu_hw_recovery_process(decon);
