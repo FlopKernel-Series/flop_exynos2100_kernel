@@ -143,7 +143,7 @@ static int hard_reset_key_unset(unsigned int code)
 
 	for (i = 0; i < ARRAY_SIZE(hard_reset_keys); i++)
 		if (code == hard_reset_keys[i])
-			atomic_and(~(0x1) << i, &hold_keys);
+			atomic_and(~(0x1 << i), &hold_keys);
 
 	return atomic_read(&hold_keys);
 }
