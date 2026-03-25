@@ -2961,7 +2961,9 @@ video_emul_check_done:
 #endif
 			decon_dump(decon);
 			mcd_decon_panel_dump(decon);
-			BUG();
+			err = -EIO;
+			decon->win_up.force_full = true;
+			goto fence_err;
 		}
 		if (!regs->num_of_window) {
 			decon_save_cur_buf_info(decon, regs);
@@ -3057,7 +3059,9 @@ video_emul_check_done:
 #endif
 			decon_dump(decon);
 			mcd_decon_panel_dump(decon);
-			BUG();
+			err = -ETIMEDOUT;
+			decon->win_up.force_full = true;
+			goto fence_err;
 		}
 		DPU_DEBUG_DMA_BUF("frame_start\n");
 		for (i = 0; i < decon->dt.max_win; i++) {
@@ -3199,7 +3203,8 @@ int decon_update_last_regs(struct decon_device *decon,
 		if (__decon_update_regs(decon, regs) < 0) {
 			decon_dump(decon);
 			mcd_decon_panel_dump(decon);
-			BUG();
+			ret = -EIO;
+			goto end;
 		}
 		if (!regs->num_of_window) {
 			decon_wait_for_vsync(decon, VSYNC_TIMEOUT_MSEC);

@@ -743,7 +743,7 @@ int decon_error_cb(void *data, struct disp_check_cb_info *info)
 #ifdef CONFIG_LOGGING_BIGDATA_BUG
 		log_decon_bigdata(decon);
 #endif
-		BUG();
+		ret = -EIO;
 	}
 
 	if (prev_state == DECON_STATE_DOZE_SUSPEND) {
@@ -883,7 +883,7 @@ static int decon_handle_esd(struct decon_device *decon)
 		if (decon->dt.out_type == DECON_OUT_DSI)
 			v4l2_subdev_call(decon->out_sd[0], core, ioctl,
 					DSIM_IOC_DUMP, NULL);
-		BUG();
+		ret = -EIO;
 	}
 
 	dsim->esd_recovering = false;
@@ -2043,7 +2043,8 @@ void decon_update_win_update(struct decon_device *decon,
 			return;
 #endif
 		decon_dump(decon);
-		BUG();
+		decon_err("%s shadow update timeout\n", __func__);
+		return;
 	}
 
 	if (!decon->low_persistence) {

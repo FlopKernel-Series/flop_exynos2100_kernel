@@ -2456,7 +2456,7 @@ static int dsim_register_panel(struct dsim_device *dsim)
 
 #if IS_ENABLED(CONFIG_MCD_PANEL)
 	dsim_err("%s can't found panel\n", __func__);
-	BUG();
+	return -ENODEV;
 #endif
 	pm_runtime_get_sync(dsim->dev);
 
@@ -2481,7 +2481,7 @@ static int dsim_register_panel(struct dsim_device *dsim)
 	ret = dsim_call_panel_ops(dsim, EXYNOS_PANEL_IOC_REGISTER, &panel_id);
 	if (ret) {
 		dsim_err("%s: cannot find proper panel\n", __func__);
-		BUG();
+		return ret;
 	}
 
 	dsim->clks.hs_clk = dsim->panel->lcd_info.hs_clk;
