@@ -56,6 +56,7 @@
 #include <linux/delayacct.h>
 #include <linux/unistd.h>
 #include <linux/utsname.h>
+#include <linux/workarounds.h>
 #include <linux/rmap.h>
 #include <linux/mempolicy.h>
 #include <linux/key.h>
@@ -919,7 +920,13 @@ asmlinkage __visible void __init start_kernel(void)
 		parse_args("Setting extra init args", extra_init_args,
 			   NULL, 0, -1, -1, NULL, set_init_arg);
 
-	pr_info("Workaround: uname_bpf_spoof=%d\n", uname_bpf_spoof);
+	if (uname_bpf_spoof == 1)
+		pr_info("Workaround: BpfSpoof Partial (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());
+	else if (uname_bpf_spoof >= 2)
+		pr_info("Workaround: BpfSpoof Full (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());
+	else
+		pr_info("Workaround: BpfSpoof Disabled\n");
+
 
 	/*
 	 * These use large bootmem allocations and must precede
