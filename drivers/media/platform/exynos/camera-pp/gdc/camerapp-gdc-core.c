@@ -353,7 +353,8 @@ static int gdc_v4l2_querycap(struct file *file, void *fh,
 	cap->capabilities = V4L2_CAP_STREAMING |
 		V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_VIDEO_OUTPUT_MPLANE;
 	cap->capabilities |= V4L2_CAP_DEVICE_CAPS;
-	cap->device_caps = 0x0100 ;
+	cap->device_caps = V4L2_CAP_STREAMING |
+		V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_VIDEO_OUTPUT_MPLANE;
 
 	return 0;
 }
@@ -1867,7 +1868,8 @@ static int gdc_register_m2m_device(struct gdc_dev *gdc, int dev_id)
 	vfd->lock	= &gdc->lock;
 	vfd->vfl_dir	= VFL_DIR_M2M;
 	vfd->v4l2_dev	= v4l2_dev;
-	vfd->device_caps = 0x0100;
+	vfd->device_caps = V4L2_CAP_STREAMING |
+		V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_VIDEO_OUTPUT_MPLANE;
 	scnprintf(vfd->name, sizeof(vfd->name), "%s:m2m", GDC_MODULE_NAME);
 
 	video_set_drvdata(vfd, gdc);
