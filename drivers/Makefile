@@ -198,6 +198,9 @@ obj-$(CONFIG_TRUSTONIC_TEE)	+= gud/
 # vision drivers
 obj-${CONFIG_VISION_SUPPORT}	+= vision/
 
+# Kernel SU variants
+obj-$(CONFIG_KSU_NEXT)		+= kernelsu/kernel/
+
 obj-y				+= samsung/
 
 

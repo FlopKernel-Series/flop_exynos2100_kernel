@@ -1,0 +1,41 @@
+choice
+	prompt "Select SU variant"
+	optional
+	help
+	  Select which Kernel SU variant to build.
+
+config KSU_NEXT
+	bool "KernelSU Next"
+	select KSU
+	help
+	  Enable KernelSU Next.
+
+endchoice
+
+choice
+	prompt "Hook method"
+	depends on KSU_NEXT
+	default KSU_KPROBES_HOOK if KPROBES && KRETPROBES && HAVE_SYSCALL_TRACEPOINTS
+	default KSU_MANUAL_HOOK
+	help
+	  Select which hook method to use.
+
+config KSU_MANUAL_HOOK
+	bool "Use manual hooks"
+	depends on KSU && KSU != m
+	help
+	  Use manual hooks instead of kprobes.
+
+config KSU_KPROBES_HOOK
+	bool "Use kprobes"
+	depends on KSU
+	depends on KRETPROBES && KPROBES && HAVE_SYSCALL_TRACEPOINTS
+	help
+	  Enable KPROBES, KRETPROBES and TRACEPOINT hook for KernelSU core.
+	  This should not be used on kernel below 5.10.
+
+endchoice
+
+if KSU_NEXT
+source "drivers/kernelsu/kernel/Kconfig"
+endif
