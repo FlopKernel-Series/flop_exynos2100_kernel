@@ -53,3 +53,14 @@ config FSCRYPT_SDP
 	  Enable SDP functional to fscrypto module.
 	  This feature is supporting "Data-At-Rest" for file systems using
 	  Per-file-encryption being controlled by SDP user status.
+
+config FSCRYPT_SDP_READ_ONLY
+	bool "Make SDP read-only (disable new context creation)"
+	depends on FSCRYPT_SDP
+	default y
+	help
+	  This option allows the system to read existing SDP-encrypted files
+	  but blocks all ioctls and operations that create or modify
+	  SDP metadata. This prevents SDP metadata from being written to
+	  userdata by devices that don't need or support SDP fully, avoiding
+	  corruption when switching to non-SDP kernels.

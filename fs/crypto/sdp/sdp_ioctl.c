@@ -293,6 +293,15 @@ int fscrypt_sdp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case FS_IOC_GET_SDP_INFO:
 		return fscrypt_sdp_ioctl_get_sdp_info(inode, arg);
+#ifdef CONFIG_FSCRYPT_SDP_READ_ONLY
+	case FS_IOC_SET_SDP_POLICY:
+	case FS_IOC_SET_SENSITIVE:
+	case FS_IOC_SET_PROTECTED:
+	case FS_IOC_ADD_CHAMBER:
+	case FS_IOC_REMOVE_CHAMBER:
+		DEK_LOGE("SDP is in read-only mode, blocking ioctl 0x%08x\n", cmd);
+		return -EOPNOTSUPP;
+#else
 	case FS_IOC_SET_SDP_POLICY:
 		return fscrypt_sdp_ioctl_set_sdp_policy(inode, arg);
 	case FS_IOC_SET_SENSITIVE:
@@ -303,6 +312,7 @@ int fscrypt_sdp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return fscrypt_sdp_ioctl_add_chamber_directory(inode, arg);
 	case FS_IOC_REMOVE_CHAMBER:
 		return fscrypt_sdp_ioctl_remove_chamber_directory(inode);
+#endif
 #ifdef CONFIG_SDP_KEY_DUMP
 	case FS_IOC_DUMP_FILE_KEY:
 		return fscrypt_sdp_ioctl_dump_file_key(inode);

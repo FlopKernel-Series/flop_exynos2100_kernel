@@ -1823,6 +1823,10 @@ int fscrypt_sdp_inherit_context(struct inode *parent, struct inode *child, union
 	struct fscrypt_info *ci = parent->i_crypt_info;
 	struct fscrypt_sdp_context sdp_ctx;
 
+#ifdef CONFIG_FSCRYPT_SDP_READ_ONLY
+	return 0;
+#endif
+
 	if (!ci || !ci->ci_sdp_info)
 		return res;
 

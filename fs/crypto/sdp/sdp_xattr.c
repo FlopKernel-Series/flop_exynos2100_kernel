@@ -57,6 +57,10 @@ static int __fscrypt_sdp_set_context(struct inode *inode, void *ctx, size_t len,
 	int retval = -ENOTTY;
 	const char *fs_type_name = inode->i_mapping->host->i_sb->s_type->name;
 
+#ifdef CONFIG_FSCRYPT_SDP_READ_ONLY
+	return 0;
+#endif
+
 	if (is_lock) inode_lock(inode);
 	if (!strcmp(FSCRYPT_SDP_FS_TYPE_EXT4_STR, fs_type_name)) {
 		retval = ext4_xattr_set(inode, FSCRYPT_SDP_EXT4_XATTR_INDEX_ENCRYPTION,
