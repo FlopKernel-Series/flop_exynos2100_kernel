@@ -2013,12 +2013,26 @@ void set_dumpable(struct mm_struct *mm, int value)
 	set_mask_bits(&mm->flags, MMF_DUMPABLE_MASK, value);
 }
 
+#ifdef CONFIG_KSU_MANUAL_HOOK
+extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr,
+				      void *argv, void *envp, int *flags);
+#endif
+
 SYSCALL_DEFINE3(execve,
 		const char __user *, filename,
 		const char __user *const __user *, argv,
 		const char __user *const __user *, envp)
 {
-	return do_execve(getname(filename), argv, envp);
+	struct filename *execve_filename = getname(filename);
+
+#ifdef CONFIG_KSU_MANUAL_HOOK
+	int ksu_fd = AT_FDCWD;
+
+	ksu_handle_execveat(&ksu_fd, &execve_filename,
+			   (void *)&argv, (void *)&envp, NULL);
+#endif
+
+	return do_execve(execve_filename, argv, envp);
 }
 
 SYSCALL_DEFINE5(execveat,
@@ -2039,7 +2053,16 @@ COMPAT_SYSCALL_DEFINE3(execve, const char __user *, filename,
 	const compat_uptr_t __user *, argv,
 	const compat_uptr_t __user *, envp)
 {
-	return compat_do_execve(getname(filename), argv, envp);
+	struct filename *execve_filename = getname(filename);
+
+#ifdef CONFIG_KSU_MANUAL_HOOK /* 32-bit ksud and 32-on-64 support */
+	int ksu_fd = AT_FDCWD;
+
+	ksu_handle_execveat(&ksu_fd, &execve_filename,
+			   (void *)&argv, (void *)&envp, NULL);
+#endif
+
+	return compat_do_execve(execve_filename, argv, envp);
 }
 
 COMPAT_SYSCALL_DEFINE5(execveat, int, fd,
