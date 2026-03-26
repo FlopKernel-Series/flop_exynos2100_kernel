@@ -260,6 +260,8 @@ static void secdbg_base_set_taskinfo(void)
 	SET_MEMBER_TYPE_INFO(&secdbg_sdn_va->task.ts.pc, struct task_struct,
 					thread.cpu_context.pc);
 
+	/* sched_info fields exist only when CONFIG_SCHED_INFO is enabled */
+#ifdef CONFIG_SCHED_INFO
 	SET_MEMBER_TYPE_INFO(&secdbg_sdn_va->task.ts.sched_info__pcount,
 					struct task_struct, sched_info.pcount);
 	SET_MEMBER_TYPE_INFO(&secdbg_sdn_va->task.ts.sched_info__run_delay,
@@ -271,6 +273,16 @@ static void secdbg_base_set_taskinfo(void)
 	SET_MEMBER_TYPE_INFO(&secdbg_sdn_va->task.ts.sched_info__last_queued,
 					struct task_struct,
 					sched_info.last_queued);
+#else
+	secdbg_sdn_va->task.ts.sched_info__pcount.size = 0;
+	secdbg_sdn_va->task.ts.sched_info__pcount.offset = 0;
+	secdbg_sdn_va->task.ts.sched_info__run_delay.size = 0;
+	secdbg_sdn_va->task.ts.sched_info__run_delay.offset = 0;
+	secdbg_sdn_va->task.ts.sched_info__last_arrival.size = 0;
+	secdbg_sdn_va->task.ts.sched_info__last_arrival.offset = 0;
+	secdbg_sdn_va->task.ts.sched_info__last_queued.size = 0;
+	secdbg_sdn_va->task.ts.sched_info__last_queued.offset = 0;
+#endif
 #ifdef CONFIG_SEC_DEBUG_DTASK
 	SET_MEMBER_TYPE_INFO(&secdbg_sdn_va->task.ts.ssdbg_wait__type,
 					struct task_struct,
