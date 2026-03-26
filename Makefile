@@ -1284,9 +1284,6 @@ archprepare: outputmakefile archheaders archscripts scripts include/config/kerne
 
 prepare0: archprepare
 	$(Q)$(MAKE) $(build)=scripts/mod
-ifeq ($(CONFIG_EXYNOS_FMP_FIPS), m)
-	$(MAKE) -f $(srctree)/drivers/crypto/fmp/Makefile fips_clean
-endif
 	$(Q)$(MAKE) $(build)=.
 
 # All the preparing..
@@ -1483,11 +1480,6 @@ PHONY += modules
 modules: $(if $(KBUILD_BUILTIN),vmlinux) modules.order modules.builtin
 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/modules-check.sh
-ifdef CONFIG_EXYNOS_FMP_FIPS
-	@$(kecho) ' FIPS Generate and embed HMAC ';
-	@$(srctree)/scripts/fmp/IntegrityCheckProvider.py \
-		drivers/crypto/fmp/fmp-core.ko drivers/crypto/fmp/fips140_ic_support.c
-endif
 
 modules.order: descend
 	$(Q)$(AWK) '!x[$$0]++' $(addsuffix /$@, $(build-dirs)) > $@
