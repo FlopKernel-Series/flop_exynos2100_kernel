@@ -359,6 +359,9 @@ SYSCALL_DEFINE2(newlstat, const char __user *, filename,
 
 #ifdef CONFIG_KSU_MANUAL_HOOK
 extern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);
+#endif
+
+#if defined(CONFIG_KSU_MANUAL_HOOK) && !defined(CONFIG_KSU_NEXT)
 extern void ksu_handle_newfstat_ret(unsigned int *fd,
 				    struct stat __user **statbuf_ptr);
 #endif
@@ -389,7 +392,7 @@ SYSCALL_DEFINE2(newfstat, unsigned int, fd, struct stat __user *, statbuf)
 	if (!error)
 		error = cp_new_stat(&stat, statbuf);
 
-#ifdef CONFIG_KSU_MANUAL_HOOK
+#if defined(CONFIG_KSU_MANUAL_HOOK) && !defined(CONFIG_KSU_NEXT)
 	if (!error)
 		ksu_handle_newfstat_ret(&fd, &statbuf);
 #endif
