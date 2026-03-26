@@ -2,15 +2,7 @@ packing() {
     if [ "$DO_ZIP" = "1" ]; then
         echo -e "\n$(log_info "Building AnyKernel ZIP...")"
 
-        if [ -d "$AK3_DIR/.git" ]; then
-            if [ "${AK3_MANAGED:-0}" = "1" ]; then
-                log_info "Using auto-cloned AnyKernel3 checkout at $AK3_DIR"
-            else
-                log_info "Using existing AnyKernel3 checkout at $AK3_DIR"
-            fi
-        elif [ -d "$AK3_DIR" ]; then
-            log_info "Using existing AnyKernel3 directory at $AK3_DIR"
-        else
+        if [ ! -d "$AK3_DIR/.git" ]; then
             log_err "AnyKernel3 directory not found at $AK3_DIR"
             exit 1
         fi
@@ -27,10 +19,6 @@ packing() {
 
         PACKAGE_PATH="$ZIP_PATH"
         echo -e "$(log_info "Output: $ZIP_PATH")"
-
-        if [ "${AK3_MANAGED:-0}" = "1" ]; then
-            rm -rf "$AK3_DIR"
-        fi
     fi
 
     if [ "$DO_TAR" = "1" ]; then

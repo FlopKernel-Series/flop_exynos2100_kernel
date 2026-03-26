@@ -12,11 +12,13 @@ fi
 AK3_MANAGED=0
 
 if [ "$DO_ZIP" = "1" ]; then
-    if [ ! -d "$AK3_DIR" ]; then
-        git clone -q -b "$AK3_BRANCH" --depth=1 "$AK3_URL" "$AK3_DIR"
-        AK3_MANAGED=1
-    fi
+    rm -rf "$AK3_DIR"
+    mkdir -p "$(dirname "$AK3_DIR")"
+    git clone -q -b "$AK3_BRANCH" --depth=1 "$AK3_URL" "$AK3_DIR"
+    AK3_MANAGED=1
 fi
+
+export AK3_MANAGED
 
 DEPS=( lz4 brotli flex bc cpio kmod zip binutils-aarch64-linux-gnu ccache )
 

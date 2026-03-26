@@ -44,7 +44,7 @@ LINKER="${LINKER:-ld.lld}"
 OUTDIR="$KDIR/out"
 MOD_OUTDIR="$KDIR/modules_out"
 TMPDIR="$KDIR/build/tmp"
-AK3_DIR="${AK3_DIR:-$WP/AK3-2100}"
+AK3_DIR="${AK3_DIR:-$TMPDIR/AK3-2100}"
 IN_VBOOT="$KDIR/build/vboot"
 IN_DTB="${IN_DTB:-$OUTDIR/arch/arm64/boot/dts/exynos/exynos2100.dtb}"
 RAMDISK_DIR="$TMPDIR/vendor_ramdisk"
@@ -179,6 +179,14 @@ source "$SCRIPTS_DIR/kpm.sh"
 source "$SCRIPTS_DIR/images.sh"
 source "$SCRIPTS_DIR/pack.sh"
 source "$SCRIPTS_DIR/upload.sh"
+
+cleanup() {
+    if [ "${AK3_MANAGED:-0}" = "1" ]; then
+        rm -rf "$AK3_DIR"
+    fi
+}
+
+trap cleanup EXIT
 
 prep_build() {
     if [ "$USE_CCACHE" == "1" ]; then

@@ -5,7 +5,8 @@
 kernel_modules() {
     local i name
 
-    rm -rf "$TMPDIR"
+    rm -rf "$RAMDISK_DIR"
+    rm -f "$TMPDIR/modules.load"
     rm -f "$OUT_BOOTIMG" "$OUT_VENDORBOOTIMG"
     mkdir -p "$TMPDIR" "$RAMDISK_DIR" "$MODULES_DIR/0.0"
 
