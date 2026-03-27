@@ -1,0 +1,34 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+#ifndef _FLOPPYKERNEL_H
+#define _FLOPPYKERNEL_H
+
+#include <linux/types.h>
+
+/*
+ * Private feature-query interface for use with fkfeatctl.
+ */
+#define PR_GET_FK_FEATURE		0x46504b01
+
+#define PR_FK_FEATURE_SUPPORTED		(1U << 0)
+#define PR_FK_FEATURE_BY_INDEX		(1U << 1)
+
+enum fk_feature_id {
+	FK_FEATURE_UNAME_BPF_SPOOF = 1,
+};
+
+struct prctl_fk_feature_state {
+	u32 flags;
+	u32 reserved;
+	u64 value;
+};
+
+#define FK_FEATURE_NAME_LEN		32
+
+struct prctl_fk_feature_info {
+	u32 feature_id;
+	u32 flags;
+	u64 value;
+	char name[FK_FEATURE_NAME_LEN];
+};
+
+#endif /* _FLOPPYKERNEL_H */

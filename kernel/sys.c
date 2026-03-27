@@ -68,6 +68,7 @@
 #include <linux/kmsg_dump.h>
 /* Move somewhere else to avoid recompiling? */
 #include <generated/utsrelease.h>
+#include <linux/floppykernel.h>
 #include <linux/workarounds.h>
 
 #include <linux/uaccess.h>
@@ -1258,6 +1259,106 @@ const char *get_bpf_spoof_version(void)
 #else
 	return UTS_RELEASE;
 #endif
+}
+
+static int fk_feature_get_state(u32 feature_id, u64 *value, bool *supported)
+{
+	if (!value || !supported)
+		return -EINVAL;
+
+	*value = 0;
+	*supported = true;
+
+	switch (feature_id) {
+	case FK_FEATURE_UNAME_BPF_SPOOF:
+		*value = is_bpf_spoof_enabled();
+		break;
+	default:
+		*supported = false;
+		break;
+	}
+
+	return 0;
+}
+
+static int fk_feature_get_info_by_index(u32 index,
+					struct prctl_fk_feature_info *info)
+{
+	if (!info)
+		return -EINVAL;
+
+	memset(info, 0, sizeof(*info));
+
+	switch (index) {
+	case 0:
+		info->feature_id = FK_FEATURE_UNAME_BPF_SPOOF;
+		info->flags = PR_FK_FEATURE_SUPPORTED;
+		info->value = is_bpf_spoof_enabled();
+		strscpy(info->name, "uname_bpf_spoof", sizeof(info->name));
+		return 0;
+	default:
+		return -ENOENT;
+	}
+}
+
+static int fk_feature_get_info_by_id(u32 feature_id,
+				     struct prctl_fk_feature_info *info)
+{
+	bool supported;
+	int ret;
+
+	if (!info)
+		return -EINVAL;
+
+	memset(info, 0, sizeof(*info));
+	info->feature_id = feature_id;
+
+	switch (feature_id) {
+	case FK_FEATURE_UNAME_BPF_SPOOF:
+		strscpy(info->name, "uname_bpf_spoof", sizeof(info->name));
+		break;
+	default:
+		return 0;
+	}
+
+	ret = fk_feature_get_state(feature_id, &info->value, &supported);
+	if (ret)
+		return ret;
+
+	if (supported)
+		info->flags |= PR_FK_FEATURE_SUPPORTED;
+
+	return 0;
+}
+
+static int prctl_get_fk_feature(unsigned long feature_id, unsigned long arg,
+				unsigned long arg4, unsigned long arg5)
+{
+	struct prctl_fk_feature_info info;
+	int ret;
+
+	if (arg5 || !arg)
+		return -EINVAL;
+
+	/*
+	 * Do not expose this interface as a detectable fingerprint to
+	 * ordinary apps: make unprivileged callers observe the same
+	 * -EINVAL they would get on a kernel without this extension.
+	 */
+	if (current_uid().val != 0)
+		return -EINVAL;
+
+	if (arg4 & PR_FK_FEATURE_BY_INDEX)
+		ret = fk_feature_get_info_by_index(feature_id, &info);
+	else
+		ret = fk_feature_get_info_by_id(feature_id, &info);
+	if (ret)
+		return ret;
+
+	if (copy_to_user((void __user *)arg, &info, sizeof(info)))
+		return -EFAULT;
+
+	return 0;
 }
 
 SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
@@ -2706,6 +2807,9 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		if (arg2 || arg3 || arg4 || arg5)
 			return -EINVAL;
 		error = GET_TAGGED_ADDR_CTRL();
+		break;
+	case PR_GET_FK_FEATURE:
+		error = prctl_get_fk_feature(arg2, arg3, arg4, arg5);
 		break;
 	default:
 		error = -EINVAL;
