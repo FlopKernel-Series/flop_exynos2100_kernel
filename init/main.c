@@ -192,6 +192,7 @@ static int __init set_reset_devices(char *str)
 __setup("reset_devices", set_reset_devices);
 
 static int uname_bpf_spoof = 0;
+static char uname_bpf_spoof_default_arg[] = "uname_bpf_spoof=0";
 
 static int __init set_uname_bpf_spoof(char *val)
 {
@@ -204,6 +205,15 @@ static int __init set_uname_bpf_spoof(char *val)
 	return 0;
 }
 __setup("uname_bpf_spoof=", set_uname_bpf_spoof);
+
+static void __init apply_uname_bpf_spoof_default(void)
+{
+	char *val;
+
+	val = strchr(uname_bpf_spoof_default_arg, '=');
+	if (val)
+		set_uname_bpf_spoof(val + 1);
+}
 
 int is_bpf_spoof_enabled(void)
 {
@@ -919,6 +929,8 @@ asmlinkage __visible void __init start_kernel(void)
 	if (extra_init_args)
 		parse_args("Setting extra init args", extra_init_args,
 			   NULL, 0, -1, -1, NULL, set_init_arg);
+
+	apply_uname_bpf_spoof_default();
 
 	if (uname_bpf_spoof == 1)
 		pr_info("Workaround: BpfSpoof Partial (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());
