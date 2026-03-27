@@ -59,7 +59,7 @@ OUT_DTBIMAGE="$TMPDIR/dtb.img"
 MKBOOTIMG="$(pwd)/build/mkbootimg/mkbootimg.py"
 MKDTBOIMG="$(pwd)/build/dtb/mkdtboimg.py"
 
-FK_VER="${FK_VER:-devel}"
+FK_VER="v1.0a"
 USE_CCACHE="${USE_CCACHE:-1}"
 DO_TAR="${DO_TAR:-1}"
 DO_ZIP="${DO_ZIP:-1}"
