@@ -70,7 +70,7 @@
  * If no ancestor relationship:
  * arbitrary, since it's serialized on rename_lock
  */
-int sysctl_vfs_cache_pressure __read_mostly = 100;
+int sysctl_vfs_cache_pressure __read_mostly = 75;
 EXPORT_SYMBOL_GPL(sysctl_vfs_cache_pressure);
 
 __cacheline_aligned_in_smp DEFINE_SEQLOCK(rename_lock);
@@ -3208,11 +3208,26 @@ void __init vfs_caches_init_early(void)
 	inode_init_early();
 }
 
+static void __init vfs_cache_pressure_init(void)
+{
+	unsigned long total_ram_mb = memblock_phys_mem_size() >> 20;
+
+	/*
+	 * Use physical RAM rather than totalram_pages(), which is already
+	 * reduced by reserved-memory carveouts on these Exynos devices.
+	 * Keep the 6 GB class on the safer 75 setting and reserve the more
+	 * aggressive cache retention for the 8 GB class only.
+	 */
+	if (total_ram_mb > 6200)
+		sysctl_vfs_cache_pressure = 50;
+}
+
 void __init vfs_caches_init(void)
 {
 	names_cachep = kmem_cache_create_usercopy("names_cache", PATH_MAX, 0,
 			SLAB_HWCACHE_ALIGN|SLAB_PANIC, 0, PATH_MAX, NULL);
 
+	vfs_cache_pressure_init();
 	dcache_init();
 	inode_init();
 	files_init();
