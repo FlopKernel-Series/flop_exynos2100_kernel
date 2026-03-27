@@ -567,15 +567,15 @@ static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base
 				pr_info("  DVFS CMU addr:0x%x\n", member_addr);
 #endif
 		}
-#ifdef CONFIG_EXYNOS_DEBUG_INFO
 		for (j = 0; j < fvmap_header[i].num_of_lv; j++) {
 			new->table[j].rate = old->table[j].rate;
 			new->table[j].volt = old->table[j].volt;
+#ifdef CONFIG_EXYNOS_DEBUG_INFO
 			pr_info("  lv : [%7d], volt = %d uV (%d %%) \n",
 				new->table[j].rate, new->table[j].volt * STEP_UV,
 				volt_offset_percent);
-		}
 #endif
+		}
 	}
 }
 
