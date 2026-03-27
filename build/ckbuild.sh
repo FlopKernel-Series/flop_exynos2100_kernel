@@ -14,7 +14,7 @@ set -e
 
 source "$(pwd)/build/lib/log.sh"
 
-DEFAULT_DEFCONFIG="${DEFAULT_DEFCONFIG:-exynos2100-r9sxxx_defconfig}"
+DEFAULT_DEFCONFIG="${DEFAULT_DEFCONFIG:-exynos2100-unified_defconfig}"
 KERNEL_URL="${KERNEL_URL:-https://github.com/FlopKernel-Series/flop_exynos2100_kernel}"
 AK3_URL="${AK3_URL:-https://github.com/FlopKernel-Series/AnyKernel3-exynos2100}"
 SECONDS=0
@@ -36,7 +36,7 @@ fi
 export KBUILD_BUILD_TIMESTAMP="$(LC_ALL=C date)"
 export PATH="$(pwd)/build/bin:$PATH"
 
-AK3_BRANCH="${AK3_BRANCH:-floppy-r9s}"
+AK3_BRANCH="${AK3_BRANCH:-floppy-unity}"
 KDIR="$(readlink -f .)"
 USE_GCC_BINUTILS="0"
 LINKER="${LINKER:-ld.lld}"
@@ -64,8 +64,8 @@ USE_CCACHE="${USE_CCACHE:-1}"
 DO_TAR="${DO_TAR:-1}"
 DO_ZIP="${DO_ZIP:-1}"
 
-DEVICE="${DEVICE:-Galaxy S21 FE}"
-CODENAME="${CODENAME:-r9s}"
+DEVICE="${DEVICE:-Exynos 2100 Family}"
+CODENAME="${CODENAME:-exynos2100}"
 
 if [ -f "../chat_ci" ] && [ -f "../bot_token" ]; then
     TELEGRAM_CHAT_ID="$(<../chat_ci)"
