@@ -52,4 +52,5 @@ obj-$(CONFIG_ISDN_CAPI)		+= isdn/
 obj-$(CONFIG_UWB)		+= uwb/
 obj-$(CONFIG_USB_WUSB)		+= wusbcore/
 obj-$(CONFIG_EXFAT_FS)		+= exfat/
+obj-$(CONFIG_KSHRINK_SLABD)	+= kshrink_slabd/
 obj-$(CONFIG_QLGE)		+= qlge/

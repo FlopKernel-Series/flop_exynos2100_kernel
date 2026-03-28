@@ -1,0 +1,5 @@
+config KSHRINK_SLABD
+	bool "Allow asynchronous shrink slab"
+	default n
+	help
+	  Asynchronous shrink slab reclaim helper.

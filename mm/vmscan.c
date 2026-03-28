@@ -52,6 +52,7 @@
 #include <linux/dax.h>
 #include <linux/psi.h>
 #include <linux/sec_detect.h>
+#include <linux/kshrink_slabd.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -709,12 +710,15 @@ static unsigned long shrink_slab_memcg(gfp_t gfp_mask, int nid,
  *
  * Returns the number of reclaimed slab objects.
  */
-static unsigned long shrink_slab(gfp_t gfp_mask, int nid,
-				 struct mem_cgroup *memcg,
-				 int priority)
+unsigned long shrink_slab(gfp_t gfp_mask, int nid,
+			  struct mem_cgroup *memcg,
+			  int priority)
 {
 	unsigned long ret, freed = 0;
 	struct shrinker *shrinker;
+
+	if (kshrink_slabd_bypass(gfp_mask, nid, memcg, priority))
+		return 0;
 
 	/*
 	 * The root memcg might be allocated even though memcg is disabled
