@@ -3463,8 +3463,8 @@ static ssize_t disksize_store(struct device *dev,
 			pr_info("Detected 8GB RAM variant (usable: %lu MB), setting ZRAM to 4GB (50%%)",
 				total_ram_mb);
 		} else if (total_ram_mb > 4200) {
-			disksize = 3ULL * SZ_1G;
-			pr_info("Detected 6GB RAM variant (usable: %lu MB), setting ZRAM to 3GB (50%%)",
+			disksize = 4ULL * SZ_1G;
+			pr_info("Detected 6GB RAM variant (usable: %lu MB), setting ZRAM to 4GB (50%%)",
 				total_ram_mb);
 		} else {
 			rounded_half_gb = DIV_ROUND_CLOSEST_ULL((u64)total_ram_mb, 2048);
