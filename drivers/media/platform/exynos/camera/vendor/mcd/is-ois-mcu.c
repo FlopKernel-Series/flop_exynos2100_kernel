@@ -561,6 +561,11 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 	struct is_device_sensor_peri *sensor_peri = NULL;
 	struct is_ois_info *ois_pinfo = NULL;
 	struct is_core *core = NULL;
+	const bool rsu __maybe_unused = sec_get_mcd_feat(MCD_FEAT_TYPE_RSU);
+	const bool usuv1 __maybe_unused = sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1);
+	const bool usuv2 __maybe_unused = sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2);
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
+	const bool tele_default_coef __maybe_unused = rsu || usuv1 || usuv2;
 
 	WARN_ON(!subdev);
 
@@ -711,7 +716,7 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 			/* write tele xgg ygg xcoef ycoef */
 			if (ois_pinfo->tele_tilt_romdata.cal_mark[0] == 0xBB) {
 #ifdef OIS_DUAL_CAL_USE_REAR3_DATA
-				if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+				if (usuv3) {
 					tele_cmd_xcoef = R_OIS_CMD_XCOEF_M3_1;
 					tele_cmd_ycoef = R_OIS_CMD_YCOEF_M3_1;
 				} else {
@@ -724,9 +729,7 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 #endif
 
 // #ifndef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
-				if (!sec_get_mcd_feat(MCD_FEAT_TYPE_RSU) &&
-				    !sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1) &&
-				    !sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2)) {
+				if (!tele_default_coef) {
 					specific = core->vender.private_data;
 					efs_size = specific->tilt_cal_tele2_efs_size;
 					if (efs_size) {
@@ -741,21 +744,19 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 				for (i = 0; i < 4; i++) {
 					is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR2_XGG1 + i, ois_pinfo->tele_romdata.xgg[i]);
 #ifdef CAMERA_3RD_OIS
-					if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+					if (usuv3)
 						is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR3_XGG1 + i, ois_pinfo->tele2_romdata.xgg[i]);
 #endif
 				}
 				for (i = 0; i < 4; i++) {
 					is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR2_YGG1 + i, ois_pinfo->tele_romdata.ygg[i]);
 #ifdef CAMERA_3RD_OIS
-					if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+					if (usuv3)
 						is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR3_YGG1 + i, ois_pinfo->tele2_romdata.ygg[i]);
 #endif
 				}
 #ifdef OIS_DUAL_CAL_DEFAULT_VALUE_TELE
-				if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU) ||
-				    sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1) ||
-				    sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2)) {
+				if (tele_default_coef) {
 					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
 					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
 					is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_VALUE_TELE);
@@ -765,7 +766,7 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 				} else {
 					if (!test_bit(IS_EFS_STATE_READ, &efs_info.efs_state)) {
 #ifdef OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE
-						if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+						if (usuv3) {
 							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
 							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
 							is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
@@ -825,7 +826,7 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 #else
 				if (!test_bit(IS_EFS_STATE_READ, &efs_info.efs_state)) {
 #ifdef OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE
-					if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+					if (usuv3) {
 						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
 						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_xcoef + 1, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
 						is_mcu_set_reg(mcu->regs[OM_REG_CORE], tele_cmd_ycoef, OIS_DUAL_CAL_DEFAULT_EEPROM_VALUE_TELE);
@@ -895,7 +896,7 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 			tx_pole = common_mcu_infos.ois_gyro_direction[3];
 			ty_pole = common_mcu_infos.ois_gyro_direction[4];
 #ifdef CAMERA_3RD_OIS
-				if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+				if (usuv3) {
 					t2x_pole = common_mcu_infos.ois_gyro_direction[5];
 					t2y_pole = common_mcu_infos.ois_gyro_direction[6];
 
@@ -917,7 +918,7 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 			is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_GYRO_POLA_X_M2, tx_pole);
 			is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_GYRO_POLA_Y_M2, ty_pole);
 #ifdef CAMERA_3RD_OIS
-			if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (usuv3) {
 				is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_GYRO_POLA_X_M3, t2x_pole);
 				is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_GYRO_POLA_Y_M3, t2y_pole);
 			}
@@ -925,7 +926,7 @@ int ois_mcu_init(struct v4l2_subdev *subdev)
 			info_mcu("%s gyro init data applied.\n", __func__);
 
 #ifdef CAMERA_3RD_OIS
-			if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+			if (usuv3) {
 				if (!error_reg[1] || !mcu->recover_tele2)
 					ois_hw_check = true;
 			} else {
@@ -960,6 +961,7 @@ int ois_mcu_init_factory(struct v4l2_subdev *subdev)
 	struct ois_mcu_dev *mcu = NULL;
 	struct is_ois *ois = NULL;
 	struct is_ois_info *ois_pinfo = NULL;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	WARN_ON(!subdev);
 
@@ -1007,7 +1009,7 @@ int ois_mcu_init_factory(struct v4l2_subdev *subdev)
 	}
 
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+	if (usuv3)
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_OIS_SEL, 0x07); /* OIS SEL (wide : 1 , tele : 2, tele2 : 4, triple : 7 ). */
 	else
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_OIS_SEL, 0x03); /* OIS SEL (wide : 1 , tele : 2, both : 3 ). */
@@ -1143,6 +1145,7 @@ int ois_mcu_set_ggfadeupdown(struct v4l2_subdev *subdev, int up, int down)
 	u8 status = 0;
 	int retries = 100;
 	u8 data[2];
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 	//u8 write_data[4] = {0,};
 #ifdef USE_OIS_SLEEP_MODE
 	u8 read_sensorStart = 0;
@@ -1177,7 +1180,7 @@ int ois_mcu_set_ggfadeupdown(struct v4l2_subdev *subdev, int up, int down)
 #endif
 #ifdef CAMERA_3RD_OIS
 	/* Tele2 af position value */
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+	if (usuv3)
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR3_AF, MCU_AF_INIT_POSITION);
 #endif
 
@@ -1330,6 +1333,7 @@ int ois_mcu_shift_compensation(struct v4l2_subdev *subdev, int position, int res
 	struct is_module_enum *module = NULL;
 	struct is_device_sensor_peri *sensor_peri = NULL;
 	int position_changed;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	WARN_ON(!subdev);
 
@@ -1378,7 +1382,7 @@ int ois_mcu_shift_compensation(struct v4l2_subdev *subdev, int position, int res
 	}
 #elif !defined(USE_TELE2_OIS_AF_COMMON_INTERFACE) && defined(CAMERA_3RD_OIS)
 	else if (module->position == SENSOR_POSITION_REAR4 && ois->af_pos_tele2 != position_changed) {
-		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (usuv3) {
 			/* Tele af position value */
 			is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR3_AF, (u8)position_changed);
 			ois->af_pos_tele2 = position_changed;
@@ -1462,6 +1466,7 @@ int ois_mcu_af_valid_check(void)
 int ois_mcu_af_write_position(struct ois_mcu_dev *mcu, u32 val)
 {
 	u8 val_high = 0, val_low = 0;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	dbg_mcu(1, "%s : E\n", __func__);
 
@@ -1473,7 +1478,7 @@ int ois_mcu_af_write_position(struct ois_mcu_dev *mcu, u32 val)
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR2_AF, val_low);
 #endif
 #if defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS1_REAR3_AF, val_high);
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR3_AF, val_low);
 	}
@@ -1653,6 +1658,7 @@ p_err:
 int ois_mcu_af_move_lens(struct is_core *core)
 {
 	struct ois_mcu_dev *mcu = NULL;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	mcu = core->mcu;
 
@@ -1664,7 +1670,7 @@ int ois_mcu_af_move_lens(struct is_core *core)
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR2_AF, 0x00);
 #endif
 #if defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS1_REAR3_AF, 0x80);
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_POS2_REAR3_AF, 0x00);
 	}
@@ -1690,11 +1696,12 @@ bool ois_mcu_sine_wavecheck_all(struct is_core *core,
 	u8 u8_sinx_count[2] = {0, }, u8_siny_count[2] = {0, };
 	u8 u8_sinx[2] = {0, }, u8_siny[2] = {0, };
 	struct ois_mcu_dev *mcu = NULL;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	mcu = core->mcu;
 
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+	if (usuv3)
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_OIS_SEL, 0x07); /* OIS SEL (wide : 1 , tele : 2, tele2 : 4, w/t : 3, all : 7 ). */
 	else
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_OIS_SEL, 0x03); /* OIS SEL (wide : 1 , tele : 2, tele2 : 4, w/t : 3, all : 7 ). */
@@ -1704,7 +1711,7 @@ bool ois_mcu_sine_wavecheck_all(struct is_core *core,
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_THRESH_ERR_LEV, (u8)threshold); /* error threshold level. */
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_THRESH_ERR_LEV_M2, (u8)threshold); /* error threshold level. */
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+	if (usuv3)
 		is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_THRESH_ERR_LEV_M3, (u8)threshold); /* error threshold level. */
 #endif
 	is_mcu_set_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_ERR_VAL_CNT, 0x00); /* count value for error judgement level. */
@@ -1780,7 +1787,7 @@ bool ois_mcu_sine_wavecheck_all(struct is_core *core,
 	}
 
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 		u8_sinx_count[0] = (u8)is_mcu_get_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR3_SINX_COUNT1);
 		u8_sinx_count[1] = (u8)is_mcu_get_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_REAR3_SINX_COUNT2);
 		sinx_count_3rd = (u8_sinx_count[1] << 8) | u8_sinx_count[0];
@@ -1831,6 +1838,7 @@ bool ois_mcu_auto_test_all(struct is_core *core,
 {
 	int result = 0;
 	bool value = false;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 #ifdef CONFIG_AF_HOST_CONTROL
 #ifdef CAMERA_2ND_OIS
@@ -1842,12 +1850,9 @@ bool ois_mcu_auto_test_all(struct is_core *core,
 	msleep(100);
 #endif
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 #ifdef USE_TELE2_OIS_AF_COMMON_INTERFACE
-		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
-			ois_mcu_af_move_lens(core);
-		else
-			is_af_move_lens(core, SENSOR_POSITION_REAR4);
+		ois_mcu_af_move_lens(core);
 #else
 		is_af_move_lens(core, SENSOR_POSITION_REAR4);
 #endif
@@ -1878,7 +1883,7 @@ bool ois_mcu_auto_test_all(struct is_core *core,
 	}
 
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 		if (*sin_x_3rd == -1 && *sin_y_3rd == -1) {
 			err("OIS 3 device is not prepared.");
 			*x_result_3rd = false;
@@ -2054,6 +2059,7 @@ bool ois_mcu_auto_test_rear2(struct is_core *core,
 {
 	int result = 0;
 	bool value = false;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 #ifdef CONFIG_AF_HOST_CONTROL
 #ifdef CAMERA_2ND_OIS
@@ -2065,12 +2071,9 @@ bool ois_mcu_auto_test_rear2(struct is_core *core,
 	msleep(100);
 #endif
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 #ifdef USE_TELE2_OIS_AF_COMMON_INTERFACE
-		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
-			ois_mcu_af_move_lens(core);
-		else
-			is_af_move_lens(core, SENSOR_POSITION_REAR4);
+		ois_mcu_af_move_lens(core);
 #else
 		is_af_move_lens(core, SENSOR_POSITION_REAR4);
 #endif
@@ -2158,6 +2161,7 @@ int ois_mcu_set_power_mode(struct v4l2_subdev *subdev)
 #ifdef CAMERA_3RD_OIS
 	bool camera_running4;
 #endif
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	mcu = (struct ois_mcu_dev*)v4l2_get_subdevdata(subdev);
 	if(!mcu) {
@@ -2204,7 +2208,7 @@ int ois_mcu_set_power_mode(struct v4l2_subdev *subdev)
 	camera_running2 = is_vendor_check_camera_running(SENSOR_POSITION_REAR2);
 
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 		camera_running4 = is_vendor_check_camera_running(SENSOR_POSITION_REAR4);
 		mcu->recover_tele2 = false;
 
@@ -2319,6 +2323,7 @@ void ois_mcu_get_hall_position(struct is_core *core, u16 *targetPos, u16 *hallPo
 	struct ois_mcu_dev *mcu = NULL;
 	u8 pos_temp[2] = {0, };
 	u16 pos = 0;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	mcu = core->mcu;
 
@@ -2377,7 +2382,7 @@ void ois_mcu_get_hall_position(struct is_core *core, u16 *targetPos, u16 *hallPo
 	info_mcu("%s : tele pos = 0x%04x, 0x%04x, 0x%04x, 0x%04x\n", __func__, targetPos[2], targetPos[3], hallPos[2], hallPos[3]);
 
 #ifdef CAMERA_3RD_OIS
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 		pos_temp[0] = is_mcu_get_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_TARGET_POS_REAR3_X);
 		pos_temp[1] = is_mcu_get_reg(mcu->regs[OM_REG_CORE], R_OIS_CMD_TARGET_POS_REAR3_X2);
 		pos = (pos_temp[1] << 8) | pos_temp[0];
@@ -3666,6 +3671,7 @@ static int ois_mcu_probe(struct platform_device *pdev)
 	bool support_photo_fastae = false;
 	bool skip_video_fastae = false;
 	bool off_during_uwonly_mode = false;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	core = (struct is_core *)dev_get_drvdata(is_dev);
 
@@ -3882,7 +3888,7 @@ static int ois_mcu_probe(struct platform_device *pdev)
 		ois[i].ois_ops = &ois_ops_mcu;
 
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (usuv3) {
 			if (mcu_actuator_list[i] == 1) {
 				actuator->id = ACTUATOR_NAME_AK737X;
 				actuator->subdev = subdev_actuator;
