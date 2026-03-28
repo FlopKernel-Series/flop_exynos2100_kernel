@@ -14,6 +14,9 @@
 #define _LINUX_SEC_H
 
 #include <linux/types.h>
+#ifdef CONFIG_JUMP_LABEL
+#include <linux/jump_label.h>
+#endif
 
 #define SEC_DETECT_LOG(fmt, ...) printk(KERN_INFO "sec_detect: " fmt, ##__VA_ARGS__)
 
@@ -63,6 +66,20 @@ enum mcd_feat {
 enum SEC_devices sec_get_current_device(void);
 bool sec_get_feat(enum sec_feat feat);
 bool sec_get_mcd_feat(enum mcd_feat feat);
+
+#ifdef CONFIG_JUMP_LABEL
+extern struct static_key_false mcd_feat_usuv3_key;
+static inline bool sec_get_mcd_feat_usuv3_fast(void)
+{
+	return static_branch_unlikely(&mcd_feat_usuv3_key);
+}
+#else
+static inline bool sec_get_mcd_feat_usuv3_fast(void)
+{
+	return sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3);
+}
+#endif
+
 bool sec_is_detection_complete(void);
 
 #endif /* _LINUX_SEC_H */

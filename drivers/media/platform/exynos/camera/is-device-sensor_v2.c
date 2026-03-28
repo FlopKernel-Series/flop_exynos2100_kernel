@@ -1425,7 +1425,7 @@ static int is_sensor_notify_by_dma_end(struct is_device_sensor *device, void *ar
 		switch (notification) {
 #ifdef USE_CAMERA_EMBEDDED_HEADER
 		case CSIS_NOTIFY_DMA_END_VC_EMBEDDED:
-			if (!sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+			if (!sec_get_mcd_feat_usuv3_fast())
 				break;
 
 			hashkey = frame->fcount % IS_TIMESTAMP_HASH_KEY;

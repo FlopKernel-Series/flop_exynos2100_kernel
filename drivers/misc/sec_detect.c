@@ -11,6 +11,9 @@
  */
 
 #include <linux/init.h>
+#ifdef CONFIG_JUMP_LABEL
+#include <linux/jump_label.h>
+#endif
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/sec_detect.h>
@@ -25,6 +28,11 @@ static char g_sec_current_device_name[32] = "Unknown";
 static bool sec_feat_flags[SEC_FEAT_COUNT] __read_mostly;
 static bool mcd_feat_flags[MCD_FEAT_COUNT] __read_mostly;
 static bool g_detection_complete;
+
+#ifdef CONFIG_JUMP_LABEL
+DEFINE_STATIC_KEY_FALSE(mcd_feat_usuv3_key);
+EXPORT_SYMBOL_GPL(mcd_feat_usuv3_key);
+#endif
 
 enum SEC_devices sec_get_current_device(void)
 {
@@ -105,6 +113,9 @@ static inline void setup_camera_params(void)
 	case SEC_P3S:
 		mcd_feat_flags[MCD_FEAT_TYPE_USU] = true;
 		mcd_feat_flags[MCD_FEAT_TYPE_USUV3] = true;
+#ifdef CONFIG_JUMP_LABEL
+		static_branch_enable(&mcd_feat_usuv3_key);
+#endif
 		break;
 	case SEC_T2S:
 		mcd_feat_flags[MCD_FEAT_TYPE_USU] = true;
