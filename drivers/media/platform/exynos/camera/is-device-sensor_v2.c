@@ -365,7 +365,7 @@ struct is_sensor_cfg *is_sensor_g_mode(struct is_device_sensor *device)
 
 
 #ifdef USE_EX_MODE_OPTION
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (sec_get_mcd_feat_usuv3_fast()) {
 		/* find sensor mode first by w/h, fps range and ex_mode_option */
 		if (ex_mode_option > 0) {
 			for (i = 0; i < cfgs; i++) {
@@ -2290,6 +2290,7 @@ int is_sensor_s_input(struct is_device_sensor *device,
 	u32 sensor_index;
 	u32 module_count;
 	u32 sensor_id;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	FIMC_BUG(!device);
 	FIMC_BUG(!device->pdata);
@@ -2437,7 +2438,7 @@ int is_sensor_s_input(struct is_device_sensor *device,
 	}
 
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (usuv3) {
 		if (!(sensor_peri->mcu && sensor_peri->mcu->mcu_ctrl_actuator))
 		{
 			if (sensor_peri->actuator
@@ -2524,7 +2525,7 @@ int is_sensor_s_input(struct is_device_sensor *device,
 			sensor_peri->mcu->ois->sensor_peri = sensor_peri;
 		}
 #if defined(USE_TELE_OIS_AF_COMMON_INTERFACE) || defined(USE_TELE2_OIS_AF_COMMON_INTERFACE)
-		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+		if (usuv3) {
 			if (device->mcu->actuator) {
 				sensor_peri->actuator = device->mcu->actuator;
 				sensor_peri->subdev_actuator = device->mcu->actuator->subdev;

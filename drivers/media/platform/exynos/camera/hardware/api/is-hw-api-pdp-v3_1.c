@@ -1438,6 +1438,7 @@ void pdp_hw_s_core(struct is_pdp *pdp, bool pd_enable, struct is_sensor_cfg *sen
 {
 	u32 rmo = PDP_RDMA_MO_DEFAULT;
 	u32 en_dma, en_afdma;
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 	void __iomem *base = pdp->base;
 
 	if (en_sdc) {
@@ -1482,7 +1483,7 @@ void pdp_hw_s_core(struct is_pdp *pdp, bool pd_enable, struct is_sensor_cfg *sen
 			rmo = PDP_RDMA_MO_FPS60; /* This is HW guide value. */
 		} else if (position == SENSOR_POSITION_FRONT) {
 #ifdef PDP_RDMA_MO_FRONT
-			if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+			if (usuv3)
 				rmo = PDP_RDMA_MO_FRONT;
 			else
 				rmo = 2;

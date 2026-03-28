@@ -1210,6 +1210,10 @@ int csi_hw_s_phy_set(struct phy *phy, u32 lanes, u32 mipi_speed,
 {
 	int ret = 0;
 	unsigned int phy_cfg[MAX_PHY_CFG];
+	const bool rsu __maybe_unused = sec_get_mcd_feat(MCD_FEAT_TYPE_RSU);
+	const bool usuv1 __maybe_unused = sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1);
+	const bool usuv2 __maybe_unused = sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2);
+	const bool usuv3 __maybe_unused = sec_get_mcd_feat_usuv3_fast();
 
 	/*
 	 * [0]: the version of PHY (major << 16 | minor)
@@ -1226,27 +1230,27 @@ int csi_hw_s_phy_set(struct phy *phy, u32 lanes, u32 mipi_speed,
 
 #if defined(CAMERA_CSI_A_PHY_CFG) /* version for front */
 	if (instance == CSI_ID_A) {
-		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+		if (rsu)
 			phy_cfg[0] |= CAMERA_CSI_A_PHY_CFG_RSU;
-		else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1))
+		else if (usuv1)
 			phy_cfg[0] |= CAMERA_CSI_A_PHY_CFG_USU1;
 	}
 #endif
 #if defined(CAMERA_CSI_B_PHY_CFG) /* version for UW */
 	if (instance == CSI_ID_B) {
-		if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1))
+		if (usuv1)
 			phy_cfg[0] |= CAMERA_CSI_B_PHY_CFG_USU1;
-		else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV2))
+		else if (usuv2)
 			phy_cfg[0] |= CAMERA_CSI_B_PHY_CFG_USU2;
 	}
 #endif
 #if defined(CAMERA_CSI_C_PHY_CFG) /* version for Wide */
 	if(instance == CSI_ID_C) {
-		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
+		if (rsu)
 			phy_cfg[0] |= CAMERA_CSI_C_PHY_CFG_RSU;
-		else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV1))
+		else if (usuv1)
 			phy_cfg[0] |= CAMERA_CSI_C_PHY_CFG_USU1;
-		else if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
+		else if (usuv3)
 			phy_cfg[0] |= CAMERA_CSI_C_PHY_CFG_USU3;
 	}
 #endif
