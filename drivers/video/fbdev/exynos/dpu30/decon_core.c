@@ -2286,6 +2286,9 @@ static int __decon_update_regs(struct decon_device *decon, struct decon_reg_data
 	struct decon_mode_info psr;
 	struct decon_param p;
 	bool has_cursor_win = false;
+#ifdef CONFIG_SUPPORT_MASK_LAYER
+	const bool support_mask_layer = sec_get_feat_support_mask_layer_fast();
+#endif
 
 	decon_to_psr_info(decon, &psr);
 	/*
@@ -2382,7 +2385,7 @@ static int __decon_update_regs(struct decon_device *decon, struct decon_reg_data
 	decon_reg_all_win_shadow_update_req(decon->id);
 	decon_to_psr_info(decon, &psr);
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER)) {
+	if (support_mask_layer) {
 		decon_set_mask_layer(decon, regs, 0);
 	}
 #endif
@@ -2813,6 +2816,10 @@ static void decon_update_regs(struct decon_device *decon,
 #endif
 #if defined(CONFIG_SUPPORT_HMD)
 	int video_emul_en = 0;
+	const bool support_hmd = sec_get_feat_support_hmd_fast();
+#endif
+#if defined(CONFIG_SUPPORT_MASK_LAYER)
+	const bool support_mask_layer = sec_get_feat_support_mask_layer_fast();
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_MIGOV)
 	u32 prev_fps, wait_fence = false;
@@ -2823,7 +2830,7 @@ static void decon_update_regs(struct decon_device *decon,
 	ktime_t	fence_time;
 #endif
 #if defined(CONFIG_SUPPORT_HMD)
-	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
+	if (support_hmd) {
 		if (decon->dt.out_type != DECON_OUT_DSI)
 			goto video_emul_check_done;
 
@@ -2956,7 +2963,7 @@ video_emul_check_done:
 
 #ifdef CONFIG_SUPPORT_HMD
 	if ((regs->num_of_window) ||
-	    (sec_get_feat(SEC_FEAT_SUPPORT_HMD) && video_emul_en)) {
+	    (support_hmd && video_emul_en)) {
 #else
 	if (regs->num_of_window) {
 #endif
@@ -3080,10 +3087,8 @@ video_emul_check_done:
 			}
 		}
 #ifdef CONFIG_SUPPORT_HMD
-		if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
-			if (video_emul_en)
-				goto end;
-		}
+		if (support_hmd && video_emul_en)
+			goto end;
 #endif
 		if (!decon->low_persistence) {
 			decon_reg_set_trigger(decon->id, &psr, DECON_TRIG_DISABLE);
@@ -3123,7 +3128,7 @@ end:
 	decon_dpp_stop(decon, false);
 
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+	if (support_mask_layer)
 		decon_set_mask_layer(decon, regs, 1);
 #endif
 
@@ -3711,7 +3716,7 @@ static int decon_set_win_config(struct decon_device *decon,
 		goto err;
 	}
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+	if (sec_get_feat_support_mask_layer_fast())
 		regs->mask_layer = decon_get_mask_layer(decon, win_data);
 #endif
 
@@ -3813,7 +3818,7 @@ add_new_regs:
 
 	kthread_queue_work(&decon->up.worker, &decon->up.work);
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+	if (sec_get_feat_support_mask_layer_fast())
 		decon_wait_mask_layer_trigger(decon);
 #endif
 
@@ -5953,7 +5958,7 @@ static int decon_probe(struct platform_device *pdev)
 	init_waitqueue_head(&decon->doze_hiber.doze_wake_wait);
 #endif
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER))
+	if (sec_get_feat_support_mask_layer_fast())
 		init_waitqueue_head(&decon->wait_mask_layer_trigger_queue);
 #endif
 #if IS_ENABLED(CONFIG_MCD_PANEL)

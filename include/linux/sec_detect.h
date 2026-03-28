@@ -69,14 +69,36 @@ bool sec_get_mcd_feat(enum mcd_feat feat);
 
 #ifdef CONFIG_JUMP_LABEL
 extern struct static_key_false mcd_feat_usuv3_key;
+extern struct static_key_false sec_feat_support_hmd_key;
+extern struct static_key_false sec_feat_support_mask_layer_key;
 static inline bool sec_get_mcd_feat_usuv3_fast(void)
 {
 	return static_branch_unlikely(&mcd_feat_usuv3_key);
+}
+
+static inline bool sec_get_feat_support_hmd_fast(void)
+{
+	return static_branch_unlikely(&sec_feat_support_hmd_key);
+}
+
+static inline bool sec_get_feat_support_mask_layer_fast(void)
+{
+	return static_branch_unlikely(&sec_feat_support_mask_layer_key);
 }
 #else
 static inline bool sec_get_mcd_feat_usuv3_fast(void)
 {
 	return sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3);
+}
+
+static inline bool sec_get_feat_support_hmd_fast(void)
+{
+	return sec_get_feat(SEC_FEAT_SUPPORT_HMD);
+}
+
+static inline bool sec_get_feat_support_mask_layer_fast(void)
+{
+	return sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER);
 }
 #endif
 

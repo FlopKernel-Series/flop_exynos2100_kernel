@@ -31,7 +31,11 @@ static bool g_detection_complete;
 
 #ifdef CONFIG_JUMP_LABEL
 DEFINE_STATIC_KEY_FALSE(mcd_feat_usuv3_key);
+DEFINE_STATIC_KEY_FALSE(sec_feat_support_hmd_key);
+DEFINE_STATIC_KEY_FALSE(sec_feat_support_mask_layer_key);
 EXPORT_SYMBOL_GPL(mcd_feat_usuv3_key);
+EXPORT_SYMBOL_GPL(sec_feat_support_hmd_key);
+EXPORT_SYMBOL_GPL(sec_feat_support_mask_layer_key);
 #endif
 
 enum SEC_devices sec_get_current_device(void)
@@ -247,6 +251,12 @@ static int __init sec_detect_init(void)
 	}
 
 	setup_camera_params();
+#ifdef CONFIG_JUMP_LABEL
+	if (sec_feat_flags[SEC_FEAT_SUPPORT_HMD])
+		static_branch_enable(&sec_feat_support_hmd_key);
+	if (sec_feat_flags[SEC_FEAT_SUPPORT_MASK_LAYER])
+		static_branch_enable(&sec_feat_support_mask_layer_key);
+#endif
 	print_sec_variables(machine_name);
 
 #ifdef CONFIG_SEC_DETECT_SYSFS

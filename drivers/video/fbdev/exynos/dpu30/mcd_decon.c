@@ -476,10 +476,9 @@ void mcd_fill_hdr_info(int win_idx, struct dpp_config *config, struct decon_reg_
 bool is_hmd_not_running(struct decon_device *decon)
 {
 #ifdef CONFIG_SUPPORT_HMD
-	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
-		if ((decon->panel_state != NULL) && (decon->panel_state->hmd_on))
-			return false;
-	}
+	if (sec_get_feat_support_hmd_fast() &&
+	    (decon->panel_state != NULL) && decon->panel_state->hmd_on)
+		return false;
 #endif
 	return true;
 }

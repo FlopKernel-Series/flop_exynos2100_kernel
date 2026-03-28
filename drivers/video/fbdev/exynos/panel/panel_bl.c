@@ -489,17 +489,21 @@ static void panel_bl_update_acl_state(struct panel_bl_device *panel_bl)
 {
 	struct panel_device *panel;
 	struct panel_info *panel_data;
+#ifdef CONFIG_SUPPORT_HMD
+	const bool support_hmd = sec_get_feat_support_hmd_fast();
+#endif
+#ifdef CONFIG_SUPPORT_MASK_LAYER
+	const bool support_mask_layer = sec_get_feat_support_mask_layer_fast();
+#endif
 
 	panel = to_panel_device(panel_bl);
 	panel_data = &panel->panel_data;
 
 #ifdef CONFIG_SUPPORT_HMD
-	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
-		if (panel_bl->props.id == PANEL_BL_SUBDEV_TYPE_HMD) {
-			panel_bl->props.acl_opr = 0;
-			panel_bl->props.acl_pwrsave = ACL_PWRSAVE_OFF;
-			return;
-		}
+	if (support_hmd && panel_bl->props.id == PANEL_BL_SUBDEV_TYPE_HMD) {
+		panel_bl->props.acl_opr = 0;
+		panel_bl->props.acl_pwrsave = ACL_PWRSAVE_OFF;
+		return;
 	}
 #endif
 #ifdef CONFIG_SUPPORT_AOD_BL
@@ -510,7 +514,7 @@ static void panel_bl_update_acl_state(struct panel_bl_device *panel_bl)
 	}
 #endif
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER) &&
+	if (support_mask_layer &&
 	    panel_bl->props.mask_layer_br_hook == MASK_LAYER_HOOK_ON) {
 		panel_bl->props.acl_opr = 0;
 		panel_bl->props.acl_pwrsave = ACL_PWRSAVE_OFF;
@@ -767,6 +771,9 @@ int panel_bl_set_brightness(struct panel_bl_device *panel_bl, int id, u32 send_c
 	int luminance_interp = 0;
 	u32 dim_type;
 	bool need_update_display_mode = false;
+#ifdef CONFIG_SUPPORT_HMD
+	const bool support_hmd = sec_get_feat_support_hmd_fast();
+#endif
 
 	if (panel_bl == NULL) {
 		panel_err("panel is null\n");
@@ -848,10 +855,8 @@ int panel_bl_set_brightness(struct panel_bl_device *panel_bl, int id, u32 send_c
 
 	//g_tracing_mark_write('C', "lcd_br", luminance);
 #ifdef CONFIG_SUPPORT_HMD
-	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
-		if (id == PANEL_BL_SUBDEV_TYPE_HMD)
-			index = PANEL_HMD_BL_SEQ;
-	}
+	if (support_hmd && id == PANEL_BL_SUBDEV_TYPE_HMD)
+		index = PANEL_HMD_BL_SEQ;
 #endif
 #ifdef CONFIG_SUPPORT_AOD_BL
 	if (id == PANEL_BL_SUBDEV_TYPE_AOD)
@@ -897,6 +902,12 @@ int _panel_update_brightness(struct panel_device *panel, u32 send_cmd)
 	int id, brightness;
 	struct panel_bl_device *panel_bl = &panel->panel_bl;
 	struct backlight_device *bd = panel_bl->bd;
+#ifdef CONFIG_SUPPORT_HMD
+	const bool support_hmd = sec_get_feat_support_hmd_fast();
+#endif
+#ifdef CONFIG_SUPPORT_MASK_LAYER
+	const bool support_mask_layer = sec_get_feat_support_mask_layer_fast();
+#endif
 
 	mutex_lock(&panel_bl->lock);
 	if (bd == NULL) {
@@ -908,7 +919,7 @@ int _panel_update_brightness(struct panel_device *panel, u32 send_cmd)
 	brightness = bd->props.brightness;
 
 #ifdef CONFIG_SUPPORT_MASK_LAYER
-	if (sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER) &&
+	if (support_mask_layer &&
 	    panel_bl->props.mask_layer_br_hook == MASK_LAYER_HOOK_ON) {
 		brightness = panel_bl->props.mask_layer_br_target;
 		panel_info("mask_layer_br_hook (%d)->(%d)\n",
@@ -928,12 +939,10 @@ int _panel_update_brightness(struct panel_device *panel, u32 send_cmd)
 	panel_bl->subdev[PANEL_BL_SUBDEV_TYPE_AOD].brightness = brightness;
 #endif
 #ifdef CONFIG_SUPPORT_HMD
-	if (sec_get_feat(SEC_FEAT_SUPPORT_HMD)) {
-		if (id == PANEL_BL_SUBDEV_TYPE_HMD) {
-			panel_info("keep plat_br:%d\n", brightness);
-			ret = -EINVAL;
-			goto exit_set;
-		}
+	if (support_hmd && id == PANEL_BL_SUBDEV_TYPE_HMD) {
+		panel_info("keep plat_br:%d\n", brightness);
+		ret = -EINVAL;
+		goto exit_set;
 	}
 #endif
 	ret = panel_bl_set_brightness(panel_bl, id, send_cmd);
