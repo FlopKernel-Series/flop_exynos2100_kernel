@@ -171,7 +171,6 @@ echo -e "\n$(log_info "Build info:")
 [ -d "$IMAGES_DIR" ] && rm -rf "$IMAGES_DIR" || true
 mkdir -p "$IMAGES_DIR"
 
-source "$SCRIPTS_DIR/deps.sh"
 source "$SCRIPTS_DIR/tc.sh"
 source "$SCRIPTS_DIR/build.sh"
 source "$SCRIPTS_DIR/post.sh"
@@ -205,6 +204,8 @@ clean() {
 if [ "$DO_CLEAN" = "1" ]; then
     clean
 fi
+
+source "$SCRIPTS_DIR/deps.sh"
 
 prep_build
 build
