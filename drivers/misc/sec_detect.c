@@ -22,8 +22,8 @@
 
 static int g_sec_current_device = DEVICE_UNKNOWN;
 static char g_sec_current_device_name[32] = "Unknown";
-static bool sec_feat_flags[SEC_FEAT_COUNT];
-static bool mcd_feat_flags[MCD_FEAT_COUNT];
+static bool sec_feat_flags[SEC_FEAT_COUNT] __read_mostly;
+static bool mcd_feat_flags[MCD_FEAT_COUNT] __read_mostly;
 static bool g_detection_complete;
 
 enum SEC_devices sec_get_current_device(void)
