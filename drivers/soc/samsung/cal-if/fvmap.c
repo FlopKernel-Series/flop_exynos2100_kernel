@@ -3,8 +3,10 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/debugfs.h>
+#include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/kobject.h>
+#include <linux/sysfs.h>
 #include <soc/samsung/cal-if.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -16,6 +18,9 @@
 
 #define FVMAP_SIZE		(SZ_8K)
 #define STEP_UV			(6250)
+#define MAX_FV_LEVELS		(50)
+
+static struct kobject *fvmap_kobj;
 
 void __iomem *fvmap_base;
 void __iomem *sram_fvmap_base;
@@ -44,6 +49,14 @@ static int margin_mfc;
 static int margin_mfc1;
 static int margin_intsci;
 static int volt_offset_percent;
+
+#ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+static int uv_cpucl0_percent = CONFIG_SOC_EXYNOS2100_CL0_UV;
+static int uv_cpucl1_percent = CONFIG_SOC_EXYNOS2100_CL1_UV;
+static int uv_cpucl2_percent = CONFIG_SOC_EXYNOS2100_CL2_UV;
+static int uv_gpu_percent = CONFIG_SOC_EXYNOS2100_GPU_UV;
+#endif
+
 module_param(margin_mif, int, 0);
 module_param(margin_int, int, 0);
 module_param(margin_cpucl0, int, 0);
@@ -203,6 +216,267 @@ static struct attribute *percent_margin_attrs[] = {
 
 static const struct attribute_group percent_margin_group = {
 	.attrs = percent_margin_attrs,
+};
+
+#ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+static ssize_t show_cpucl0_uv_percent(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", uv_cpucl0_percent);
+}
+
+static ssize_t store_cpucl0_uv_percent(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int input, vclk_id;
+
+	if (!sscanf(buf, "%d", &input))
+		return -EINVAL;
+
+	if (input < 0 || input > 100)
+		return -EINVAL;
+
+	vclk_id = get_vclk_id_from_margin_id(MARGIN_CPUCL0);
+	if (vclk_id == -EINVAL)
+		return vclk_id;
+
+	uv_cpucl0_percent = input;
+	cal_dfs_set_volt_margin(vclk_id | ACPM_VCLK_TYPE, -input);
+
+	pr_info("CPU cluster 0 undervolting set to %d%% successfully\n",
+		input);
+
+	return count;
+}
+
+static struct kobj_attribute cpucl0_uv_percent = __ATTR(cpucl0_uv_percent,
+		0600, show_cpucl0_uv_percent, store_cpucl0_uv_percent);
+
+static ssize_t show_cpucl1_uv_percent(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", uv_cpucl1_percent);
+}
+
+static ssize_t store_cpucl1_uv_percent(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int input, vclk_id;
+
+	if (!sscanf(buf, "%d", &input))
+		return -EINVAL;
+
+	if (input < 0 || input > 100)
+		return -EINVAL;
+
+	vclk_id = get_vclk_id_from_margin_id(MARGIN_CPUCL1);
+	if (vclk_id == -EINVAL)
+		return vclk_id;
+
+	uv_cpucl1_percent = input;
+	cal_dfs_set_volt_margin(vclk_id | ACPM_VCLK_TYPE, -input);
+
+	pr_info("CPU cluster 1 undervolting set to %d%% successfully\n",
+		input);
+
+	return count;
+}
+
+static struct kobj_attribute cpucl1_uv_percent = __ATTR(cpucl1_uv_percent,
+		0600, show_cpucl1_uv_percent, store_cpucl1_uv_percent);
+
+static ssize_t show_cpucl2_uv_percent(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", uv_cpucl2_percent);
+}
+
+static ssize_t store_cpucl2_uv_percent(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int input, vclk_id;
+
+	if (!sscanf(buf, "%d", &input))
+		return -EINVAL;
+
+	if (input < 0 || input > 100)
+		return -EINVAL;
+
+	vclk_id = get_vclk_id_from_margin_id(MARGIN_CPUCL2);
+	if (vclk_id == -EINVAL)
+		return vclk_id;
+
+	uv_cpucl2_percent = input;
+	cal_dfs_set_volt_margin(vclk_id | ACPM_VCLK_TYPE, -input);
+
+	pr_info("CPU cluster 2 undervolting set to %d%% successfully\n",
+		input);
+
+	return count;
+}
+
+static struct kobj_attribute cpucl2_uv_percent = __ATTR(cpucl2_uv_percent,
+		0600, show_cpucl2_uv_percent, store_cpucl2_uv_percent);
+
+static ssize_t show_gpu_uv_percent(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", uv_gpu_percent);
+}
+
+static ssize_t store_gpu_uv_percent(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int input, vclk_id;
+
+	if (!sscanf(buf, "%d", &input))
+		return -EINVAL;
+
+	if (input < 0 || input > 100)
+		return -EINVAL;
+
+	vclk_id = get_vclk_id_from_margin_id(MARGIN_G3D);
+	if (vclk_id == -EINVAL) {
+		pr_err("GPU undervolting: Could not find G3D vclk_id\n");
+		return -EINVAL;
+	}
+
+	uv_gpu_percent = input;
+	cal_dfs_set_volt_margin(vclk_id | ACPM_VCLK_TYPE, -input);
+
+	pr_info("GPU undervolting set to %d%% successfully\n", input);
+
+	return count;
+}
+
+static struct kobj_attribute gpu_uv_percent = __ATTR(gpu_uv_percent, 0600,
+		show_gpu_uv_percent, store_gpu_uv_percent);
+
+static struct attribute *uv_percent_attrs[] = {
+	&cpucl0_uv_percent.attr,
+	&cpucl1_uv_percent.attr,
+	&cpucl2_uv_percent.attr,
+	&gpu_uv_percent.attr,
+	NULL,
+};
+
+static const struct attribute_group uv_percent_group = {
+	.attrs = uv_percent_attrs,
+};
+#endif
+
+static ssize_t show_fv_table(struct kobject *kobj, struct kobj_attribute *attr,
+		char *buf)
+{
+	struct fvmap_header *fvmap_header;
+	struct rate_volt_header *fv_table;
+	int idx = -1, i, num_of_lv, margin_id = -1, vclk_id;
+	ssize_t len = 0;
+	const char *name = attr->attr.name;
+	void __iomem *base_to_read = fvmap_base;
+	int uv_percent = 0;
+	unsigned int base_volt, effective_volt;
+
+	if (!base_to_read) {
+		pr_err("fvmap: base not initialized\n");
+		return -EIO;
+	}
+
+	if (strcmp(name, "cpucl0_fv_table") == 0) {
+		margin_id = MARGIN_CPUCL0;
+#ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+		uv_percent = uv_cpucl0_percent;
+#endif
+	} else if (strcmp(name, "cpucl1_fv_table") == 0) {
+		margin_id = MARGIN_CPUCL1;
+#ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+		uv_percent = uv_cpucl1_percent;
+#endif
+	} else if (strcmp(name, "cpucl2_fv_table") == 0) {
+		margin_id = MARGIN_CPUCL2;
+#ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+		uv_percent = uv_cpucl2_percent;
+#endif
+	} else if (strcmp(name, "g3d_fv_table") == 0) {
+		margin_id = MARGIN_G3D;
+#ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+		uv_percent = uv_gpu_percent;
+#endif
+	} else {
+		pr_err("fvmap: unknown attribute %s\n", name);
+		return -EINVAL;
+	}
+
+	vclk_id = get_vclk_id_from_margin_id(margin_id);
+	if (vclk_id < 0) {
+		pr_err("fvmap: Could not find vclk_id for margin_id %d (%s)\n",
+			margin_id, name);
+		return -EINVAL;
+	}
+
+	idx = GET_IDX(vclk_id | ACPM_VCLK_TYPE);
+	fvmap_header = (struct fvmap_header *)base_to_read;
+
+	if (idx < 0 || idx >= cmucal_get_list_size(ACPM_VCLK_TYPE)) {
+		pr_err("fvmap: Invalid index %d derived for margin_id %d\n",
+			idx, margin_id);
+		return -EINVAL;
+	}
+
+	fv_table = (struct rate_volt_header *)(base_to_read +
+			fvmap_header[idx].o_ratevolt);
+	num_of_lv = fvmap_header[idx].num_of_lv;
+
+	if (num_of_lv <= 0 || num_of_lv > MAX_FV_LEVELS) {
+		pr_err("fvmap: invalid num_of_lv %d for index %d\n",
+			num_of_lv, idx);
+		return -EINVAL;
+	}
+
+	len += scnprintf(buf + len, PAGE_SIZE - len, "Freq(kHz)\tVolt(uV)");
+	if (uv_percent != 0)
+		len += scnprintf(buf + len, PAGE_SIZE - len, "\t[UV: %d%%]",
+				uv_percent);
+	len += scnprintf(buf + len, PAGE_SIZE - len, "\n");
+
+	for (i = 0; i < num_of_lv; i++) {
+		if (len >= PAGE_SIZE - 50)
+			break;
+
+		base_volt = fv_table->table[i].volt * STEP_UV;
+		effective_volt = (base_volt * (100 - uv_percent)) / 100;
+
+		len += scnprintf(buf + len, PAGE_SIZE - len, "%-10u\t%-10u",
+				fv_table->table[i].rate, effective_volt);
+		if (uv_percent != 0)
+			len += scnprintf(buf + len, PAGE_SIZE - len,
+					"\t(base: %u)", base_volt);
+		len += scnprintf(buf + len, PAGE_SIZE - len, "\n");
+	}
+
+	return len;
+}
+
+static struct kobj_attribute cpucl0_fv_table_attr =
+	__ATTR(cpucl0_fv_table, 0444, show_fv_table, NULL);
+static struct kobj_attribute cpucl1_fv_table_attr =
+	__ATTR(cpucl1_fv_table, 0444, show_fv_table, NULL);
+static struct kobj_attribute cpucl2_fv_table_attr =
+	__ATTR(cpucl2_fv_table, 0444, show_fv_table, NULL);
+static struct kobj_attribute g3d_fv_table_attr =
+	__ATTR(g3d_fv_table, 0444, show_fv_table, NULL);
+
+static struct attribute *fvmap_attrs[] = {
+	&cpucl0_fv_table_attr.attr,
+	&cpucl1_fv_table_attr.attr,
+	&cpucl2_fv_table_attr.attr,
+	&g3d_fv_table_attr.attr,
+	NULL,
+};
+
+static const struct attribute_group fvmap_group = {
+	.attrs = fvmap_attrs,
+	.name = "fv_tables",
 };
 
 #ifdef CONFIG_SEC_FACTORY
@@ -545,6 +819,29 @@ static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base
 			}
 		}
 
+#ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+#if CONFIG_SOC_EXYNOS2100_CL0_UV != 0
+		if (vclk->margin_id == MARGIN_CPUCL0)
+			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
+					-CONFIG_SOC_EXYNOS2100_CL0_UV);
+#endif
+#if CONFIG_SOC_EXYNOS2100_CL1_UV != 0
+		if (vclk->margin_id == MARGIN_CPUCL1)
+			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
+					-CONFIG_SOC_EXYNOS2100_CL1_UV);
+#endif
+#if CONFIG_SOC_EXYNOS2100_CL2_UV != 0
+		if (vclk->margin_id == MARGIN_CPUCL2)
+			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
+					-CONFIG_SOC_EXYNOS2100_CL2_UV);
+#endif
+#if CONFIG_SOC_EXYNOS2100_GPU_UV != 0
+		if (vclk->margin_id == MARGIN_G3D)
+			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
+					-CONFIG_SOC_EXYNOS2100_GPU_UV);
+#endif
+#endif
+
 		for (j = 0; j < fvmap_header[i].num_of_members; j++) {
 			clks = sram_base + fvmap_header[i].o_members;
 
@@ -585,6 +882,10 @@ int fvmap_init(void __iomem *sram_base)
 	struct kobject *kobj;
 
 	map_base = kzalloc(FVMAP_SIZE, GFP_KERNEL);
+	if (!map_base) {
+		pr_err("%s: Failed to allocate memory for fvmap\n", __func__);
+		return -ENOMEM;
+	}
 
 	fvmap_base = map_base;
 	sram_fvmap_base = sram_base;
@@ -594,20 +895,59 @@ int fvmap_init(void __iomem *sram_base)
 
 	/* percent margin for each doamin at runtime */
 	kobj = kobject_create_and_add("percent_margin", kernel_kobj);
-	if (!kobj)
+	if (!kobj) {
 		pr_err("Fail to create percent_margin kboject\n");
-
-	if (sysfs_create_group(kobj, &percent_margin_group))
+	} else if (sysfs_create_group(kobj, &percent_margin_group)) {
 		pr_err("Fail to create percent_margin group\n");
+	}
+
+#ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+#if CONFIG_SOC_EXYNOS2100_CL0_UV != 0
+	uv_cpucl0_percent = CONFIG_SOC_EXYNOS2100_CL0_UV;
+#else
+	uv_cpucl0_percent = 0;
+#endif
+#if CONFIG_SOC_EXYNOS2100_CL1_UV != 0
+	uv_cpucl1_percent = CONFIG_SOC_EXYNOS2100_CL1_UV;
+#else
+	uv_cpucl1_percent = 0;
+#endif
+#if CONFIG_SOC_EXYNOS2100_CL2_UV != 0
+	uv_cpucl2_percent = CONFIG_SOC_EXYNOS2100_CL2_UV;
+#else
+	uv_cpucl2_percent = 0;
+#endif
+#if CONFIG_SOC_EXYNOS2100_GPU_UV != 0
+	uv_gpu_percent = CONFIG_SOC_EXYNOS2100_GPU_UV;
+#else
+	uv_gpu_percent = 0;
+#endif
+
+	kobj = kobject_create_and_add("exynos_uv", kernel_kobj);
+	if (!kobj) {
+		pr_err("Fail to create exynos_uv kobject\n");
+	} else if (sysfs_create_group(kobj, &uv_percent_group)) {
+		pr_err("Fail to create exynos_uv sysfs group\n");
+	} else {
+		pr_info("Runtime undervolting sysfs interface created at /sys/kernel/exynos_uv/\n");
+	}
+#endif
 
 #ifdef CONFIG_SEC_FACTORY
 	kobj = kobject_create_and_add("asv-g", kernel_kobj);
-	if (!kobj)
+	if (!kobj) {
 		pr_err("Fail to create asv-g kboject\n");
-
-	if (sysfs_create_group(kobj, &asv_g_spec_grp))
+	} else if (sysfs_create_group(kobj, &asv_g_spec_grp)) {
 		pr_err("Fail to create asv_g_spec group\n");
+	}
 #endif
+
+	fvmap_kobj = kobject_create_and_add("fvmap", kernel_kobj);
+	if (!fvmap_kobj) {
+		pr_err("fvmap: Failed to create fvmap kobject\n");
+	} else if (sysfs_create_group(fvmap_kobj, &fvmap_group)) {
+		pr_err("fvmap: Failed to create fvmap sysfs group\n");
+	}
 
 	return 0;
 }
