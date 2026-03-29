@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home">ಮನೆ</string>
+    <string name="home_working">ಕೆಲಸ ಮಾಡುತ್ತಿದೆ</string>
+    <string name="home_working_version">ವರ್ಷನ್: %s</string>
+    <string name="home_unsupported">ಬೆಂಬಲಿತವಾಗಿಲ್ಲ</string>
+    <string name="home_unsupported_reason">KernelSU ಈಗ GKI ಕರ್ನಲ್‌ಗಳನ್ನು ಮಾತ್ರ ಬೆಂಬಲಿಸುತ್ತದೆ</string>
+    <string name="home_kernel">ಕರ್ನಲ್</string>
+    <string name="home_manager_version">ಮ್ಯಾನೇಜರ್ ವರ್ಷನ್</string>
+    <string name="home_selinux_status">SELinux ಸ್ಥಿತಿ</string>
+    <string name="unknown">ತಿಳಿಯದ</string>
+    <string name="superuser">ಸೂಪರ್ಯೂಸರ್</string>
+    <string name="module_failed_to_enable">ಮಾಡ್ಯೂಲ್ ಅನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲು ವಿಫಲವಾಗಿದೆ: %s</string>
+    <string name="module_failed_to_disable">ಮಾಡ್ಯೂಲ್ ಅನ್ನು ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಲು ವಿಫಲವಾಗಿದೆ: %s</string>
+    <string name="module_empty">ಮಾಡ್ಯೂಲ್ ಅನ್ನು ಸ್ಥಾಪಿಸಲಾಗಿಲ್ಲ</string>
+    <string name="module">ಮಾಡ್ಯೂಲ್</string>
+    <string name="uninstall">ಅನ್‌ಇನ್‌ಸ್ಟಾಲ್</string>
+    <string name="reboot">ರೀಬೂಟ್</string>
+    <string name="reboot_userspace">ಸಾಫ್ಟ್ ರೀಬೂಟ್</string>
+    <string name="reboot_edl">EDL ಗೆ ರೀಬೂಟ್</string>
+    <string name="about">ಬಗ್ಗೆ</string>
+    <string name="module_uninstall_confirm">%s ಮಾಡ್ಯೂಲ್ ಅನ್ನು ಅಸ್ಥಾಪಿಸಲು ನೀವು ಖಚಿತವಾಗಿ ಬಯಸುವಿರಾ\?</string>
+    <string name="module_uninstall_success">%s ಅನ್‌ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಲಾಗಿದೆ</string>
+    <string name="module_uninstall_failed">ಅನ್‌ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ: %s</string>
+    <string name="module_version">ವರ್ಷನ್</string>
+    <string name="module_author">ಲೇಖಕ</string>
+    <string name="refresh">ರಿಫ್ರೆಶ್</string>
+    <string name="show_system_apps">ಸಿಸ್ಟಮ್ ಅಪ್ಲಿಕೇಶನ್‌ಗಳನ್ನು ತೋರಿಸಿ</string>
+    <string name="hide_system_apps">ಸಿಸ್ಟಮ್ ಅಪ್ಲಿಕೇಶನ್‌ಗಳನ್ನು ಮರೆಮಾಡಿ</string>
+    <string name="send_log">ಲಾಗ್ ಕಳುಹಿಸಿ</string>
+    <string name="safe_mode">ಸುರಕ್ಷಿತ ಮೋಡ್</string>
+    <string name="reboot_to_apply">ಪರಿಣಾಮ ಬೀರಲು ರೀಬೂಟ್ ಮಾಡಿ</string>
+    <string name="module_magisk_conflict">ಮಾಡ್ಯೂಲ್‌ಗಳನ್ನು ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ ಏಕೆಂದರೆ ಇದು ಮ್ಯಾಜಿಸ್ಕ್‌ನೊಂದಿಗೆ ಸಂಘರ್ಷವಾಗಿದೆ!</string>
+    <string name="home_learn_kernelsu">KernelSU ಕಲಿಯಿರಿ</string>
+    <string name="home_click_to_learn_kernelsu">KernelSU ಅನ್ನು ಹೇಗೆ ಸ್ಥಾಪಿಸಬೇಕು ಮತ್ತು ಮಾಡ್ಯೂಲ್‌ಗಳನ್ನು ಬಳಸುವುದು ಹೇಗೆ ಎಂದು ತಿಳಿಯಿರಿ</string>
+    <string name="home_support_title">ನಮ್ಮನ್ನು ಬೆಂಬಲಿಸಿ</string>
+    <string name="home_support_content">KernelSU ಉಚಿತ ಮತ್ತು ಮುಕ್ತ ಮೂಲವಾಗಿದೆ ಮತ್ತು ಯಾವಾಗಲೂ ಇರುತ್ತದೆ. ಆದಾಗ್ಯೂ ನೀವು ದೇಣಿಗೆ ನೀಡುವ ಮೂಲಕ ನೀವು ಕಾಳಜಿ ವಹಿಸುತ್ತೀರಿ ಎಂದು ನಮಗೆ ತೋರಿಸಬಹುದು.</string>
+    <string name="about_source_code"><![CDATA[View source code at %1$s<br/>Join our %2$s channel]]></string>
+    <string name="profile_default">ಡೀಫಾಲ್ಟ್</string>
+    <string name="profile_template">ಟೆಂಪ್ಲೇಟ್</string>
+    <string name="profile_custom">ಕಸ್ಟಮ್</string>
+    <string name="profile_name">ಪ್ರೊಫೈಲ್ ಹೆಸರು</string>
+    <string name="profile_groups">ಗುಂಪುಗಳು</string>
+    <string name="profile_capabilities">ಸಾಮರ್ಥ್ಯಗಳು</string>
+    <string name="profile_selinux_context">SELinux ಸಂದರ್ಭ</string>
+    <string name="profile_umount_modules">Umount ಮಾಡ್ಯೂಲ್‌ಗಳು</string>
+    <string name="failed_to_update_app_profile">%s ಗಾಗಿ ಅಪ್ಲಿಕೇಶನ್ ಪ್ರೊಫೈಲ್ ಅನ್ನು ನವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ</string>
+    <string name="settings_umount_modules_default">ಡೀಫಾಲ್ಟ್ ಆಗಿ Umount ಮಾಡ್ಯೂಲ್</string>
+    <string name="settings_umount_modules_default_summary">ಅಪ್ಲಿಕೇಶನ್ ಪ್ರೊಫೈಲ್‌ಗಳಲ್ಲಿ \"Umount ಮಾಡ್ಯೂಲ್\" ಗಾಗಿ ಜಾಗತಿಕ ಡೀಫಾಲ್ಟ್ ಮೌಲ್ಯ. ಸಕ್ರಿಯಗೊಳಿಸಿದರೆ, ಪ್ರೊಫೈಲ್ ಸೆಟ್ ಅನ್ನು ಹೊಂದಿರದ ಅಪ್ಲಿಕೇಶನ್‌ಗಳಿಗಾಗಿ ಸಿಸ್ಟಮ್‌ಗೆ ಎಲ್ಲಾ ಮಾಡ್ಯೂಲ್ ಮಾರ್ಪಾಡುಗಳನ್ನು ಇದು ತೆಗೆದುಹಾಕುತ್ತದೆ.</string>
+    <string name="profile_umount_modules_summary">ಈ ಆಯ್ಕೆಯನ್ನು ಸಕ್ರಿಯಗೊಳಿಸುವುದರಿಂದ ಈ ಅಪ್ಲಿಕೇಶನ್‌ಗಾಗಿ ಮಾಡ್ಯೂಲ್‌ಗಳ ಮೂಲಕ ಯಾವುದೇ ಮಾರ್ಪಡಿಸಿದ ಫೈಲ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಲು KernelSU ಗೆ ಅನುಮತಿಸುತ್ತದೆ.</string>
+    <string name="profile_selinux_domain">ಡೊಮೇನ್</string>
+    <string name="profile_selinux_rules">ನಿಯಮಗಳು</string>
+    <string name="module_downloading">ಮಾಡ್ಯೂಲ್ ಅನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ: %s</string>
+    <string name="module_start_downloading">ಡೌನ್‌ಲೋಡ್ ಮಾಡುವುದನ್ನು ಪ್ರಾರಂಭಿಸಿ: %s</string>
+    <string name="new_version_available">ಹೊಸ ಆವೃತ್ತಿ: %s ಲಭ್ಯವಿದೆ, ಅಪ್‌ಗ್ರೇಡ್ ಮಾಡಲು ಕ್ಲಿಕ್ ಮಾಡಿ</string>
+    <string name="launch_app">ಲಾಂಚ್</string>
+    <string name="force_stop_app" formatted="false">ಫೋರ್ಸ್ ಸ್ಟಾಪ್</string>
+    <string name="module_changelog">ಚೇಂಜ್ಲಾಗ್</string>
+    <string name="settings_check_update">ಅಪ್‌ಡೇಟ್ ಅಧಿಸೂಚನೆಗಳು</string>
+    <string name="settings_check_update_summary">ಮಾಡ್ಯೂಲ್ ಮತ್ತು ಮ್ಯಾನೇಜರ್ ಅಪ್‌ಡೇಟ್‌ಗಳಿಗಾಗಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಪರಿಶೀಲಿಸಿ</string>
+    <string name="enable_web_debugging_summary">Can be used to debug WebUI. Please enable only when needed.</string>
+    <string name="settings_uninstall_temporary_message">Temporarily uninstall KernelSU, restore to original state after next reboot.</string>
+    <string name="settings_uninstall_permanent_message">Uninstalling KernelSU (Root and all modules) completely and permanently.</string>
+    <string name="settings_restore_stock_image_message">Restore the stock factory image (If a backup exists), usually used before OTA; if you need to uninstall KernelSU, please use \"Uninstall permanently\".</string>
+    <string name="save_log">ಲಾಗ್ಗಳನ್ನು ಉಳಿಸಿ</string>
+    <!-- Module related -->
+    <string name="module_install_confirm">confirm install module %1$s？</string>
+    <string name="unknown_module">unknown module</string>
+    <!-- Restore related -->
+    <!-- Backup related -->
+    <!-- Restore related messages -->
+    <!-- Command related -->
+    <string name="command_execution_failed">Command execution failed: %1$s</string>
+    <!-- Allowlist related -->
+    <string name="allowlist_backup_success">Allowlist backup successful</string>
+    <string name="allowlist_backup_failed">Allowlist backup failed: %1$s</string>
+    <string name="settings_sucompat">su ಬೈನರಿ ಮರುಮಾರ್ಗಗೊಳಿಸಿ</string>
+    <string name="settings_sucompat_summary">ಆಪ್ ಪ್ರೊಫೈಲ್‌ನಲ್ಲಿ ಸೂಪರ್‌ಯೂಸರ್ ಅನುಮತಿ ಪಡೆದ ಅಪ್ಲಿಕೇಶನ್‌ಗಳಿಗೆ /system/bin/su ಅನ್ನು ksud ಗೆ ಮರು ನಿರ್ದೇಶಿಸಿ; ಹೊಸ ಪ್ರಕ್ರಿಯೆಗಳಿಗೆ ಮಾತ್ರ ಪರಿಣಾಮಕಾರಿ.</string>
+    <string name="settings_kernel_umount">ಕರ್ನಲ್ ಅನ್‌ಮೌಂಟ್</string>
+    <string name="settings_kernel_umount_summary">KernelSU ನಿಂದ ನಿಯಂತ್ರಿಸಲ್ಪಡುವ ಕರ್ನಲ್-ಮಟ್ಟದ ಅನ್‌ಮೌಂಟ್ ನಡವಳಿಕೆ</string>
+    <string name="hide_other_info_summary">Hides information about the number of super users, modules and KPM modules on the home page</string>
+    <string name="kpm_empty">No installed kernel modules at this time</string>
+    <string name="kpm_install_success">Load of kpm module successful</string>
+    <string name="kpm_install_failed">Load of kpm module failed</string>
+    <string name="invalid_file_type">Incorrect file type! Please select .kpm file.</string>
+    <!-- Kernel Flash Progress Related -->
+    <!-- Flash Status Related -->
+    <!-- Slot selection related strings -->
+    <string name="current_slot">Current Slot：%1$s </string>
+    <!-- Error Messages -->
+    <!-- lkm/gki install -->
+    <!--  String resources used in SuperUser -->
+    <string name="icon_switch_summary">Change the launcher icon to KernelSU\'s icon.</string>
+    <!-- KPM display settings -->
+    <string name="show_kpm_info">Display KPM Function</string>
+    <string name="show_kpm_info_summary">Display KPM information and Function in home and bottom bar (Need to reopen the app)</string>
+    <!-- Webui settings -->
+    <!-- DPI setting related strings -->
+    <string name="dpi_size_extra_large">oversize</string>
+    <string name="dpi_size_custom">customizable</string>
+    <string name="dpi_apply_settings">Applying DPI settings</string>
+    <!-- Language settings related strings -->
+    <!-- Flash related -->
+    <!-- 分类相关 -->
+    <!-- 排序相关 -->
+    <string name="sort_install_time_new">Installation time (new)</string>
+    <string name="sort_install_time_old">Installation time (old)</string>
+    <string name="sort_size_desc">descending order of size</string>
+    <string name="sort_size_asc">ascending order of size</string>
+    <string name="sort_usage_freq">frequency of use</string>
+    <!-- 状态相关 -->
+    <!-- 标签相关 -->
+    <string name="select">option</string>
+    <!-- BottomSheet相关 -->
+    <!-- SuSFS Configuration -->
+    <!-- SuSFS Reset Confirmation -->
+    <!-- SuSFS Toast Messages -->
+    <!-- SuSFS Settings Item -->
+    <!-- 开机自启动相关 -->
+    <!-- SuSFS Tab Titles -->
+    <!-- SuSFS Path Management -->
+    <!-- SuSFS Reset Categories -->
+    <!-- SuSFS Path Settings -->
+    <!-- SuSFS Enabled Features -->
+    <!-- Feature Labels -->
+    <!-- 可切换状态 -->
+    <!-- Settings related strings -->
+    <!-- SuSFS 自启动相关字符串 -->
+    <!-- SuSFS Kstat相关字符串 -->
+    <!-- SuSFS Mount Hiding Control Related Strings -->
+    <!-- 备份和还原相关字符串 -->
+    <!-- 循环路径相关 -->
+    <!-- 循环路径功能描述 -->
+    <!-- KPM patching related strings -->
+    <!-- KPM workflow related -->
+    <!-- KPM error messages -->
+    <!-- KPM option radio group strings -->
+    <!-- UID Scanner Settings -->
+    <!-- 确认安装相关字符串 -->
+    <!-- SUS Map related strings -->
+    <!-- Log Viewer -->
+</resources>
