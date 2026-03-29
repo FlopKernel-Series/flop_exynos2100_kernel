@@ -200,6 +200,7 @@ obj-${CONFIG_VISION_SUPPORT}	+= vision/
 
 # Kernel SU variants
 obj-$(CONFIG_KSU_NEXT)		+= kernelsu/kernel/
+obj-$(CONFIG_KSU_SUKI)		+= sukisu/kernel/
 
 obj-y				+= samsung/
 

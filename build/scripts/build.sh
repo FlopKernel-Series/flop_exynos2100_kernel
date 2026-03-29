@@ -25,6 +25,7 @@ build() {
 
     FRAGMENTS=""
     [ "$DO_KSU" = "1" ] && FRAGMENTS="$FRAGMENTS ksu.config"
+    [ "$DO_SUKI" = "1" ] && FRAGMENTS="$FRAGMENTS sukisu.config"
 
     MAKE_JOBS="-j$(nproc --all)"
     MAKE_COMMON_ARGS=(
@@ -59,8 +60,8 @@ build() {
     rm -f "$OUT_KERNEL"
 
     if [ "$DO_REGEN" = "1" ]; then
-        if [ "$DO_KSU" = "1" ]; then
-            log_err "Can't regenerate with KSU argument"
+        if [ "$DO_KSU" = "1" ] || [ "$DO_SUKI" = "1" ]; then
+            log_err "Can't regenerate with SU variant argument"
             exit 1
         fi
         cp -f "$OUTDIR/.config" "arch/arm64/configs/$DEFCONFIG"

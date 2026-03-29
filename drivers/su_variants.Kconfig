@@ -6,36 +6,53 @@ choice
 
 config KSU_NEXT
 	bool "KernelSU Next"
-	select KSU
+	select OVERLAY_FS
 	help
 	  Enable KernelSU Next.
+
+config KSU_SUKI
+	bool "SukiSU Ultra"
+	select OVERLAY_FS
+	help
+	  Enable SukiSU Ultra with SUSFS support.
 
 endchoice
 
 choice
 	prompt "Hook method"
-	depends on KSU_NEXT
-	default KSU_KPROBES_HOOK if KPROBES && KRETPROBES && HAVE_SYSCALL_TRACEPOINTS
-	default KSU_MANUAL_HOOK
+	optional
+	depends on KSU_NEXT || KSU_SUKI
+	default KSU_KPROBES_HOOK
 	help
 	  Select which hook method to use.
 
+config KSU_KPROBES_HOOK
+	bool "Use kprobes"
+	help
+	  Enable KPROBES, KRETPROBES and TRACEPOINT hook for KernelSU core.
+	  This should not be used on kernel below 5.10.
+
+config KSU_TRACEPOINT_HOOK
+	bool "Use tracepoints"
+	depends on TRACEPOINTS
+	help
+	  Use tracepoints for function hooking.
+	  Only supported by SukiSU.
+
 config KSU_MANUAL_HOOK
 	bool "Use manual hooks"
-	depends on KSU && KSU != m
 	help
 	  Use manual hooks instead of kprobes.
 
-config KSU_KPROBES_HOOK
-	bool "Use kprobes"
-	depends on KSU
-	depends on KRETPROBES && KPROBES && HAVE_SYSCALL_TRACEPOINTS
+config KSU_SYSCALL_HOOK
+	bool "KernelSU syscall hook mode."
+	depends on KPROBES && KRETPROBES && HAVE_SYSCALL_TRACEPOINTS
 	help
 	  Enable KPROBES, KRETPROBES and TRACEPOINT hook for KernelSU core.
 	  This should not be used on kernel below 5.10.
 
 endchoice
 
-if KSU_NEXT
 source "drivers/kernelsu/kernel/Kconfig"
-endif
+
+source "drivers/sukisu/kernel/Kconfig"

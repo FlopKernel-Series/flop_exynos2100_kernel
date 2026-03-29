@@ -18,6 +18,8 @@ source "drivers/connector/Kconfig"
 
 source "drivers/gnss/Kconfig"
 
+source "drivers/su_variants.Kconfig"
+
 source "drivers/mtd/Kconfig"
 
 source "drivers/of/Kconfig"
