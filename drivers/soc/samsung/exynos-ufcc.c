@@ -648,6 +648,10 @@ static const char *ufc_task_control_reason(struct task_struct *tsk)
 		return "HyPerThread";
 	if (!strcmp(comm, "argosd"))
 		return "argosd";
+	if (task_has_exec_prefix(tsk, "vendor.samsung.hardware.hyper-service"))
+		return "vendor.samsung.hardware.hyper-service";
+	if (task_has_exec_prefix(tsk, "argosd"))
+		return "argosd-exe";
 
 	return NULL;
 }
