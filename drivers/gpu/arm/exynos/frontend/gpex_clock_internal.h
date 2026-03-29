@@ -57,5 +57,9 @@ int gpex_clock_sysfs_init(struct _clock_info *_clk_info);
 
 int gpex_clock_update_time_in_state(int clock);
 int gpex_clock_init_time_in_state(void);
+void gpex_clock_record_lock_event(const char *source, gpex_clock_lock_cmd_t lock_command,
+				  gpex_clock_lock_type_t lock_type, int requested_clock,
+				  int resolved_clock, int effective_clock, bool blocked);
+ssize_t gpex_clock_dump_lock_log(char *buf, size_t buf_size);
 
 #endif /* _MALI_EXYNOS_CLOCK_INTERNAL_H_ */
