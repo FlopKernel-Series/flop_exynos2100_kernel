@@ -303,8 +303,6 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 		#endif
-		mnt->mnt.data = NULL;
-
 		// Makes ida_free() easier to determine whether it should free the mnt_id or not
 		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
 
@@ -357,7 +355,6 @@ static struct mount *susfs_alloc_sus_vfsmnt(const char *name)
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 #endif
-		mnt->mnt.data = NULL;
 		// Makes ida_free() easier to determine whether it should free the mnt_id or not
 		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
 
