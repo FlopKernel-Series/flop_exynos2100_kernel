@@ -246,16 +246,6 @@ static void sym_check_prop(struct symbol *sym)
 					    "'%s': number is invalid",
 					    sym->name);
 			}
-			if (sym_is_choice(sym)) {
-				struct property *choice_prop =
-					sym_get_choice_prop(sym2);
-
-				if (!choice_prop ||
-				    prop_get_symbol(choice_prop) != sym)
-					prop_warn(prop,
-						  "choice default symbol '%s' is not contained in the choice",
-						  sym2->name);
-			}
 			break;
 		case P_SELECT:
 		case P_IMPLY:
@@ -492,18 +482,16 @@ void menu_finalize(struct menu *parent)
 		    menu->sym && !sym_is_choice_value(menu->sym)) {
 			current_entry = menu;
 			menu->sym->flags |= SYMBOL_CHOICEVAL;
-			if (!menu->prompt)
-				menu_warn(menu, "choice value must have a prompt");
-			for (prop = menu->sym->prop; prop; prop = prop->next) {
-				if (prop->type == P_DEFAULT)
-					prop_warn(prop, "defaults for choice "
-						  "values not supported");
-				if (prop->menu == menu)
-					continue;
-				if (prop->type == P_PROMPT &&
-				    prop->menu->parent->sym != sym)
-					prop_warn(prop, "choice value used outside its choice group");
-			}
+				if (!menu->prompt) {
+					menu_warn(menu, "choice value must have a prompt");
+				}
+				for (prop = menu->sym->prop; prop; prop = prop->next) {
+					if (prop->type == P_DEFAULT)
+						prop_warn(prop, "defaults for choice "
+							  "values not supported");
+					if (prop->menu == menu)
+						continue;
+				}
 			/* Non-tristate choice values of tristate choices must
 			 * depend on the choice being set to Y. The choice
 			 * values' dependencies were propagated to their
