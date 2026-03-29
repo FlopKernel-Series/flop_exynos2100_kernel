@@ -18,6 +18,8 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
+#include <linux/binfmts.h>
+
 #include <gpex_clock.h>
 #include <gpex_pm.h>
 #include <gpex_dvfs.h>
@@ -144,6 +146,9 @@ CREATE_SYSFS_DEVICE_WRITE_FUNCTION(reset_time_in_state)
 GPEX_STATIC ssize_t set_max_lock_dvfs(const char *buf, size_t count)
 {
 	int ret, clock = 0;
+
+	if (task_controls_frequencies(current))
+		return count;
 
 	if (sysfs_streq("0", buf)) {
 		clk_info->user_max_lock_input = 0;
