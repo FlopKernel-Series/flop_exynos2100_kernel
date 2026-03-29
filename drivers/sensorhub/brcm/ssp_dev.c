@@ -1012,7 +1012,6 @@ static int ssp_probe(struct spi_device *spi)
 
 	pr_info("[SSP]: %s - probe success!\n", __func__);
 
-	enable_debug_timer(data);
 	data->bProbeIsDone = true;
 	iRet = 0;
 	mutex_init(&shutdown_lock);
@@ -1244,7 +1243,6 @@ static void ssp_late_resume(struct early_suspend *handler)
 	data = container_of(handler, struct ssp_data, early_suspend);
 
 	func_dbg();
-	enable_debug_timer(data);
 
 #ifdef CONFIG_SENSORS_SSP_SENSORHUB
 	/* give notice to user that AP goes to sleep */
@@ -1294,7 +1292,6 @@ static int ssp_resume(struct device *dev)
 	struct ssp_data *data = spi_get_drvdata(spi);
 
 	func_dbg();
-	enable_debug_timer(data);
 #ifdef CONFIG_SENSORS_SSP_HIFI_BATCHING
 	data->resumeTimestamp = get_current_timestamp();
 	data->bIsResumed = true;
