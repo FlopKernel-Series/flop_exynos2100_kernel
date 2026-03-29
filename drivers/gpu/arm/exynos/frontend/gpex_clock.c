@@ -18,8 +18,6 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
-#include <linux/ktime.h>
-#include <linux/sched/task.h>
 #include <linux/slab.h>
 
 #include <gpex_clock.h>
@@ -36,127 +34,8 @@
 #include "gpex_clock_internal.h"
 
 #define CPU_MAX INT_MAX
-#define GPEX_LOCK_LOG_ENTRIES 32
 
 static struct _clock_info clk_info;
-static DEFINE_SPINLOCK(gpex_lock_log_lock);
-
-struct gpex_lock_log_entry {
-	u64 ts_ns;
-	pid_t pid;
-	char comm[TASK_COMM_LEN];
-	char source[16];
-	int requested_clock;
-	int resolved_clock;
-	int effective_clock;
-	u8 lock_command;
-	u8 lock_type;
-	u8 blocked;
-};
-
-static struct {
-	unsigned int next;
-	bool wrapped;
-	struct gpex_lock_log_entry entries[GPEX_LOCK_LOG_ENTRIES];
-} gpex_lock_log;
-
-static const char *gpex_lock_cmd_to_str(gpex_clock_lock_cmd_t lock_command)
-{
-	switch (lock_command) {
-	case GPU_CLOCK_MAX_LOCK:
-		return "max_lock";
-	case GPU_CLOCK_MIN_LOCK:
-		return "min_lock";
-	case GPU_CLOCK_MAX_UNLOCK:
-		return "max_unlock";
-	case GPU_CLOCK_MIN_UNLOCK:
-		return "min_unlock";
-	default:
-		return "unknown";
-	}
-}
-
-static const char *gpex_lock_type_to_str(gpex_clock_lock_type_t lock_type)
-{
-	switch (lock_type) {
-	case TMU_LOCK:
-		return "TMU";
-	case SYSFS_LOCK:
-		return "SYSFS";
-	case PMQOS_LOCK:
-		return "PMQOS";
-	case CLBOOST_LOCK:
-		return "CLBOOST";
-	case INTERACTIVE_LOCK:
-		return "INTERACTIVE";
-	case MM_LOCK:
-		return "MM";
-	default:
-		return "UNKNOWN";
-	}
-}
-
-void gpex_clock_record_lock_event(const char *source, gpex_clock_lock_cmd_t lock_command,
-				  gpex_clock_lock_type_t lock_type, int requested_clock,
-				  int resolved_clock, int effective_clock, bool blocked)
-{
-	unsigned long flags;
-	struct gpex_lock_log_entry *entry;
-
-	spin_lock_irqsave(&gpex_lock_log_lock, flags);
-
-	entry = &gpex_lock_log.entries[gpex_lock_log.next];
-	entry->ts_ns = ktime_get_ns();
-	entry->pid = task_pid_nr(current);
-	get_task_comm(entry->comm, current);
-	strscpy(entry->source, source ? source : "unknown", sizeof(entry->source));
-	entry->requested_clock = requested_clock;
-	entry->resolved_clock = resolved_clock;
-	entry->effective_clock = effective_clock;
-	entry->lock_command = lock_command;
-	entry->lock_type = lock_type;
-	entry->blocked = blocked;
-
-	gpex_lock_log.next = (gpex_lock_log.next + 1) % GPEX_LOCK_LOG_ENTRIES;
-	if (!gpex_lock_log.next)
-		gpex_lock_log.wrapped = true;
-
-	spin_unlock_irqrestore(&gpex_lock_log_lock, flags);
-}
-
-ssize_t gpex_clock_dump_lock_log(char *buf, size_t buf_size)
-{
-	struct gpex_lock_log_entry entries[GPEX_LOCK_LOG_ENTRIES];
-	unsigned long flags;
-	unsigned int count;
-	unsigned int start;
-	unsigned int next;
-	ssize_t len = 0;
-	unsigned int i;
-
-	spin_lock_irqsave(&gpex_lock_log_lock, flags);
-	count = gpex_lock_log.wrapped ? GPEX_LOCK_LOG_ENTRIES : gpex_lock_log.next;
-	next = gpex_lock_log.next;
-	start = gpex_lock_log.wrapped ? next : 0;
-	memcpy(entries, gpex_lock_log.entries, sizeof(entries));
-	spin_unlock_irqrestore(&gpex_lock_log_lock, flags);
-
-	for (i = 0; i < count; i++) {
-		struct gpex_lock_log_entry *entry = &entries[(start + i) % GPEX_LOCK_LOG_ENTRIES];
-
-		len += scnprintf(buf + len, buf_size - len,
-				 "%02u ts=%llu pid=%d comm=%s src=%s cmd=%s type=%s req=%d res=%d eff=%d blocked=%u\n",
-				 i, entry->ts_ns, entry->pid, entry->comm, entry->source,
-				 gpex_lock_cmd_to_str(entry->lock_command),
-				 gpex_lock_type_to_str(entry->lock_type), entry->requested_clock,
-				 entry->resolved_clock, entry->effective_clock, entry->blocked);
-
-		if (len >= buf_size - 1)
-			break;
-	}
-
-	return len;
-}
 
 int gpex_clock_get_boot_clock(void)
 {
@@ -590,8 +469,6 @@ int gpex_clock_lock_clock(gpex_clock_lock_cmd_t lock_command, gpex_clock_lock_ty
 				 "lock max clk[%d], user lock[%d], current clk[%d]\n",
 				 clk_info.max_lock, clk_info.user_max_lock[lock_type],
 				 gpex_clock_get_cur_clock());
-		gpex_clock_record_lock_event("apply", lock_command, lock_type, clock, valid_clock,
-					     clk_info.max_lock, false);
 		break;
 	case GPU_CLOCK_MIN_LOCK:
 		gpex_dvfs_spin_lock(&flags);
@@ -653,8 +530,6 @@ int gpex_clock_lock_clock(gpex_clock_lock_cmd_t lock_command, gpex_clock_lock_ty
 		gpex_dvfs_spin_unlock(&flags);
 		GPU_LOG_DETAILED(MALI_EXYNOS_DEBUG, LSI_GPU_MAX_LOCK, lock_type, clock,
 				 "unlock max clk\n");
-		gpex_clock_record_lock_event("apply", lock_command, lock_type, clock, valid_clock,
-					     clk_info.max_lock, false);
 		break;
 	case GPU_CLOCK_MIN_UNLOCK:
 		gpex_dvfs_spin_lock(&flags);

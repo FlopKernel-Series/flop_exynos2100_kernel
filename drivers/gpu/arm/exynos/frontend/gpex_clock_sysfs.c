@@ -147,12 +147,8 @@ GPEX_STATIC ssize_t set_max_lock_dvfs(const char *buf, size_t count)
 {
 	int ret, clock = 0;
 
-	if (task_controls_frequencies(current)) {
-		if (!sysfs_streq("0", buf) && !kstrtoint(buf, 0, &clock))
-			gpex_clock_record_lock_event("sysfs", GPU_CLOCK_MAX_LOCK, SYSFS_LOCK, clock,
-						     clock, gpex_clock_get_max_lock(), true);
+	if (task_controls_frequencies(current))
 		return count;
-	}
 
 	if (sysfs_streq("0", buf)) {
 		clk_info->user_max_lock_input = 0;
@@ -433,12 +429,6 @@ GPEX_STATIC ssize_t show_max_lock_status(char *buf)
 }
 CREATE_SYSFS_DEVICE_READ_FUNCTION(show_max_lock_status)
 
-GPEX_STATIC ssize_t show_lock_log(char *buf)
-{
-	return gpex_clock_dump_lock_log(buf, PAGE_SIZE);
-}
-CREATE_SYSFS_DEVICE_READ_FUNCTION(show_lock_log)
-
 GPEX_STATIC ssize_t show_min_lock_status(char *buf)
 {
 	ssize_t ret = 0;
@@ -505,7 +495,6 @@ int gpex_clock_sysfs_init(struct _clock_info *_clk_info)
 	GPEX_UTILS_SYSFS_DEVICE_FILE_ADD(dvfs_min_lock, show_min_lock_dvfs, set_min_lock_dvfs);
 	GPEX_UTILS_SYSFS_DEVICE_FILE_ADD_RO(dvfs_max_lock_status, show_max_lock_status);
 	GPEX_UTILS_SYSFS_DEVICE_FILE_ADD_RO(dvfs_min_lock_status, show_min_lock_status);
-	GPEX_UTILS_SYSFS_DEVICE_FILE_ADD_RO(dvfs_lock_log, show_lock_log);
 
 	GPEX_UTILS_SYSFS_KOBJECT_FILE_ADD(gpu_max_clock, show_max_lock_dvfs_kobj,
 					  set_max_lock_dvfs);
