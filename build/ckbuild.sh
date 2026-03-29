@@ -232,7 +232,7 @@ if [ ! -f "$OUT_KERNEL" ]; then
     exit 1
 fi
 
-apply_kpm_patch
+# apply_kpm_patch
 kernel_modules
 build_images
 packing
