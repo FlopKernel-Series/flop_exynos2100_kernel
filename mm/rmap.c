@@ -57,6 +57,7 @@
 #include <linux/rmap.h>
 #include <linux/rcupdate.h>
 #include <linux/export.h>
+#include <linux/kshrink_lruvecd.h>
 #include <linux/memcontrol.h>
 #include <linux/mmu_notifier.h>
 #include <linux/migrate.h>
@@ -536,6 +537,13 @@ struct anon_vma *page_lock_anon_vma_read(struct page *page,
 			up_read(&root_anon_vma->rwsem);
 			anon_vma = NULL;
 		}
+		goto out;
+	}
+
+	if (kshrink_lruvecd_do_page_trylock(page, NULL, NULL)) {
+		if (rwc)
+			rwc->contended = true;
+		anon_vma = NULL;
 		goto out;
 	}
 
@@ -1781,7 +1789,7 @@ bool try_to_unmap(struct page *page, enum ttu_flags flags)
 	 * try_to_unmap() may return false when it is about to become true,
 	 * if page table locking is skipped: use TTU_SYNC to wait for that.
 	 */
-	return !page_mapcount(page);
+	return !page_mapcount(page) && !rwc.contended;
 }
 
 /**
@@ -1923,6 +1931,7 @@ static void rmap_walk_file(struct page *page, struct rmap_walk_control *rwc,
 	struct address_space *mapping = page_mapping(page);
 	pgoff_t pgoff_start, pgoff_end;
 	struct vm_area_struct *vma;
+	bool got_lock = false;
 
 	/*
 	 * The page lock not only makes sure that page->mapping cannot
@@ -1938,6 +1947,15 @@ static void rmap_walk_file(struct page *page, struct rmap_walk_control *rwc,
 	pgoff_start = page_to_pgoff(page);
 	pgoff_end = pgoff_start + hpage_nr_pages(page) - 1;
 	if (!locked) {
+		if (kshrink_lruvecd_do_page_trylock(page, &mapping->i_mmap_rwsem,
+						    &got_lock)) {
+			if (!got_lock) {
+				rwc->contended = true;
+				return;
+			}
+			goto lookup;
+		}
+
 		if (i_mmap_trylock_read(mapping))
 			goto lookup;
 

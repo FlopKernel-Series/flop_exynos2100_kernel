@@ -1,0 +1,7 @@
+config KSHRINK_LRUVECD
+	bool "Allow asynchronous shrink lruvec reclaim"
+	depends on MMU
+	select PAGE_EXTENSION
+	default n
+	help
+	  Asynchronous lruvec reclaim helper.

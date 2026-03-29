@@ -6,6 +6,7 @@
 #include <linux/memory.h>
 #include <linux/vmalloc.h>
 #include <linux/kmemleak.h>
+#include <linux/kshrink_lruvecd.h>
 #include <linux/page_owner.h>
 #include <linux/page_idle.h>
 
@@ -64,6 +65,9 @@ static struct page_ext_operations *page_ext_ops[] = {
 #endif
 #if defined(CONFIG_IDLE_PAGE_TRACKING) && !defined(CONFIG_64BIT)
 	&page_idle_ops,
+#endif
+#ifdef CONFIG_KSHRINK_LRUVECD
+	&kshrink_lruvecd_page_ext_ops,
 #endif
 };
 

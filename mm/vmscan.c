@@ -50,6 +50,7 @@
 #include <linux/prefetch.h>
 #include <linux/printk.h>
 #include <linux/dax.h>
+#include <linux/kshrink_lruvecd.h>
 #include <linux/psi.h>
 #include <linux/sec_detect.h>
 #include <linux/kshrink_slabd.h>
@@ -1054,10 +1055,15 @@ static enum page_references page_check_references(struct page *page,
 {
 	int referenced_ptes, referenced_page;
 	unsigned long vm_flags;
+	bool trylock_fail;
 
+	kshrink_lruvecd_page_trylock_set(page);
 	referenced_ptes = page_referenced(page, 1, sc->target_mem_cgroup,
 					  &vm_flags);
 	referenced_page = TestClearPageReferenced(page);
+	trylock_fail = kshrink_lruvecd_page_trylock_get_result(page);
+	if (trylock_fail)
+		return PAGEREF_KEEP;
 
 	/*
 	 * Mlock lost the isolation race with us.  Let try_to_unmap()
@@ -1161,6 +1167,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		struct page *page;
 		int may_enter_fs;
 		enum page_references references = PAGEREF_RECLAIM;
+		bool page_trylock_result;
 		bool dirty, writeback;
 		unsigned int nr_pages;
 
@@ -1383,6 +1390,8 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 
 			if (unlikely(PageTransHuge(page)))
 				flags |= TTU_SPLIT_HUGE_PMD;
+			if (!ignore_references)
+				kshrink_lruvecd_page_trylock_set(page);
 			if (!try_to_unmap(page, flags)) {
 				stat->nr_unmap_fail += nr_pages;
 				if (!was_swapbacked && PageSwapBacked(page))
@@ -1491,6 +1500,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 					 * increment nr_reclaimed here (and
 					 * leave it off the LRU).
 					 */
+					kshrink_lruvecd_page_trylock_clear(page);
 					nr_reclaimed++;
 					continue;
 				}
@@ -1523,6 +1533,7 @@ free_it:
 		 * Is there need to periodically free_page_list? It would
 		 * appear not as the counts should be low
 		 */
+		kshrink_lruvecd_page_trylock_clear(page);
 		if (unlikely(PageTransHuge(page)))
 			(*get_compound_page_dtor(page))(page);
 		else
@@ -1557,6 +1568,9 @@ activate_locked:
 			count_memcg_page_event(page, PGACTIVATE);
 		}
 keep_locked:
+		page_trylock_result =
+			kshrink_lruvecd_page_trylock_get_result(page);
+		(void)page_trylock_result;
 		unlock_page(page);
 keep:
 		list_add(&page->lru, &ret_pages);
@@ -2088,6 +2102,7 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
 
 	nr_reclaimed = shrink_page_list(&page_list, pgdat, sc, 0,
 				&stat, false);
+	kshrink_lruvecd_handle_failed_page_trylock(&page_list);
 
 	spin_lock_irq(&pgdat->lru_lock);
 
@@ -2186,6 +2201,7 @@ static void shrink_active_list(unsigned long nr_to_scan,
 			}
 		}
 
+		kshrink_lruvecd_page_trylock_set(page);
 		/* Referenced or rmap lock contention: rotate */
 		if (page_referenced(page, 0, sc->target_mem_cgroup,
 				     &vm_flags) != 0) {
@@ -2199,12 +2215,14 @@ static void shrink_active_list(unsigned long nr_to_scan,
 			 * so we ignore them here.
 			 */
 			if ((vm_flags & VM_EXEC) && page_is_file_cache(page)) {
+				kshrink_lruvecd_page_trylock_clear(page);
 				nr_rotated += hpage_nr_pages(page);
 				list_add(&page->lru, &l_active);
 				continue;
 			}
 		}
 
+		kshrink_lruvecd_page_trylock_clear(page);
 		ClearPageActive(page);	/* we are de-activating */
 		SetPageWorkingset(page);
 		list_add(&page->lru, &l_inactive);
