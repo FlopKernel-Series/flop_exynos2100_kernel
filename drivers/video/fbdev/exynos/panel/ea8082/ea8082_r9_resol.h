@@ -32,6 +32,19 @@ struct panel_vrr ea8082_r9_default_panel_vrr[] = {
 		.te_hw_skip_count = 0,
 		.mode = VRR_HS_MODE,
 	},
+	[EA8082_VRR_60HS_120HS_TE_HW_SKIP_1] = {
+		.fps = 120,
+		.base_fps = 120,
+		.base_vactive = 2340,
+		.base_vfp = 16,
+		.base_vbp = 16,
+		.te_sel = true,
+		.te_v_st = 2341,
+		.te_v_ed = 9,
+		.te_sw_skip_count = 0,
+		.te_hw_skip_count = 1,
+		.mode = VRR_HS_MODE,
+	},
 	[EA8082_VRR_60HS] = {
 		.fps = 60,
 		.base_fps = 60,
@@ -49,6 +62,7 @@ struct panel_vrr ea8082_r9_default_panel_vrr[] = {
 
 static struct panel_vrr *ea8082_r9_default_vrrtbl[] = {
 	&ea8082_r9_default_panel_vrr[EA8082_VRR_120HS],
+	&ea8082_r9_default_panel_vrr[EA8082_VRR_60HS_120HS_TE_HW_SKIP_1],
 	&ea8082_r9_default_panel_vrr[EA8082_VRR_60HS],
 };
 
@@ -76,6 +90,11 @@ static struct common_panel_display_mode ea8082_r9_display_mode[MAX_EA8082_DISPLA
 		.resol = &ea8082_r9_default_resol[EA8082_RESOL_1080x2340],
 		.vrr = &ea8082_r9_default_panel_vrr[EA8082_VRR_120HS],
 	},
+	[EA8082_DISPLAY_MODE_1080x2340_60HS_120HS_TE_HW_SKIP_1] = {
+		.name = PANEL_DISPLAY_MODE_1080x2340_60HS_120HS_TE_HW_SKIP_1,
+		.resol = &ea8082_r9_default_resol[EA8082_RESOL_1080x2340],
+		.vrr = &ea8082_r9_default_panel_vrr[EA8082_VRR_60HS_120HS_TE_HW_SKIP_1],
+	},
 	[EA8082_DISPLAY_MODE_1080x2340_60HS] = {
 		.name = PANEL_DISPLAY_MODE_1080x2340_60HS,
 		.resol = &ea8082_r9_default_resol[EA8082_RESOL_1080x2340],
@@ -85,6 +104,7 @@ static struct common_panel_display_mode ea8082_r9_display_mode[MAX_EA8082_DISPLA
 
 static struct common_panel_display_mode *ea8082_r9_display_mode_array[MAX_EA8082_DISPLAY_MODE] = {
 	[EA8082_DISPLAY_MODE_1080x2340_120HS] = &ea8082_r9_display_mode[EA8082_DISPLAY_MODE_1080x2340_120HS],
+	[EA8082_DISPLAY_MODE_1080x2340_60HS_120HS_TE_HW_SKIP_1] = &ea8082_r9_display_mode[EA8082_DISPLAY_MODE_1080x2340_60HS_120HS_TE_HW_SKIP_1],
 	[EA8082_DISPLAY_MODE_1080x2340_60HS] = &ea8082_r9_display_mode[EA8082_DISPLAY_MODE_1080x2340_60HS],
 };
 

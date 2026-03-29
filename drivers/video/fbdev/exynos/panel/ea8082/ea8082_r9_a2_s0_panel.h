@@ -266,6 +266,7 @@ static u8 r9_a2_s0_dia_onoff_table[][1] = {
 
 static u8 r9_a2_s0_fps_table[][2] = {
 	[EA8082_VRR_120HS] = { 0x08, 0x00 },
+	[EA8082_VRR_60HS_120HS_TE_HW_SKIP_1] = { 0x08, 0x00 },
 	[EA8082_VRR_60HS] = { 0x00, 0x00 },
 };
 
