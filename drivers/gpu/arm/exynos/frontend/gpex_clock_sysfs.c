@@ -229,6 +229,9 @@ GPEX_STATIC ssize_t show_max_lock_dvfs_kobj(char *buf)
 	locked_clock = clk_info->max_lock;
 	gpex_dvfs_spin_unlock(&flags);
 
+	if (locked_clock > gpex_clock_get_max_clock())
+		locked_clock = gpex_clock_get_max_clock();
+
 	if (locked_clock > 0)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%d", locked_clock);
 	else
@@ -425,8 +428,11 @@ GPEX_STATIC ssize_t show_max_lock_status(char *buf)
 		max_lock_status[i] = clk_info->user_max_lock[i];
 	gpex_dvfs_spin_unlock(&flags);
 
-	for (i = 0; i < NUMBER_LOCK; i++)
+	for (i = 0; i < NUMBER_LOCK; i++) {
+		if (max_lock_status[i] > gpex_clock_get_max_clock())
+			max_lock_status[i] = gpex_clock_get_max_clock();
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%d:%d]", i, max_lock_status[i]);
+	}
 
 	if (ret < PAGE_SIZE - 1) {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");

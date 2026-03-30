@@ -101,6 +101,9 @@ int gpu_dvfs_get_max_locked_freq(void)
 		locked_clock = gpex_clock_get_max_clock();
 	gpex_dvfs_spin_unlock(&flags);
 
+	if (locked_clock > gpex_clock_get_max_clock())
+		locked_clock = gpex_clock_get_max_clock();
+
 	return locked_clock;
 }
 EXPORT_SYMBOL(gpu_dvfs_get_max_locked_freq);
