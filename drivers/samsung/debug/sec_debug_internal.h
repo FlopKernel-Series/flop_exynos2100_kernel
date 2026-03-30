@@ -441,7 +441,7 @@ extern void secdbg_ksym_set_kallsyms_info(struct sec_debug_ksyms *ksyms);
 #ifdef CONFIG_SEC_DEBUG_MEMTAB
 extern void secdbg_base_built_set_memtab_info(struct sec_debug_memtab *mtab);
 #else
-static inline void secdbg_base_built_set_memtab_info { }
+static inline void secdbg_base_built_set_memtab_info(struct sec_debug_memtab *mtab) {}
 #endif
 
 #if IS_ENABLED(CONFIG_SEC_DEBUG_STACKTRACE)
