@@ -774,6 +774,12 @@ endif
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
 KBUILD_CFLAGS	+= $(call cc-option,-fno-allow-store-data-races)
 
+ifdef CONFIG_CC_IS_CLANG
+ifeq ($(CONFIG_ARCH_EXYNOS), y)
+KBUILD_CFLAGS += -mcpu=cortex-a55 -mtune=cortex-a78
+endif
+endif
+
 include scripts/Makefile.kcov
 include scripts/Makefile.gcc-plugins
 
