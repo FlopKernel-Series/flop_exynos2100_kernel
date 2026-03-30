@@ -228,6 +228,9 @@ static void read_from_dt(void)
 
 	/* CLOCK */
 	gpexbe_devicetree_read_u32("gpu_max_clock", &dt_info.gpu_max_clock);
+	if (of_property_read_u32(dt_info.dev->of_node, "gpu_stock_max_clock",
+				 &dt_info.gpu_stock_max_clock))
+		dt_info.gpu_stock_max_clock = 0;
 	gpexbe_devicetree_read_u32("gpu_min_clock", &dt_info.gpu_min_clock);
 	gpexbe_devicetree_read_u32("gpu_pmqos_cpu_cluster_num", &dt_info.gpu_pmqos_cpu_cluster_num);
 

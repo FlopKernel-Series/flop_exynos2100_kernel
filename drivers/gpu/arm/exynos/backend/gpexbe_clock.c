@@ -96,6 +96,8 @@ int gpexbe_clock_get_rate(void)
 
 int gpexbe_clock_init(void)
 {
+	int dt_max_clock;
+
 	cal_id = gpexbe_devicetree_get_int(g3d_cmu_cal_id);
 
 	if (!cal_id) {
@@ -105,6 +107,10 @@ int gpexbe_clock_init(void)
 
 	pm_info.boot_clock = cal_dfs_get_boot_freq(cal_id);
 	pm_info.max_clock_limit = (int)cal_dfs_get_max_freq(cal_id);
+	dt_max_clock = gpexbe_devicetree_get_int(gpu_max_clock);
+
+	if (dt_max_clock > pm_info.max_clock_limit)
+		pm_info.max_clock_limit = dt_max_clock;
 
 	gpex_utils_get_exynos_context()->pm_info = &pm_info;
 

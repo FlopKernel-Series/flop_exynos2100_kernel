@@ -48,6 +48,11 @@ int gpex_clock_set(int clk)
 	return 0;
 }
 
+int gpex_clock_set_runtime_max_clock(int clk)
+{
+	return 0;
+}
+
 int gpex_clock_lock_clock(gpex_clock_lock_cmd_t lock_command, gpex_clock_lock_type_t lock_type,
 			  int clock)
 {
@@ -80,6 +85,16 @@ int gpex_clock_get_boot_clock(void)
 }
 
 int gpex_clock_get_max_clock(void)
+{
+	return 0;
+}
+
+int gpex_clock_get_stock_max_clock(void)
+{
+	return 0;
+}
+
+int gpex_clock_get_unlock_max_clock(void)
 {
 	return 0;
 }

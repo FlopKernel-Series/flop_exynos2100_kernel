@@ -108,6 +108,7 @@ typedef struct _dt_info {
 
 	/* CLOCK */
 	u32 gpu_max_clock;
+	u32 gpu_stock_max_clock;
 	u32 gpu_min_clock;
 	u32 gpu_pmqos_cpu_cluster_num;
 

@@ -29,6 +29,7 @@
 #include "gpex_clock_internal.h"
 
 static struct _clock_info *clk_info;
+static int gpu_unlock;
 
 /*************************************
  * sysfs node functions
@@ -484,9 +485,39 @@ GPEX_STATIC ssize_t show_gpu_freq_table(char *buf)
 }
 CREATE_SYSFS_KOBJECT_READ_FUNCTION(show_gpu_freq_table)
 
+GPEX_STATIC ssize_t set_gpu_unlock(const char *buf, size_t count)
+{
+	int ret;
+	bool enable;
+	int target_clock;
+
+	if (!sysfs_streq("0", buf) && !sysfs_streq("1", buf))
+		return -EINVAL;
+
+	enable = sysfs_streq("1", buf);
+	target_clock = enable ? gpex_clock_get_unlock_max_clock() :
+				gpex_clock_get_stock_max_clock();
+
+	ret = gpex_clock_set_runtime_max_clock(target_clock);
+	if (ret)
+		return ret;
+
+	gpu_unlock = enable;
+
+	return count;
+}
+CREATE_SYSFS_KOBJECT_WRITE_FUNCTION(set_gpu_unlock)
+
+GPEX_STATIC ssize_t show_gpu_unlock(char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", gpu_unlock);
+}
+CREATE_SYSFS_KOBJECT_READ_FUNCTION(show_gpu_unlock)
+
 int gpex_clock_sysfs_init(struct _clock_info *_clk_info)
 {
 	clk_info = _clk_info;
+	gpu_unlock = clk_info->gpu_max_clock == clk_info->gpu_unlock_max_clock;
 
 	GPEX_UTILS_SYSFS_DEVICE_FILE_ADD(clock, show_clock, set_clock);
 	GPEX_UTILS_SYSFS_DEVICE_FILE_ADD_RO(asv_table, show_asv_table);
@@ -504,6 +535,7 @@ int gpex_clock_sysfs_init(struct _clock_info *_clk_info)
 					  set_mm_min_lock_dvfs);
 	GPEX_UTILS_SYSFS_KOBJECT_FILE_ADD_RO(gpu_clock, show_clock);
 	GPEX_UTILS_SYSFS_KOBJECT_FILE_ADD_RO(gpu_freq_table, show_gpu_freq_table);
+	GPEX_UTILS_SYSFS_KOBJECT_FILE_ADD(gpu_unlock, show_gpu_unlock, set_gpu_unlock);
 
 	return 0;
 }

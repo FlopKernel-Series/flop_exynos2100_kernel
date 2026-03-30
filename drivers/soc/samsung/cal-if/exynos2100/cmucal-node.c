@@ -11,6 +11,7 @@ struct cmucal_pll_table pll_aud1_rate_table[] = {
 };
 
 struct cmucal_pll_table pll_g3d_rate_table[] = {
+	PLL_RATE_MPS(949000000, 73, 2, 0),
 	PLL_RATE_MPS(858000000, 66, 2, 0),
 	PLL_RATE_MPS(767000000, 59, 2, 0),
 	PLL_RATE_MPS(676000000, 52, 2, 0),
@@ -4027,4 +4028,3 @@ struct cmucal_clk_fixed_factor cmucal_fixed_factor_list[] = {
 	FIXEDFACTOR(PLL_SHARED4_D2, PLL_SHARED4, 1, EMPTY_CAL_ID),
 	FIXEDFACTOR(PLL_SHARED_MIF_D2, PLL_SHARED_MIF, 1, EMPTY_CAL_ID),
 };
-
