@@ -594,7 +594,7 @@ static int ssg_init_queue(struct request_queue *q, struct elevator_type *e)
 	ssg->fifo_expire[READ] = read_expire;
 	ssg->fifo_expire[WRITE] = write_expire;
 	ssg->max_write_starvation = max_write_starvation;
-	ssg->front_merges = 1;
+	ssg->front_merges = 0;
 
 	atomic_set(&ssg->allocated_rqs, 0);
 	atomic_set(&ssg->async_write_rqs, 0);
