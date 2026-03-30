@@ -128,6 +128,7 @@ extern int gpu_dvfs_get_step(void);
 extern int gpu_dvfs_get_cur_clock(void);
 extern int gpu_dvfs_get_utilization(void);
 extern int gpu_dvfs_get_max_freq(void);
+extern int gpu_dvfs_get_max_cooling_freq(void);
 extern void gpu_tmu_get_notifier(struct notifier_block **nb);
 extern int gpu_tmu_notifier(struct notifier_block *notifier,
 				unsigned long event, void *v);
@@ -141,6 +142,7 @@ static inline int gpu_dvfs_get_step(void) { return 0; }
 static inline int gpu_dvfs_get_cur_clock(void) { return 0; }
 static inline int gpu_dvfs_get_utilization(void) { return 0; }
 static inline int gpu_dvfs_get_max_freq(void) { return 0; }
+static inline int gpu_dvfs_get_max_cooling_freq(void) { return 0; }
 static inline void gpu_tmu_get_notifier(struct notifier_block **nb) { return; }
 static inline int gpu_tmu_notifier(struct notifier_block *notifier,
 				unsigned long event, void *v)	{ return 0; }

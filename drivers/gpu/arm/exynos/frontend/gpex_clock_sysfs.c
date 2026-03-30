@@ -196,6 +196,11 @@ GPEX_STATIC ssize_t show_max_lock_dvfs(char *buf)
 	user_locked_clock = clk_info->user_max_lock_input;
 	gpex_dvfs_spin_unlock(&flags);
 
+	if (locked_clock > gpex_clock_get_max_clock())
+		locked_clock = gpex_clock_get_max_clock();
+	if (user_locked_clock > gpex_clock_get_max_clock())
+		user_locked_clock = gpex_clock_get_max_clock();
+
 	if (locked_clock > 0)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%d / %d", locked_clock,
 				user_locked_clock);
@@ -292,6 +297,11 @@ GPEX_STATIC ssize_t show_min_lock_dvfs(char *buf)
 	locked_clock = clk_info->min_lock;
 	user_locked_clock = clk_info->user_min_lock_input;
 	gpex_dvfs_spin_unlock(&flags);
+
+	if (locked_clock > gpex_clock_get_max_clock())
+		locked_clock = gpex_clock_get_max_clock();
+	if (user_locked_clock > gpex_clock_get_max_clock())
+		user_locked_clock = gpex_clock_get_max_clock();
 
 	if (locked_clock > 0)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%d / %d", locked_clock,

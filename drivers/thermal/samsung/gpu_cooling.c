@@ -295,7 +295,7 @@ static int build_dyn_power_table(struct gpufreq_cooling_device *gpufreq_cdev,
 
 		freq = gpu_dvfs_get_clock(num_opps - i - 1);
 
-		if (freq > gpu_dvfs_get_max_freq() || freq == 0)
+		if (freq > gpu_dvfs_get_max_cooling_freq() || freq == 0)
 			continue;
 
 		voltage_mv = gpu_dvfs_get_voltage(freq) / 1000;
@@ -983,7 +983,7 @@ static int gpu_cooling_table_init(void)
 	for (i = 0; i < num_level; i++) {
 		freq = gpu_dvfs_get_clock(i);
 
-		if (freq > gpu_dvfs_get_max_freq() || freq == 0)
+		if (freq > gpu_dvfs_get_max_cooling_freq() || freq == 0)
 			continue;
 
 		gpu_freq_table[count].flags = 0;

@@ -315,6 +315,9 @@ static int gpu_check_target_clock(int clock)
 	if ((clk_info.max_lock > 0) && (target_clock > clk_info.max_lock))
 		target_clock = clk_info.max_lock;
 
+	if (target_clock > gpex_clock_get_max_clock())
+		target_clock = gpex_clock_get_max_clock();
+
 	/* TODO: I don't think this required as it is set in gpex_dvfs_set_clock_callback */
 	//gpex_dvfs_set_step(gpex_clock_get_table_idx(target_clock));
 
@@ -460,7 +463,6 @@ int gpex_clock_set(int clk)
 int gpex_clock_set_runtime_max_clock(int clk)
 {
 	unsigned long flags;
-	int i;
 	int target_clk = 0;
 	bool update_clock = false;
 
@@ -476,19 +478,7 @@ int gpex_clock_set_runtime_max_clock(int clk)
 
 	clk_info.gpu_max_clock = clk;
 
-	if (clk_info.user_max_lock_input > clk)
-		clk_info.user_max_lock_input = clk;
-	if (clk_info.user_min_lock_input > clk)
-		clk_info.user_min_lock_input = clk;
-
 	gpex_dvfs_spin_lock(&flags);
-
-	for (i = 0; i < NUMBER_LOCK; i++) {
-		if (clk_info.user_max_lock[i] > clk)
-			clk_info.user_max_lock[i] = clk;
-		if (clk_info.user_min_lock[i] > clk)
-			clk_info.user_min_lock[i] = clk;
-	}
 
 	gpex_clock_recompute_max_lock_locked();
 	gpex_clock_recompute_min_lock_locked();
