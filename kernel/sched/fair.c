@@ -82,10 +82,10 @@ unsigned int sysctl_sched_child_runs_first __read_mostly = 1;
  *
  * (default: 1 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
-unsigned int sysctl_sched_wakeup_granularity			= 2500000UL;
-static unsigned int normalized_sysctl_sched_wakeup_granularity	= 2500000UL;
+unsigned int sysctl_sched_wakeup_granularity			= 1500000UL;
+static unsigned int normalized_sysctl_sched_wakeup_granularity	= 1500000UL;
 
-unsigned int __read_mostly sysctl_sched_migration_cost	= 2000000UL;
+unsigned int __read_mostly sysctl_sched_migration_cost	= 1000000UL;
 
 #ifdef CONFIG_SMP
 /*
