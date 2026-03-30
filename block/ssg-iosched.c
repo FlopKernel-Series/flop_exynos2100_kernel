@@ -31,7 +31,7 @@ static const int read_expire = HZ * 128 / 1000;	/* max time before a read is sub
 static const int write_expire = HZ;		/* ditto for writes, these limits are SOFT! */
 static const int max_write_starvation = 2;	/* max times reads can starve a write */
 static const int async_write_percent = 25;	/* max tags percentige for async write */
-static const unsigned int max_async_write_tags = 8;	/* max tags for async write. */
+static const unsigned int max_async_write_tags = 4;	/* max tags for async write. */
 
 struct ssg_data {
 	/*
