@@ -20,17 +20,6 @@ config SEC_REBOOT
 	help
 	  Samsung TN reboot extension Feature. Do additional work when reboot.
 
-config SEC_RMEM_RECLAIM
-	bool "Reclaim unused Samsung reserved memory"
-	depends on SEC_EXT
-	default n
-	help
-	  Reclaim reserved-memory regions that are only needed by disabled
-	  Samsung features.
-
-	  This currently releases the sec_rdx_bootdev scratch region when
-	  SEC_DEBUG is disabled and force-upload mode is not requested.
-
 config SEC_PMIC_PWRKEY
 	bool "Enable PMIC power key for key crash"
 	help
