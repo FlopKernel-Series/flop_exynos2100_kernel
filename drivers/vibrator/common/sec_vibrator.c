@@ -32,6 +32,9 @@ static const int  kMaxBufSize = 7;
 static const int kMaxHapticStepSize = 7;
 static const char *str_newline = "\n";
 
+#define VIB_SHORT_OVERDRIVE_TIMEOUT_MS	20
+#define VIB_TEMP_CACHE_TIMEOUT_MS	10000
+
 static struct sec_vibrator_drvdata *g_ddata;
 
 static char vib_event_cmd[MAX_STR_LEN_EVENT_CMD];
@@ -129,7 +132,16 @@ static int sec_vibrator_check_temp(struct sec_vibrator_drvdata *ddata)
 	if (!ddata->vib_ops->set_tuning_with_temp)
 		return -ENOSYS;
 
-	psy_do_property("battery", get, POWER_SUPPLY_PROP_TEMP, value);
+	if (!ddata->temp_cache_valid ||
+	    time_is_before_eq_jiffies(ddata->next_temp_check_jiffies)) {
+		psy_do_property("battery", get, POWER_SUPPLY_PROP_TEMP, value);
+		ddata->cached_temp = value.intval;
+		ddata->next_temp_check_jiffies =
+			jiffies + msecs_to_jiffies(VIB_TEMP_CACHE_TIMEOUT_MS);
+		ddata->temp_cache_valid = true;
+	} else {
+		value.intval = ddata->cached_temp;
+	}
 
 	ret = ddata->vib_ops->set_tuning_with_temp(ddata->dev, value.intval);
 
@@ -225,11 +237,22 @@ __visible_for_testing int sec_vibrator_set_overdrive(struct sec_vibrator_drvdata
 	if (!ddata->vib_ops->set_overdrive)
 		return -ENOSYS;
 
+	ddata->overdrive = en;
 	ret = ddata->vib_ops->set_overdrive(ddata->dev, en);
 	if (ret)
 		pr_err("%s error(%d)\n", __func__, ret);
 
 	return ret;
+}
+
+static bool sec_vibrator_use_short_overdrive(struct sec_vibrator_drvdata *ddata)
+{
+	if (!ddata || ddata->f_packet_en || !ddata->vib_ops->set_overdrive)
+		return false;
+
+	return ddata->timeout > 0 &&
+		ddata->timeout <= VIB_SHORT_OVERDRIVE_TIMEOUT_MS &&
+		ddata->intensity > 0;
 }
 
 static void sec_vibrator_haptic_enable(struct sec_vibrator_drvdata *ddata)
@@ -242,16 +265,10 @@ static void sec_vibrator_haptic_enable(struct sec_vibrator_drvdata *ddata)
 #if IS_ENABLED(CONFIG_BATTERY_SAMSUNG)
 	sec_vibrator_check_temp(ddata);
 #endif
+	sec_vibrator_set_overdrive(ddata, sec_vibrator_use_short_overdrive(ddata));
 	sec_vibrator_set_frequency(ddata, ddata->frequency);
 	sec_vibrator_set_intensity(ddata, ddata->intensity);
 	sec_vibrator_set_enable(ddata, true);
-
-	if (ddata->vib_ops->set_frequency)
-		pr_info("freq:%d, intensity:%d, %dms\n", ddata->frequency, ddata->intensity, ddata->timeout);
-	else if (ddata->vib_ops->set_intensity)
-		pr_info("intensity:%d, %dms\n", ddata->intensity, ddata->timeout);
-	else
-		pr_info("%dms\n", ddata->timeout);
 }
 
 static void sec_vibrator_haptic_disable(struct sec_vibrator_drvdata *ddata)
@@ -273,11 +290,6 @@ static void sec_vibrator_haptic_disable(struct sec_vibrator_drvdata *ddata)
 	sec_vibrator_set_overdrive(ddata, false);
 	sec_vibrator_set_frequency(ddata, FREQ_ALERT);
 	sec_vibrator_set_intensity(ddata, 0);
-
-	if (ddata->timeout > 0)
-		pr_info("timeout, off\n");
-	else
-		pr_info("off\n");
 }
 
 static void sec_vibrator_engine_run_packet(struct sec_vibrator_drvdata *ddata, struct vib_packet packet)
@@ -307,15 +319,11 @@ static void sec_vibrator_engine_run_packet(struct sec_vibrator_drvdata *ddata, s
 		ddata->packet_running = true;
 	} else {
 		if (ddata->packet_running) {
-			pr_info("[haptic engine] motor stop\n");
 			sec_vibrator_set_enable(ddata, false);
 		}
 		ddata->packet_running = false;
 		sec_vibrator_set_intensity(ddata, intensity);
 	}
-
-	pr_info("%s [%d] freq:%d, intensity:%d, time:%d overdrive: %d\n",
-		__func__, ddata->packet_cnt, frequency, intensity, ddata->timeout, overdrive);
 }
 
 static void timed_output_enable(struct sec_vibrator_drvdata *ddata, unsigned int value)
@@ -329,7 +337,7 @@ static void timed_output_enable(struct sec_vibrator_drvdata *ddata, unsigned int
 	}
 
 	ret = hrtimer_cancel(timer);
-	kthread_flush_worker(&ddata->kworker);
+	kthread_cancel_work_sync(&ddata->kwork);
 
 	mutex_lock(&ddata->vib_mutex);
 
@@ -370,7 +378,6 @@ static enum hrtimer_restart haptic_timer_func(struct hrtimer *timer)
 		return -ENODATA;
 	}
 
-	pr_info("%s\n", __func__);
 	kthread_queue_work(&ddata->kworker, &ddata->kwork);
 	return HRTIMER_NORESTART;
 }

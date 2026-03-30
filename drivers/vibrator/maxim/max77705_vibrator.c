@@ -57,8 +57,6 @@ static int max77705_vib_set_ratio_with_temp(struct device *dev, int temperature)
 	struct max77705_vibrator_drvdata *ddata = dev_get_drvdata(dev);
 	struct max77705_vibrator_pdata *pdata = ddata->pdata;
 
-	pr_info("temperature is %d\n", temperature);
-
 	if (temperature >= pdata->high_temp_ref)
 		ddata->is_high_temp = true;
 	else
@@ -176,6 +174,8 @@ static int max77705_vib_set_ratio(struct max77705_vibrator_drvdata *ddata)
 
 	if (ddata->is_high_temp)
 		ratio = ddata->pdata->high_temp_ratio;
+	else if (ddata->sec_vib_ddata.overdrive && ddata->pdata->overdrive_ratio)
+		ratio = ddata->pdata->overdrive_ratio;
 	else {
 #if defined(CONFIG_MAX77705_VIB_FOLD_MODEL)
 		ratio = set_fold_model_ratio(ddata);
@@ -183,8 +183,6 @@ static int max77705_vib_set_ratio(struct max77705_vibrator_drvdata *ddata)
 		ratio = ddata->pdata->normal_ratio;
 #endif
 	}
-
-	pr_info("ratio set to %d\n", ratio);
 
 	return ratio;
 }
@@ -216,9 +214,7 @@ static int max77705_vib_set_overdrive(struct device *dev, bool en)
 {
 	struct max77705_vibrator_drvdata *ddata = dev_get_drvdata(dev);
 
-	if (ddata->pdata->overdrive_ratio)
-		ddata->ratio = en ? ddata->pdata->overdrive_ratio :
-			ddata->pdata->normal_ratio;
+	ddata->sec_vib_ddata.overdrive = en && ddata->pdata->overdrive_ratio;
 
 	return 0;
 }

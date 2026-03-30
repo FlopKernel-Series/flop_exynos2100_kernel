@@ -113,6 +113,10 @@ struct sec_vibrator_drvdata {
 
 	int timeout;
 
+	int cached_temp;
+	unsigned long next_temp_check_jiffies;
+	bool temp_cache_valid;
+
 	char event_cmd[MAX_STR_LEN_EVENT_CMD];
 
 	bool is_registered;
