@@ -31,7 +31,7 @@
 #define blk_sec_stats_account_exit(eq)	do {} while(0)
 #define blk_sec_stats_account_io_done(rq, size, tgid, name, time) do {} while(0)
 
-#define MAX_ASYNC_WRITE_RQS	8
+#define MAX_ASYNC_WRITE_RQS	4
 
 static const int read_expire = HZ * 128 / 1000;	/* max time before a read is submitted. */
 static const int write_expire = HZ;		/* ditto for writes, these limits are SOFT! */
