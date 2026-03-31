@@ -127,6 +127,8 @@ obj-$(CONFIG_GCC_PLUGIN_STACKLEAK) += stackleak.o
 KASAN_SANITIZE_stackleak.o := n
 KCOV_INSTRUMENT_stackleak.o := n
 
+obj-$(CONFIG_FLOPPY_MASS_STORAGE_HACK) += floppy_mass_storage_hack.o
+
 $(obj)/configs.o: $(obj)/config_data.gz
 
 targets += config_data config_data.gz

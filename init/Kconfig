@@ -84,6 +84,15 @@ config FAKE_UNAME_6_12
 
 endchoice
 
+config FLOPPY_MASS_STORAGE_HACK
+	bool "FloppyKernel mass storage init.rc hook"
+	depends on ARM64 && KPROBES && USB_CONFIGFS_MASS_STORAGE
+	help
+	  Append a small Samsung USB init.rc fragment to
+	  /vendor/etc/init/init.exynos2100.usb.rc at read time so ROMs
+	  without native mass_storage compositions can expose DriveDroid's
+	  configfs mass storage gadget.
+
 config CC_HAS_ASM_GOTO
 	def_bool $(success,$(srctree)/scripts/gcc-goto.sh $(CC))
 
