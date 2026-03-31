@@ -2,8 +2,10 @@
 
 #if defined(CONFIG_SENSORS_FINGERPRINT_MODULE)
 #if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
+#include <linux/cpufreq.h>
 #include <soc/samsung/exynos_pm_qos.h>
-static struct exynos_pm_qos_request fingerprint_boost_qos;
+static struct exynos_pm_qos_request fingerprint_mid_boost_qos;
+static struct exynos_pm_qos_request fingerprint_big_boost_qos;
 #endif
 #elif defined(CONFIG_SECURE_OS_BOOSTER_API)
 #include <mach/secos_booster.h>
@@ -104,12 +106,36 @@ int cpu_speedup_enable(struct boosting_config *boosting)
 {
 	int retval = 0;
 
+#if defined(CONFIG_SENSORS_FINGERPRINT_MODULE)
+#if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
+	unsigned int mid_freq = boosting && boosting->min_cpufreq_limit ?
+			boosting->min_cpufreq_limit : cpufreq_quick_get_max(4);
+	unsigned int big_freq = cpufreq_quick_get_max(7);
+#endif
+#endif
+
 	pr_info("%s\n", __func__);
+
 /* Module build & TEEGris */
 #if defined(CONFIG_SENSORS_FINGERPRINT_MODULE)
 #if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
-	exynos_pm_qos_add_request(&fingerprint_boost_qos, PM_QOS_CLUSTER1_FREQ_MIN,
-			PM_QOS_CLUSTER1_FREQ_MAX_DEFAULT_VALUE);
+
+	if (!mid_freq)
+		mid_freq = PM_QOS_CLUSTER1_FREQ_MIN_DEFAULT_VALUE;
+
+	if (!exynos_pm_qos_request_active(&fingerprint_mid_boost_qos))
+		exynos_pm_qos_add_request(&fingerprint_mid_boost_qos,
+				PM_QOS_CLUSTER1_FREQ_MIN, mid_freq);
+	else
+		exynos_pm_qos_update_request(&fingerprint_mid_boost_qos, mid_freq);
+
+	if (big_freq) {
+		if (!exynos_pm_qos_request_active(&fingerprint_big_boost_qos))
+			exynos_pm_qos_add_request(&fingerprint_big_boost_qos,
+					PM_QOS_CLUSTER2_FREQ_MIN, big_freq);
+		else
+			exynos_pm_qos_update_request(&fingerprint_big_boost_qos, big_freq);
+	}
 #endif
 /* TEEGris */
 #elif defined(CONFIG_TZDEV_BOOST)
@@ -136,7 +162,10 @@ int cpu_speedup_disable(struct boosting_config *boosting)
 /* Module build & TEEGris */
 #if defined(CONFIG_SENSORS_FINGERPRINT_MODULE)
 #if IS_ENABLED(CONFIG_EXYNOS_PM_QOS) || IS_ENABLED(CONFIG_EXYNOS_PM_QOS_MODULE)
-	exynos_pm_qos_remove_request(&fingerprint_boost_qos);
+	if (exynos_pm_qos_request_active(&fingerprint_mid_boost_qos))
+		exynos_pm_qos_remove_request(&fingerprint_mid_boost_qos);
+	if (exynos_pm_qos_request_active(&fingerprint_big_boost_qos))
+		exynos_pm_qos_remove_request(&fingerprint_big_boost_qos);
 #endif
 /* TEEGris */
 #elif defined(CONFIG_TZDEV_BOOST)
