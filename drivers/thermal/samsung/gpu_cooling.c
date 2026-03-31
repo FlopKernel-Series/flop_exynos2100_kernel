@@ -83,6 +83,21 @@ static unsigned int gpufreq_cdev_count;
 
 struct cpufreq_frequency_table *gpu_freq_table;
 
+static unsigned int gpu_cooling_get_min_cooling_freq(void)
+{
+	struct device_node *np;
+	u32 freq = 0;
+
+	np = of_find_node_by_name(NULL, "mali");
+	if (!np)
+		return 0;
+
+	of_property_read_u32(np, "gpu_sustainable_clock", &freq);
+	of_node_put(np);
+
+	return freq;
+}
+
 /**
  * get_idr - function to get a unique id.
  * @idr: struct idr * handle used to create a id.
@@ -279,11 +294,14 @@ static int build_dyn_power_table(struct gpufreq_cooling_device *gpufreq_cdev,
 	struct power_table *power_table;
 	int num_opps = 0, i, cnt = 0;
 	unsigned long freq;
+	unsigned int min_cooling_freq;
 
 	num_opps = gpu_dvfs_get_step();
 
 	if (num_opps == 0)
 		return -EINVAL;
+
+	min_cooling_freq = gpu_cooling_get_min_cooling_freq();
 
 	power_table = kcalloc(num_opps, sizeof(*power_table), GFP_KERNEL);
 	if (!power_table)
@@ -295,7 +313,8 @@ static int build_dyn_power_table(struct gpufreq_cooling_device *gpufreq_cdev,
 
 		freq = gpu_dvfs_get_clock(num_opps - i - 1);
 
-		if (freq > gpu_dvfs_get_max_cooling_freq() || freq == 0)
+		if (freq > gpu_dvfs_get_max_cooling_freq() || freq == 0 ||
+		    (min_cooling_freq && freq < min_cooling_freq))
 			continue;
 
 		voltage_mv = gpu_dvfs_get_voltage(freq) / 1000;
@@ -965,6 +984,7 @@ static int gpu_cooling_table_init(void)
 	int i = 0;
 	int num_level = 0, count = 0;
 	unsigned long freq;
+	unsigned int min_cooling_freq;
 
 	num_level = gpu_dvfs_get_step();
 
@@ -972,6 +992,8 @@ static int gpu_cooling_table_init(void)
 		tmu_pr_err("Faile to get gpu_dvfs_get_step()\n");
 		return -EINVAL;
 	}
+
+	min_cooling_freq = gpu_cooling_get_min_cooling_freq();
 
 	/* Table size can be num_of_range + 1 since last row has the value of TABLE_END */
 	gpu_freq_table = kzalloc(sizeof(struct cpufreq_frequency_table)
@@ -983,7 +1005,8 @@ static int gpu_cooling_table_init(void)
 	for (i = 0; i < num_level; i++) {
 		freq = gpu_dvfs_get_clock(i);
 
-		if (freq > gpu_dvfs_get_max_cooling_freq() || freq == 0)
+		if (freq > gpu_dvfs_get_max_cooling_freq() || freq == 0 ||
+		    (min_cooling_freq && freq < min_cooling_freq))
 			continue;
 
 		gpu_freq_table[count].flags = 0;
