@@ -138,6 +138,8 @@ static inline void print_sec_variables(const char *machine_name)
 		       sec_get_feat(SEC_FEAT_USES_S2MPB02) ? "true" : "false");
 	SEC_DETECT_LOG("sec_feat_uses_ktd2692 = %s\n",
 		       sec_get_feat(SEC_FEAT_USES_KTD2692) ? "true" : "false");
+	SEC_DETECT_LOG("sec_feat_uses_pd_charger_hv_disable = %s\n",
+		       sec_get_feat(SEC_FEAT_USES_PD_CHARGER_HV_DISABLE) ? "true" : "false");
 	SEC_DETECT_LOG("sec_feat_support_mask_layer = %s\n",
 		       sec_get_feat(SEC_FEAT_SUPPORT_MASK_LAYER) ? "true" : "false");
 	SEC_DETECT_LOG("sec_feat_support_tig = %s\n",
@@ -219,6 +221,7 @@ static int __init sec_detect_init(void)
 		strscpy(g_sec_current_device_name, "o1s",
 			sizeof(g_sec_current_device_name));
 		sec_feat_flags[SEC_FEAT_USES_S2MPB02] = true;
+		sec_feat_flags[SEC_FEAT_USES_PD_CHARGER_HV_DISABLE] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_HMD] = true;
 		sec_feat_flags[SEC_FEAT_USES_SSP_UNBOUND] = true;
 		sec_feat_flags[SEC_FEAT_USES_BCM4375] = true;

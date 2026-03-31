@@ -25,6 +25,7 @@
 #include <linux/samsung/sec_param.h>
 #endif
 #include <linux/sec_debug.h>
+#include <linux/sec_detect.h>
 
 #if defined(CONFIG_SEC_KUNIT)
 #include <kunit/mock.h>
@@ -58,6 +59,11 @@ module_param(pd_disable, uint, 0444);
 static const char *sec_voter_name[] = {
 	FOREACH_VOTER(GENERATE_STRING)
 };
+
+static inline bool sec_bat_uses_pd_charger_hv_disable(void)
+{
+	return sec_get_feat(SEC_FEAT_USES_PD_CHARGER_HV_DISABLE);
+}
 
 static enum power_supply_property sec_battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
@@ -4684,26 +4690,35 @@ static int sec_bat_set_property(struct power_supply *psy,
 					   &battery->monitor_work, 0);
 			break;
 		case POWER_SUPPLY_EXT_PROP_HV_DISABLE:
-#if !defined(CONFIG_PD_CHARGER_HV_DISABLE)
 #if IS_ENABLED(CONFIG_MUIC_NOTIFIER)
-			pr_info("HV wired charging mode is %s\n", (val->intval == CH_MODE_AFC_DISABLE_VAL ? "Disabled" : "Enabled"));
-			if (val->intval == CH_MODE_AFC_DISABLE_VAL) {
-				sec_bat_set_current_event(battery,
-					SEC_BAT_CURRENT_EVENT_HV_DISABLE, SEC_BAT_CURRENT_EVENT_HV_DISABLE);
+#if defined(CONFIG_PD_CHARGER_HV_DISABLE)
+			if (sec_bat_uses_pd_charger_hv_disable()) {
+				pr_info("%s: ignore MUIC HV disable update on this device\n",
+					__func__);
 			} else {
-				sec_bat_set_current_event(battery,
-					0, SEC_BAT_CURRENT_EVENT_HV_DISABLE);
-			}
-
-			if (is_pd_wire_type(battery->cable_type)) {
-				battery->update_pd_list = true;
-				pr_info("%s: update pd list\n", __func__);
-#if IS_ENABLED(CONFIG_DIRECT_CHARGING)
-				if (is_pd_apdo_wire_type(battery->cable_type))
-					psy_do_property(battery->pdata->charger_name, set,
-						POWER_SUPPLY_EXT_PROP_REFRESH_CHARGING_SOURCE, value);
 #endif
-				sec_vote_refresh(battery->iv_vote);
+				pr_info("HV wired charging mode is %s\n",
+					(val->intval == CH_MODE_AFC_DISABLE_VAL ? "Disabled" : "Enabled"));
+				if (val->intval == CH_MODE_AFC_DISABLE_VAL) {
+					sec_bat_set_current_event(battery,
+						SEC_BAT_CURRENT_EVENT_HV_DISABLE,
+						SEC_BAT_CURRENT_EVENT_HV_DISABLE);
+				} else {
+					sec_bat_set_current_event(battery,
+						0, SEC_BAT_CURRENT_EVENT_HV_DISABLE);
+				}
+
+				if (is_pd_wire_type(battery->cable_type)) {
+					battery->update_pd_list = true;
+					pr_info("%s: update pd list\n", __func__);
+#if IS_ENABLED(CONFIG_DIRECT_CHARGING)
+					if (is_pd_apdo_wire_type(battery->cable_type))
+						psy_do_property(battery->pdata->charger_name, set,
+							POWER_SUPPLY_EXT_PROP_REFRESH_CHARGING_SOURCE, value);
+#endif
+					sec_vote_refresh(battery->iv_vote);
+				}
+#if defined(CONFIG_PD_CHARGER_HV_DISABLE)
 			}
 #endif
 #endif
@@ -6381,16 +6396,19 @@ static int usb_typec_handle_after_id(struct sec_battery_info *battery, int cable
 #endif
 
 #if defined(CONFIG_PD_CHARGER_HV_DISABLE) && !defined(CONFIG_SEC_FACTORY)
-	if (battery->muic_cable_type == ATTACHED_DEV_AFC_CHARGER_DISABLED_MUIC) {
-		pr_info("%s set SEC_BAT_CURRENT_EVENT_AFC_DISABLE\n", __func__);
-		sec_bat_set_current_event(battery,
-			SEC_BAT_CURRENT_EVENT_AFC_DISABLE, SEC_BAT_CURRENT_EVENT_AFC_DISABLE);
-		__pm_stay_awake(battery->monitor_ws);
-		queue_delayed_work(battery->monitor_wqueue,
-				   &battery->monitor_work, 0);
-	} else {
-		sec_bat_set_current_event(battery,
-			0, SEC_BAT_CURRENT_EVENT_AFC_DISABLE);
+	if (sec_bat_uses_pd_charger_hv_disable()) {
+		if (battery->muic_cable_type == ATTACHED_DEV_AFC_CHARGER_DISABLED_MUIC) {
+			pr_info("%s set SEC_BAT_CURRENT_EVENT_AFC_DISABLE\n", __func__);
+			sec_bat_set_current_event(battery,
+				SEC_BAT_CURRENT_EVENT_AFC_DISABLE,
+				SEC_BAT_CURRENT_EVENT_AFC_DISABLE);
+			__pm_stay_awake(battery->monitor_ws);
+			queue_delayed_work(battery->monitor_wqueue,
+					   &battery->monitor_work, 0);
+		} else {
+			sec_bat_set_current_event(battery,
+				0, SEC_BAT_CURRENT_EVENT_AFC_DISABLE);
+		}
 	}
 #endif
 	sec_bat_set_misc_event(battery,
@@ -6777,22 +6795,27 @@ __visible_for_testing void sec_bat_parse_param_value(struct sec_battery_info *ba
 	pr_info("%s: pd_disable: 0x%x (pd_hv_disable:0x%x)\n",
 		__func__, sec_bat_get_dispd(), pd_hv_disable);
 #if defined(CONFIG_PD_CHARGER_HV_DISABLE)
-	if (pd_hv_disable == '1') { /* 0x31 */
-		battery->pd_disable = true;
-		pr_info("PD wired charging mode is disabled\n");
-		sec_bat_set_current_event(battery,
-			SEC_BAT_CURRENT_EVENT_HV_DISABLE, SEC_BAT_CURRENT_EVENT_HV_DISABLE);
-	}
-#else
+	if (sec_bat_uses_pd_charger_hv_disable()) {
+		if (pd_hv_disable == '1') { /* 0x31 */
+			battery->pd_disable = true;
+			pr_info("PD wired charging mode is disabled\n");
+			sec_bat_set_current_event(battery,
+				SEC_BAT_CURRENT_EVENT_HV_DISABLE,
+				SEC_BAT_CURRENT_EVENT_HV_DISABLE);
+		}
+	} else
+#endif
+	{
 #if IS_ENABLED(CONFIG_MUIC_NOTIFIER)
-	/* Check High Voltage charging option for wired charging */
-	if (get_afc_mode() == CH_MODE_AFC_DISABLE_VAL) {
-		pr_info("HV wired charging mode is disabled\n");
-		sec_bat_set_current_event(battery,
-			SEC_BAT_CURRENT_EVENT_HV_DISABLE, SEC_BAT_CURRENT_EVENT_HV_DISABLE);
+		/* Check High Voltage charging option for wired charging */
+		if (get_afc_mode() == CH_MODE_AFC_DISABLE_VAL) {
+			pr_info("HV wired charging mode is disabled\n");
+			sec_bat_set_current_event(battery,
+				SEC_BAT_CURRENT_EVENT_HV_DISABLE,
+				SEC_BAT_CURRENT_EVENT_HV_DISABLE);
+		}
+#endif
 	}
-#endif
-#endif
 }
 EXPORT_SYMBOL_KUNIT(sec_bat_parse_param_value);
 
