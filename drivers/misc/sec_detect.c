@@ -235,6 +235,7 @@ static int __init sec_detect_init(void)
 		strscpy(g_sec_current_device_name, "p3s",
 			sizeof(g_sec_current_device_name));
 		sec_feat_flags[SEC_FEAT_USES_S2MPB02] = true;
+		sec_feat_flags[SEC_FEAT_USES_PD_CHARGER_HV_DISABLE] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_HMD] = true;
 		sec_feat_flags[SEC_FEAT_USES_SSP_UNBOUND] = true;
 		sec_feat_flags[SEC_FEAT_USES_BCM4389] = true;
@@ -243,6 +244,7 @@ static int __init sec_detect_init(void)
 		strscpy(g_sec_current_device_name, "t2s",
 			sizeof(g_sec_current_device_name));
 		sec_feat_flags[SEC_FEAT_USES_S2MPB02] = true;
+		sec_feat_flags[SEC_FEAT_USES_PD_CHARGER_HV_DISABLE] = true;
 		sec_feat_flags[SEC_FEAT_SUPPORT_HMD] = true;
 		sec_feat_flags[SEC_FEAT_USES_SSP_UNBOUND] = true;
 		sec_feat_flags[SEC_FEAT_USES_BCM4375] = true;
