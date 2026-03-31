@@ -93,6 +93,13 @@ config FLOPPY_MASS_STORAGE_HACK
 	  without native mass_storage compositions can expose DriveDroid's
 	  configfs mass storage gadget.
 
+config FLOPPY_MASS_STORAGE_HACK_FORCE
+	bool "Force FloppyKernel mass storage init.rc hook"
+	depends on FLOPPY_MASS_STORAGE_HACK
+	help
+	  Always apply the mass storage init.rc hook regardless of the
+	  externally patched mass_storage_hack state.
+
 config CC_HAS_ASM_GOTO
 	def_bool $(success,$(srctree)/scripts/gcc-goto.sh $(CC))
 

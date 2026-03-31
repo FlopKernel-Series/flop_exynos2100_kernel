@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 
 #include <linux/file.h>
+#include <linux/floppykernel.h>
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -297,6 +298,11 @@ static void floppy_do_stop_init_rc_hook(struct work_struct *work)
 static int __init floppy_mass_storage_hack_init(void)
 {
 	int ret;
+
+	if (!is_mass_storage_hack_enabled()) {
+		pr_info("floppy_usb_rc: disabled\n");
+		return 0;
+	}
 
 	INIT_WORK(&floppy_stop_init_rc_hook_work, floppy_do_stop_init_rc_hook);
 

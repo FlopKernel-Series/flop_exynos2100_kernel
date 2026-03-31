@@ -1283,6 +1283,12 @@ static int fk_feature_get_state(u32 feature_id, u64 *value, bool *supported)
 	case FK_FEATURE_UNAME_BPF_SPOOF:
 		*value = is_bpf_spoof_enabled();
 		break;
+	case FK_FEATURE_MASS_STORAGE_HACK:
+		if (IS_ENABLED(CONFIG_FLOPPY_MASS_STORAGE_HACK))
+			*value = is_mass_storage_hack_enabled();
+		else
+			*supported = false;
+		break;
 	default:
 		*supported = false;
 		break;
@@ -1306,6 +1312,14 @@ static int fk_feature_get_info_by_index(u32 index,
 		info->value = is_bpf_spoof_enabled();
 		strscpy(info->name, "uname_bpf_spoof", sizeof(info->name));
 		return 0;
+#ifdef CONFIG_FLOPPY_MASS_STORAGE_HACK
+	case 1:
+		info->feature_id = FK_FEATURE_MASS_STORAGE_HACK;
+		info->flags = PR_FK_FEATURE_SUPPORTED;
+		info->value = is_mass_storage_hack_enabled();
+		strscpy(info->name, "mass_storage_hack", sizeof(info->name));
+		return 0;
+#endif
 	default:
 		return -ENOENT;
 	}
@@ -1326,6 +1340,9 @@ static int fk_feature_get_info_by_id(u32 feature_id,
 	switch (feature_id) {
 	case FK_FEATURE_UNAME_BPF_SPOOF:
 		strscpy(info->name, "uname_bpf_spoof", sizeof(info->name));
+		break;
+	case FK_FEATURE_MASS_STORAGE_HACK:
+		strscpy(info->name, "mass_storage_hack", sizeof(info->name));
 		break;
 	default:
 		return 0;

@@ -56,6 +56,7 @@
 #include <linux/delayacct.h>
 #include <linux/unistd.h>
 #include <linux/utsname.h>
+#include <linux/floppykernel.h>
 #include <linux/workarounds.h>
 #include <linux/rmap.h>
 #include <linux/mempolicy.h>
@@ -193,6 +194,8 @@ __setup("reset_devices", set_reset_devices);
 
 static int uname_bpf_spoof = 0;
 static char uname_bpf_spoof_default_arg[] = "uname_bpf_spoof=0";
+static bool mass_storage_hack;
+static char mass_storage_hack_default_arg[] = "mass_storage_hack=0";
 
 static int __init set_uname_bpf_spoof(char *val)
 {
@@ -215,9 +218,40 @@ static void __init apply_uname_bpf_spoof_default(void)
 		set_uname_bpf_spoof(val + 1);
 }
 
+static int __init set_mass_storage_hack(char *val)
+{
+	int tmp = mass_storage_hack;
+
+	if (get_option(&val, &tmp))
+		mass_storage_hack = !!tmp;
+
+	return 0;
+}
+__setup("mass_storage_hack=", set_mass_storage_hack);
+
+static void __init apply_mass_storage_hack_default(void)
+{
+	char *val;
+
+	val = strchr(mass_storage_hack_default_arg, '=');
+	if (val)
+		set_mass_storage_hack(val + 1);
+}
+
 int is_bpf_spoof_enabled(void)
 {
 	return uname_bpf_spoof;
+}
+
+bool is_mass_storage_hack_enabled(void)
+{
+	if (!IS_ENABLED(CONFIG_FLOPPY_MASS_STORAGE_HACK))
+		return false;
+
+	if (IS_ENABLED(CONFIG_FLOPPY_MASS_STORAGE_HACK_FORCE))
+		return true;
+
+	return mass_storage_hack;
 }
 
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
@@ -931,6 +965,7 @@ asmlinkage __visible void __init start_kernel(void)
 			   NULL, 0, -1, -1, NULL, set_init_arg);
 
 	apply_uname_bpf_spoof_default();
+	apply_mass_storage_hack_default();
 
 	if (uname_bpf_spoof == 1)
 		pr_info("Workaround: BpfSpoof Partial (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());
@@ -938,6 +973,11 @@ asmlinkage __visible void __init start_kernel(void)
 		pr_info("Workaround: BpfSpoof Full (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());
 	else
 		pr_info("Workaround: BpfSpoof Disabled\n");
+
+	if (IS_ENABLED(CONFIG_FLOPPY_MASS_STORAGE_HACK))
+		pr_info("Workaround: MassStorageHack %s%s\n",
+			is_mass_storage_hack_enabled() ? "Enabled" : "Disabled",
+			IS_ENABLED(CONFIG_FLOPPY_MASS_STORAGE_HACK_FORCE) ? " (forced)" : "");
 
 
 	/*

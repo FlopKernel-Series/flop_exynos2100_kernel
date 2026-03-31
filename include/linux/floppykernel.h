@@ -14,6 +14,7 @@
 
 enum fk_feature_id {
 	FK_FEATURE_UNAME_BPF_SPOOF = 1,
+	FK_FEATURE_MASS_STORAGE_HACK = 2,
 };
 
 struct prctl_fk_feature_state {
@@ -30,5 +31,7 @@ struct prctl_fk_feature_info {
 	u64 value;
 	char name[FK_FEATURE_NAME_LEN];
 };
+
+bool is_mass_storage_hack_enabled(void);
 
 #endif /* _FLOPPYKERNEL_H */
