@@ -51,6 +51,7 @@ int send_ev_enable;
 
 /* Boost enhancement percentage for touch inputs. */
 #define TOUCH_BOOST_ENHANCE_PERCENT	50
+#define TOUCH_INT_BOOST_KHZ		(800 * 1000)
 
 #if IS_ENABLED(CONFIG_SEC_INPUT_BOOSTER_SLSI)
 static bool has_allowed_resource(int res_id)
@@ -140,6 +141,20 @@ static void enhance_touch_boost_values(struct t_ib_device_tree *ib_dt)
 		ib_dt->res[CLUSTER1].label = "cluster1";
 		ib_dt->res[CLUSTER1].head_value = ib_dt->res[cpu_res_id].head_value;
 		ib_dt->res[CLUSTER1].tail_value = ib_dt->res[cpu_res_id].tail_value;
+	}
+
+	/*
+	 * The runtime input-booster configs on this platform keep INT at 0
+	 * for touch, but the display path still needs more headroom than that
+	 * once the boot-time QoS grace period expires. Give touch a stronger
+	 * INT floor so UI drags do not depend on the rest of the system
+	 * already being hot.
+	 */
+	if (!ib_dt->res[INT].head_value && !ib_dt->res[INT].tail_value) {
+		ib_dt->res[INT].res_id = INT;
+		ib_dt->res[INT].label = "int";
+		ib_dt->res[INT].head_value = TOUCH_INT_BOOST_KHZ;
+		ib_dt->res[INT].tail_value = TOUCH_INT_BOOST_KHZ;
 	}
 
 	pr_info(ITAG"Enhanced %s boost: %s head=%d KHz, tail=%d KHz",
