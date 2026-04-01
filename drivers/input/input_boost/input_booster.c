@@ -53,6 +53,17 @@ int send_ev_enable;
 #define TOUCH_BOOST_ENHANCE_PERCENT	50
 
 #if IS_ENABLED(CONFIG_SEC_INPUT_BOOSTER_SLSI)
+static bool has_allowed_resource(int res_id)
+{
+	int i;
+
+	for (i = 0; i < allowed_res_count; i++)
+		if (allowed_resources[i] == res_id)
+			return true;
+
+	return false;
+}
+
 static int get_touch_boost_cpu_resource(void)
 {
 	int i;
@@ -116,6 +127,19 @@ static void enhance_touch_boost_values(struct t_ib_device_tree *ib_dt)
 	if (tail_val > 0) {
 		tail_val += (tail_val * TOUCH_BOOST_ENHANCE_PERCENT) / 100;
 		ib_dt->res[cpu_res_id].tail_value = tail_val;
+	}
+
+	/*
+	 * SystemUI and launcher gesture work often runs on the mid cluster
+	 * after the system settles, so mirror the boosted touch floor there
+	 * when the board DTS only describes the big-cluster resource.
+	 */
+	if (cpu_res_id != CLUSTER1 && !ib_dt->res[CLUSTER1].head_value &&
+	    !ib_dt->res[CLUSTER1].tail_value) {
+		ib_dt->res[CLUSTER1].res_id = CLUSTER1;
+		ib_dt->res[CLUSTER1].label = "cluster1";
+		ib_dt->res[CLUSTER1].head_value = ib_dt->res[cpu_res_id].head_value;
+		ib_dt->res[CLUSTER1].tail_value = ib_dt->res[cpu_res_id].tail_value;
 	}
 
 	pr_info(ITAG"Enhanced %s boost: %s head=%d KHz, tail=%d KHz",
@@ -978,6 +1002,14 @@ void input_booster_init(void)
 
 		device_count++;
 	}
+
+#if IS_ENABLED(CONFIG_SEC_INPUT_BOOSTER_SLSI)
+	if (!has_allowed_resource(CLUSTER1) && has_allowed_resource(CLUSTER2) &&
+	    allowed_res_count < max_resource_count) {
+		allowed_resources[allowed_res_count++] = CLUSTER1;
+		pr_info(ITAG" Added synthesized cluster1 touch boost resource");
+	}
+#endif
 
 	ib_init_succeed = is_ib_init_succeed();
 	pr_info(ITAG" Total Input Device Count(%d), IsSuccess(%d)", device_count, ib_init_succeed);
