@@ -183,7 +183,8 @@ void trigger_input_booster(struct work_struct *work)
 				continue;
 			}
 			if (ib != NULL &&
-				ib->ib_dt->res[allowed_resources[res_type]].head_value != 0) {
+				(ib->ib_dt->res[allowed_resources[res_type]].head_value != 0 ||
+				 ib->ib_dt->res[allowed_resources[res_type]].tail_value != 0)) {
 				struct t_ib_target* tv;
 				tv = kmalloc(sizeof(struct t_ib_target), GFP_KERNEL);
 
@@ -398,6 +399,8 @@ void press_timeout_func(struct work_struct* work)
 		//NO TAIL Scenario : Delete Ib instance and free all memory space.
 		for (res_type = 0; res_type < allowed_res_count; res_type++) {
 			res = target_ib->ib_dt->res[allowed_resources[res_type]];
+			if (!res.head_value && !res.tail_value)
+				continue;
 
 			tv = find_update_target(target_ib->uniq_id, res.res_id);
 			if (tv == NULL) {
@@ -462,6 +465,8 @@ void release_state_func(struct work_struct* work)
 
 	for (res_type = 0; res_type < allowed_res_count; res_type++) {
 		res = target_ib->ib_dt->res[allowed_resources[res_type]];
+		if (!res.head_value && !res.tail_value)
+			continue;
 		if (res.tail_value == 0)
 			continue;
 
@@ -514,6 +519,8 @@ void release_timeout_func(struct work_struct* work)
 	mutex_lock(&sip_rel_lock);
 	for (res_type = 0; res_type < allowed_res_count; res_type++) {
 		res = target_ib->ib_dt->res[allowed_resources[res_type]];
+		if (!res.head_value && !res.tail_value)
+			continue;
 
 		tv = find_update_target(target_ib->uniq_id, res.res_id);
 		if (tv == NULL) {
