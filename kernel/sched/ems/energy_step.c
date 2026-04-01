@@ -10,6 +10,7 @@
  */
 
 #include <linux/kthread.h>
+#include <linux/binfmts.h>
 #include <linux/cpufreq.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/slab.h>
@@ -512,6 +513,30 @@ static ssize_t store_##name(struct kobject *k, const char *buf, size_t count)	\
 	return count;								\
 }
 
+#define esg_store_protected(name)						\
+static ssize_t store_##name(struct kobject *k, const char *buf, size_t count)	\
+{										\
+	struct esgov_policy *esg_policy =					\
+			container_of(k, struct esgov_policy, kobj);		\
+	int data;								\
+										\
+	if (!sscanf(buf, "%d", &data))						\
+		return -EINVAL;							\
+										\
+	/*									\
+	 * Keep the mid-cluster clamp policy at the governor defaults.	\
+	 * Vendor init/perf daemons override these three knobs for the	\
+	 * coregroup4 policy only, and that regression is what made bursty	\
+	 * UI work feel sticky after the boot-hot period expires.		\
+	 */									\
+	if (task_is_booster(current) && esg_policy->policy &&			\
+			esg_policy->policy->cpu == 4)				\
+		return count;							\
+										\
+	esg_policy->name = data;						\
+	return count;								\
+}
+
 esg_show_step(step, step_power);
 esg_store_step(step);
 esg_attr_rw(step);
@@ -525,15 +550,15 @@ esg_store(uclamp_min);
 esg_attr_rw(uclamp_min);
 
 esg_show(uclamp_max);
-esg_store(uclamp_max);
+esg_store_protected(uclamp_max);
 esg_attr_rw(uclamp_max);
 
 esg_show(uclamp_monitor_len);
-esg_store(uclamp_monitor_len);
+esg_store_protected(uclamp_monitor_len);
 esg_attr_rw(uclamp_monitor_len);
 
 esg_show(uclamp_busy_ratio);
-esg_store(uclamp_busy_ratio);
+esg_store_protected(uclamp_busy_ratio);
 esg_attr_rw(uclamp_busy_ratio);
 
 esg_show(slack_expired_time_ms);
