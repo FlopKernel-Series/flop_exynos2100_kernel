@@ -9,6 +9,7 @@
 #include "../sched-pelt.h"
 #include "ems.h"
 
+#include <linux/binfmts.h>
 #include <trace/events/ems.h>
 #include <trace/events/ems_debug.h>
 
@@ -440,6 +441,9 @@ int sysctl_sched_util_est_handler(struct ctl_table *table, int write,
 {
 	unsigned int old_value;
 	int result;
+
+	if (write && task_is_booster(current))
+		return 0;
 
 	old_value = sysctl_sched_util_est_clamp;
 
