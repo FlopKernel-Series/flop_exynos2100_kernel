@@ -342,8 +342,8 @@ out:
 }
 
 static int exynos_cpufreq_target(struct cpufreq_policy *policy,
-					unsigned int relation,
-					unsigned int target_freq)
+					unsigned int target_freq,
+					unsigned int relation)
 {
 	struct exynos_cpufreq_domain *domain = find_domain(policy->cpu);
 	unsigned long freq;
