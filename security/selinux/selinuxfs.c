@@ -159,8 +159,6 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 	new_value = !!new_value;
 
 	old_value = enforcing_enabled(state);
-
-	new_value = 1;
 	if (new_value != selinux_enforcing) {
 		length = avc_has_perm(&selinux_state,
 						current_sid(), SECINITSID_SECURITY,
