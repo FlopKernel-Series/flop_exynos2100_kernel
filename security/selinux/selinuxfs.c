@@ -139,6 +139,7 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 	struct selinux_state *state = fsi->state;
 	char *page = NULL;
 	ssize_t length;
+	int fixed_value;
 	int old_value, new_value;
 
 	if (count >= PAGE_SIZE)
@@ -157,6 +158,14 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 		goto out;
 
 	new_value = !!new_value;
+	fixed_value = selinux_fixed_enforcing();
+	if (fixed_value >= 0) {
+		if (new_value != fixed_value) {
+			length = -EINVAL;
+			goto out;
+		}
+		new_value = fixed_value;
+	}
 
 	old_value = enforcing_enabled(state);
 	if (new_value != selinux_enforcing) {
@@ -174,6 +183,7 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 				audit_get_sessionid(current),
 				1, 1);
 		enforcing_set(state, new_value);
+		selinux_enforcing = new_value;
 		if (new_value)
 			avc_ss_reset(state->avc, 0);
 		selnl_notify_setenforce(new_value);

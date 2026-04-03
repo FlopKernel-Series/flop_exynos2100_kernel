@@ -119,6 +119,17 @@ void selinux_avc_init(struct selinux_avc **avc);
 
 extern struct selinux_state selinux_state;
 
+static inline int selinux_fixed_enforcing(void)
+{
+#ifdef CONFIG_SECURITY_SELINUX_ALWAYS_ENFORCE
+	return 1;
+#elif defined(CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE)
+	return 0;
+#else
+	return -1;
+#endif
+}
+
 static inline bool selinux_initialized(const struct selinux_state *state)
 {
 	/* do a synchronized load to avoid race conditions */
@@ -133,7 +144,11 @@ static inline void selinux_mark_initialized(struct selinux_state *state)
 
 static inline bool enforcing_enabled(struct selinux_state *state)
 {
+#ifdef CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE
+	return false;
+#else
 	return true;
+#endif
 }
 
 static inline void enforcing_set(struct selinux_state *state, bool value)

@@ -61,6 +61,33 @@ config SECURITY_SELINUX_DEVELOP
 	  permissive mode (if permitted by the policy) via
 	  /sys/fs/selinux/enforce.
 
+choice
+	prompt "NSA SELinux fixed mode"
+	depends on SECURITY_SELINUX_DEVELOP
+	default SECURITY_SELINUX_MODE_DEFAULT
+	help
+	  Select whether SELinux should follow its normal boot/runtime mode
+	  behavior or be pinned to a fixed state.
+
+config SECURITY_SELINUX_MODE_DEFAULT
+	bool "NSA SELinux Normal Behavior"
+	help
+	  Keep the normal SELinux boot and runtime mode behavior.
+
+config SECURITY_SELINUX_ALWAYS_ENFORCE
+	bool "NSA SELinux Always Enforcing"
+	help
+	  This option forces SELinux to stay in enforcing mode from boot
+	  and rejects attempts to switch it to permissive at runtime.
+
+config SECURITY_SELINUX_ALWAYS_PERMISSIVE
+	bool "NSA SELinux Always Permissive"
+	help
+	  This option forces SELinux to stay in permissive mode from boot
+	  and rejects attempts to switch it to enforcing at runtime.
+
+endchoice
+
 config SECURITY_SELINUX_AVC_STATS
 	bool "NSA SELinux AVC Statistics"
 	depends on SECURITY_SELINUX

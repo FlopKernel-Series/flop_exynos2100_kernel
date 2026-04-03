@@ -116,9 +116,25 @@ static DEFINE_MUTEX(selinux_sdcardfs_lock);
 static int selinux_enforcing_boot __initdata;
 int selinux_enforcing;
 
+static void __init selinux_apply_fixed_enforcing_mode(void)
+{
+	int enforcing = selinux_fixed_enforcing();
+
+	if (enforcing < 0)
+		return;
+
+	selinux_enforcing_boot = enforcing;
+	selinux_enforcing = enforcing;
+}
+
 static int __init enforcing_setup(char *str)
 {
 	unsigned long enforcing;
+
+	selinux_apply_fixed_enforcing_mode();
+	if (selinux_fixed_enforcing() >= 0)
+		return 1;
+
 	if (!kstrtoul(str, 0, &enforcing)) {
 		selinux_enforcing_boot = enforcing ? 1 : 0;
 		selinux_enforcing = enforcing ? 1 : 0;
@@ -128,6 +144,7 @@ static int __init enforcing_setup(char *str)
 __setup("enforcing=", enforcing_setup);
 #else
 #define selinux_enforcing_boot 1
+static inline void selinux_apply_fixed_enforcing_mode(void) { }
 #endif
 
 int selinux_enabled_boot __initdata = 1;
@@ -137,7 +154,6 @@ static int __init selinux_enabled_setup(char *str)
 	unsigned long enabled;
 	if (!kstrtoul(str, 0, &enabled))
 		selinux_enabled_boot = enabled ? 1 : 0;
-	}
 	return 1;
 }
 __setup("selinux=", selinux_enabled_setup);
@@ -7335,6 +7351,7 @@ static __init int selinux_init(void)
 	pr_info("SELinux:  Initializing.\n");
 
 	memset(&selinux_state, 0, sizeof(selinux_state));
+	selinux_apply_fixed_enforcing_mode();
 	enforcing_set(&selinux_state, selinux_enforcing_boot);
 	selinux_state.checkreqprot = selinux_checkreqprot_boot;
 	selinux_ss_init(&selinux_state.ss);
