@@ -15,6 +15,7 @@
 #include <linux/types.h>
 #include <linux/refcount.h>
 #include <linux/workqueue.h>
+#include <linux/floppykernel.h>
 #include "flask.h"
 
 #define SECSID_NULL			0x00000000 /* unspecified SID */
@@ -126,7 +127,14 @@ static inline int selinux_fixed_enforcing(void)
 #elif defined(CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE)
 	return 0;
 #else
-	return -1;
+	switch (get_selinux_mode()) {
+	case FK_SELINUX_MODE_ENFORCING:
+		return 1;
+	case FK_SELINUX_MODE_PERMISSIVE:
+		return 0;
+	default:
+		return -1;
+	}
 #endif
 }
 
@@ -144,11 +152,10 @@ static inline void selinux_mark_initialized(struct selinux_state *state)
 
 static inline bool enforcing_enabled(struct selinux_state *state)
 {
-#ifdef CONFIG_SECURITY_SELINUX_ALWAYS_PERMISSIVE
-	return false;
-#else
+	if (selinux_fixed_enforcing() == 0)
+		return false;
+
 	return true;
-#endif
 }
 
 static inline void enforcing_set(struct selinux_state *state, bool value)

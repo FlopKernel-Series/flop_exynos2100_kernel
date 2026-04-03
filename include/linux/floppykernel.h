@@ -15,6 +15,13 @@
 enum fk_feature_id {
 	FK_FEATURE_UNAME_BPF_SPOOF = 1,
 	FK_FEATURE_MASS_STORAGE_HACK = 2,
+	FK_FEATURE_SELINUX_MODE = 3,
+};
+
+enum fk_selinux_mode {
+	FK_SELINUX_MODE_DEFAULT = 0,
+	FK_SELINUX_MODE_ENFORCING = 1,
+	FK_SELINUX_MODE_PERMISSIVE = 2,
 };
 
 struct prctl_fk_feature_state {
@@ -33,5 +40,6 @@ struct prctl_fk_feature_info {
 };
 
 bool is_mass_storage_hack_enabled(void);
+int get_selinux_mode(void);
 
 #endif /* _FLOPPYKERNEL_H */

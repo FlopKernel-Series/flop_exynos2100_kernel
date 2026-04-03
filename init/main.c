@@ -196,6 +196,8 @@ static int uname_bpf_spoof = 0;
 static char uname_bpf_spoof_default_arg[] = "uname_bpf_spoof=0";
 static bool mass_storage_hack;
 static char mass_storage_hack_default_arg[] = "mass_storage_hack=0";
+static int selinux_mode = FK_SELINUX_MODE_DEFAULT;
+static char selinux_mode_default_arg[] = "selinux_mode=0";
 
 static int __init set_uname_bpf_spoof(char *val)
 {
@@ -238,6 +240,36 @@ static void __init apply_mass_storage_hack_default(void)
 		set_mass_storage_hack(val + 1);
 }
 
+static int __init set_selinux_mode(char *val)
+{
+	int tmp = selinux_mode;
+
+	if (get_option(&val, &tmp)) {
+		switch (tmp) {
+		case FK_SELINUX_MODE_DEFAULT:
+		case FK_SELINUX_MODE_ENFORCING:
+		case FK_SELINUX_MODE_PERMISSIVE:
+			selinux_mode = tmp;
+			break;
+		default:
+			selinux_mode = FK_SELINUX_MODE_DEFAULT;
+			break;
+		}
+	}
+
+	return 0;
+}
+__setup("selinux_mode=", set_selinux_mode);
+
+static void __init apply_selinux_mode_default(void)
+{
+	char *val;
+
+	val = strchr(selinux_mode_default_arg, '=');
+	if (val)
+		set_selinux_mode(val + 1);
+}
+
 int is_bpf_spoof_enabled(void)
 {
 	return uname_bpf_spoof;
@@ -252,6 +284,11 @@ bool is_mass_storage_hack_enabled(void)
 		return true;
 
 	return mass_storage_hack;
+}
+
+int get_selinux_mode(void)
+{
+	return selinux_mode;
 }
 
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
@@ -966,6 +1003,7 @@ asmlinkage __visible void __init start_kernel(void)
 
 	apply_uname_bpf_spoof_default();
 	apply_mass_storage_hack_default();
+	apply_selinux_mode_default();
 
 	if (uname_bpf_spoof == 1)
 		pr_info("Workaround: BpfSpoof Partial (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());
@@ -978,6 +1016,18 @@ asmlinkage __visible void __init start_kernel(void)
 		pr_info("Workaround: MassStorageHack %s%s\n",
 			is_mass_storage_hack_enabled() ? "Enabled" : "Disabled",
 			IS_ENABLED(CONFIG_FLOPPY_MASS_STORAGE_HACK_FORCE) ? " (forced)" : "");
+
+	switch (get_selinux_mode()) {
+	case FK_SELINUX_MODE_ENFORCING:
+		pr_info("Workaround: SelinuxMode Enforcing\n");
+		break;
+	case FK_SELINUX_MODE_PERMISSIVE:
+		pr_info("Workaround: SelinuxMode Permissive\n");
+		break;
+	default:
+		pr_info("Workaround: SelinuxMode Default\n");
+		break;
+	}
 
 
 	/*
