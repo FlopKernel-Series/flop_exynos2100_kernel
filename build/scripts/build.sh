@@ -26,6 +26,7 @@ build() {
     FRAGMENTS=""
     [ "$DO_KSU" = "1" ] && FRAGMENTS="$FRAGMENTS ksu.config"
     [ "$DO_SUKI" = "1" ] && FRAGMENTS="$FRAGMENTS sukisu.config"
+    [ "$DO_RKSU" = "1" ] && FRAGMENTS="$FRAGMENTS rksu.config"
 
     MAKE_JOBS="-j$(nproc --all)"
     MAKE_COMMON_ARGS=(
@@ -60,7 +61,7 @@ build() {
     rm -f "$OUT_KERNEL"
 
     if [ "$DO_REGEN" = "1" ]; then
-        if [ "$DO_KSU" = "1" ] || [ "$DO_SUKI" = "1" ]; then
+        if [ "$DO_KSU" = "1" ] || [ "$DO_SUKI" = "1" ] || [ "$DO_RKSU" = "1" ]; then
             log_err "Can't regenerate with SU variant argument"
             exit 1
         fi

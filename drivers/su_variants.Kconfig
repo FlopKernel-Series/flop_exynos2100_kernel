@@ -16,12 +16,18 @@ config KSU_SUKI
 	help
 	  Enable SukiSU Ultra with SUSFS support.
 
+config KSU_RKSU
+	bool "RKSU"
+	select OVERLAY_FS
+	help
+	  Enable RKSU.
+
 endchoice
 
 choice
 	prompt "Hook method"
 	optional
-	depends on KSU_NEXT || KSU_SUKI
+	depends on KSU_NEXT || KSU_SUKI || KSU_RKSU
 	default KSU_KPROBES_HOOK
 	help
 	  Select which hook method to use.
@@ -56,3 +62,5 @@ endchoice
 source "drivers/kernelsu/kernel/Kconfig"
 
 source "drivers/sukisu/kernel/Kconfig"
+
+source "drivers/rksu/kernel/Kconfig"
