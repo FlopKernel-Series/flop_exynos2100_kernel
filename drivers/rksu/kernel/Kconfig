@@ -1,8 +1,8 @@
 menu "KernelSU"
 
 config KSU
-	bool "KernelSU function support"
-	default y
+	tristate "KernelSU function support"
+	default y if KSU_RKSU
 	help
 	  Enable kernel-level root privileges on Android System.
 	  To compile as a module, choose M here: the
@@ -16,12 +16,12 @@ config KSU_LSM_HOOKS
 	  Enable Linux Security Module (LSM) hooks support for
 	  KernelSU.
 
-config KSU_MANUAL_HOOK
-	bool "KernelSU manual hook (stub) (dummy)"
-	depends on KSU
-	default y
-	help
-	  Always Enabled now, do not disable.
+# config KSU_MANUAL_HOOK
+# 	bool "KernelSU manual hook (stub) (dummy)"
+# 	depends on KSU
+# 	default y
+# 	help
+# 	  Always Enabled now, do not disable.
 
 config KSU_DEBUG
 	bool "KernelSU debug mode"
