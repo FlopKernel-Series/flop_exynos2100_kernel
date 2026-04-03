@@ -1,0 +1,40 @@
+name: Build Manager
+
+on:
+  push:
+    branches: [ "main", "dev", "ci", "staging" ]
+    paths:
+      - '.github/workflows/build-manager.yml'
+      - 'manager/**'
+      - 'userspace/**'
+  workflow_call:
+  workflow_dispatch:  
+
+jobs:
+  build-ksud:
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-linux-android
+            os: ubuntu-latest
+          - target: armv7-linux-androideabi
+            os: ubuntu-latest
+
+    uses: ./.github/workflows/ksud.yml
+    with:
+      target: ${{ matrix.target }}
+      pack_lkm: false
+      pack_ksuinit: false
+
+  build-manager:
+    needs: build-ksud
+    if: always() && needs.build-ksud.result == 'success'
+    strategy:
+      matrix:
+        include:
+          - manager_type: normal
+          - manager_type: spoofed
+    uses: ./.github/workflows/build-manager-core.yml
+    secrets: inherit
+    with:
+      manager_type: ${{ matrix.manager_type }}
