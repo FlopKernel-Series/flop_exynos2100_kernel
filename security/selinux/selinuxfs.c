@@ -160,10 +160,6 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 	new_value = !!new_value;
 	fixed_value = selinux_fixed_enforcing();
 	if (fixed_value >= 0) {
-		if (new_value != fixed_value) {
-			length = -EINVAL;
-			goto out;
-		}
 		new_value = fixed_value;
 	}
 

@@ -119,6 +119,9 @@ void selinux_ss_init(struct selinux_ss **ss);
 void selinux_avc_init(struct selinux_avc **avc);
 
 extern struct selinux_state selinux_state;
+#ifdef CONFIG_SECURITY_SELINUX_DEVELOP
+extern int selinux_enforcing;
+#endif
 
 static inline int selinux_fixed_enforcing(void)
 {
@@ -152,14 +155,24 @@ static inline void selinux_mark_initialized(struct selinux_state *state)
 
 static inline bool enforcing_enabled(struct selinux_state *state)
 {
-	if (selinux_fixed_enforcing() == 0)
-		return false;
+	int enforcing = selinux_fixed_enforcing();
 
+	if (enforcing >= 0)
+		return enforcing;
+
+#ifdef CONFIG_SECURITY_SELINUX_DEVELOP
+	return READ_ONCE(selinux_enforcing);
+#else
 	return true;
+#endif
 }
 
 static inline void enforcing_set(struct selinux_state *state, bool value)
 {
+#ifdef CONFIG_SECURITY_SELINUX_DEVELOP
+	WRITE_ONCE(state->enforcing, value);
+	WRITE_ONCE(selinux_enforcing, value);
+#endif
 }
 
 #ifdef CONFIG_SECURITY_SELINUX_DISABLE
