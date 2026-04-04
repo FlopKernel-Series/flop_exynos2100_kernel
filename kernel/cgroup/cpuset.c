@@ -48,7 +48,6 @@
 #include <linux/rcupdate.h>
 #include <linux/sched.h>
 #include <linux/sched/deadline.h>
-#include <linux/workarounds.h>
 #include <linux/sched/mm.h>
 #include <linux/sched/task.h>
 #include <linux/seq_file.h>
@@ -1063,10 +1062,7 @@ static void update_tasks_cpumask(struct cpuset *cs)
 {
 	struct css_task_iter it;
 	struct task_struct *task;
-	const struct cpumask *new_mask;
 	bool top_cs = cs == &top_cpuset;
-
-	new_mask = block_cpuset_enabled() ? cpu_active_mask : cs->effective_cpus;
 
 	css_task_iter_start(&cs->css, 0, &it);
 	while ((task = css_task_iter_next(&it))) {
@@ -1076,7 +1072,7 @@ static void update_tasks_cpumask(struct cpuset *cs)
 		if (top_cs && (task->flags & PF_KTHREAD) &&
 		    kthread_is_per_cpu(task))
 			continue;
-		set_cpus_allowed_ptr(task, new_mask);
+		set_cpus_allowed_ptr(task, cs->effective_cpus);
 	}
 	css_task_iter_end(&it);
 }
@@ -3354,11 +3350,6 @@ void cpuset_cpus_allowed(struct task_struct *tsk, struct cpumask *pmask)
 {
 	unsigned long flags;
 
-	if (block_cpuset_enabled()) {
-		cpumask_copy(pmask, cpu_active_mask);
-		return;
-	}
-
 	spin_lock_irqsave(&callback_lock, flags);
 	rcu_read_lock();
 	guarantee_online_cpus(task_cs(tsk), pmask);
@@ -3380,11 +3371,6 @@ void cpuset_cpus_allowed(struct task_struct *tsk, struct cpumask *pmask)
 
 void cpuset_cpus_allowed_fallback(struct task_struct *tsk)
 {
-	if (block_cpuset_enabled()) {
-		do_set_cpus_allowed(tsk, cpu_active_mask);
-		return;
-	}
-
 	rcu_read_lock();
 	do_set_cpus_allowed(tsk, is_in_v2_mode() ?
 		task_cs(tsk)->cpus_allowed : cpu_possible_mask);
@@ -3407,26 +3393,6 @@ void cpuset_cpus_allowed_fallback(struct task_struct *tsk)
 	 * select_fallback_rq() will fix things ups and set cpu_possible_mask
 	 * if required.
 	 */
-}
-
-void cpuset_refresh_task_affinity(void)
-{
-	struct cpuset *cs;
-	struct cgroup_subsys_state *pos_css;
-
-	flush_work(&cpuset_hotplug_work);
-	get_online_cpus();
-	percpu_down_write(&cpuset_rwsem);
-
-	update_tasks_cpumask(&top_cpuset);
-	cpuset_for_each_descendant_pre(cs, pos_css, &top_cpuset) {
-		if (cs == &top_cpuset)
-			continue;
-		update_tasks_cpumask(cs);
-	}
-
-	percpu_up_write(&cpuset_rwsem);
-	put_online_cpus();
 }
 
 void __init cpuset_init_current_mems_allowed(void)

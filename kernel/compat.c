@@ -23,7 +23,6 @@
 #include <linux/times.h>
 #include <linux/ptrace.h>
 #include <linux/gfp.h>
-#include <linux/workarounds.h>
 
 #include <linux/uaccess.h>
 
@@ -216,9 +215,6 @@ COMPAT_SYSCALL_DEFINE3(sched_setaffinity, compat_pid_t, pid,
 {
 	cpumask_var_t new_mask;
 	int retval;
-
-	if (block_sched_setaffinity_enabled())
-		return 0;
 
 	if (!alloc_cpumask_var(&new_mask, GFP_KERNEL))
 		return -ENOMEM;
