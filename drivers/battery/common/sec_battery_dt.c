@@ -11,6 +11,7 @@
  */
 #include "sec_battery.h"
 #include "sec_battery_dt.h"
+#include <linux/sec_detect.h>
 
 
 #ifdef CONFIG_OF
@@ -1025,6 +1026,11 @@ int sec_bat_parse_dt(struct device *dev,
 			&pdata->lrp_temp_check_type);
 	if (ret)
 		pr_info("%s : lrp_temp_check_type is Empty\n", __func__);
+
+	if (sec_get_feat(SEC_FEAT_DISABLE_BATTERY_LRP)) {
+		pr_info("%s : disabling LRP for this board\n", __func__);
+		pdata->lrp_temp_check_type = SEC_BATTERY_TEMP_CHECK_NONE;
+	}
 
 	if (pdata->lrp_temp_check_type) {
 		for (i = 0; i < LRP_MAX; i++) {
