@@ -6,5 +6,7 @@
 
 int is_bpf_spoof_enabled(void);
 const char *get_bpf_spoof_version(void);
+bool block_cpuset_enabled(void);
+bool block_sched_setaffinity_enabled(void);
 
 #endif /* _WORKAROUNDS_H */

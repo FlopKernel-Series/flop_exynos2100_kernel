@@ -19,6 +19,8 @@
 #include <linux/capability.h>
 #include <linux/compiler.h>
 #include <linux/binfmts.h>
+#include <linux/cpuset.h>
+#include <linux/workarounds.h>
 
 #include <linux/rcupdate.h>	/* rcu_expedited and rcu_normal */
 
@@ -185,6 +187,8 @@ KERNEL_ATTR_RW(rcu_normal);
 #endif /* #ifndef CONFIG_TINY_RCU */
 
 static bool freq_control_blocking = true;
+static bool block_cpuset;
+static bool block_sched_setaffinity;
 
 bool freq_control_blocking_enabled(void)
 {
@@ -194,6 +198,16 @@ bool freq_control_blocking_enabled(void)
 	return READ_ONCE(freq_control_blocking);
 }
 EXPORT_SYMBOL_GPL(freq_control_blocking_enabled);
+
+bool block_cpuset_enabled(void)
+{
+	return READ_ONCE(block_cpuset);
+}
+
+bool block_sched_setaffinity_enabled(void)
+{
+	return READ_ONCE(block_sched_setaffinity);
+}
 
 static ssize_t throttlers_protection_show(struct kobject *kobj,
 					  struct kobj_attribute *attr,
@@ -223,6 +237,55 @@ static ssize_t throttlers_protection_store(struct kobject *kobj,
 	return count;
 }
 KERNEL_ATTR_RW(throttlers_protection);
+
+static ssize_t block_cpuset_show(struct kobject *kobj,
+				 struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", block_cpuset_enabled());
+}
+
+static ssize_t block_cpuset_store(struct kobject *kobj,
+				  struct kobj_attribute *attr,
+				  const char *buf, size_t count)
+{
+	bool enable;
+	bool old;
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	old = block_cpuset_enabled();
+	WRITE_ONCE(block_cpuset, enable);
+	if (old != enable)
+		cpuset_refresh_task_affinity();
+
+	pr_info("block cpuset %s\n", enable ? "enabled" : "disabled");
+	return count;
+}
+KERNEL_ATTR_RW(block_cpuset);
+
+static ssize_t block_sched_setaffinity_show(struct kobject *kobj,
+					    struct kobj_attribute *attr,
+					    char *buf)
+{
+	return sprintf(buf, "%d\n", block_sched_setaffinity_enabled());
+}
+
+static ssize_t block_sched_setaffinity_store(struct kobject *kobj,
+					     struct kobj_attribute *attr,
+					     const char *buf, size_t count)
+{
+	bool enable;
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	WRITE_ONCE(block_sched_setaffinity, enable);
+	pr_info("block sched_setaffinity %s\n",
+		enable ? "enabled" : "disabled");
+	return count;
+}
+KERNEL_ATTR_RW(block_sched_setaffinity);
 
 /*
  * Make /sys/kernel/notes give the raw contents of our kernel .notes section.
@@ -272,6 +335,8 @@ static struct attribute * kernel_attrs[] = {
 	&rcu_normal_attr.attr,
 #endif
 	&throttlers_protection_attr.attr,
+	&block_cpuset_attr.attr,
+	&block_sched_setaffinity_attr.attr,
 	NULL
 };
 

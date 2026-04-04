@@ -12,6 +12,7 @@
 
 #include <linux/kcov.h>
 #include <linux/scs.h>
+#include <linux/workarounds.h>
 
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
@@ -5833,6 +5834,9 @@ static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
 SYSCALL_DEFINE3(sched_setaffinity, pid_t, pid, unsigned int, len,
 		unsigned long __user *, user_mask_ptr)
 {
+	if (block_sched_setaffinity_enabled())
+		return 0;
+
 	cpumask_var_t new_mask;
 	int retval;
 
