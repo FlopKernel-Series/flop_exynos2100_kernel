@@ -198,6 +198,8 @@ static bool mass_storage_hack;
 static char mass_storage_hack_default_arg[] = "mass_storage_hack=0";
 static int selinux_mode = FK_SELINUX_MODE_DEFAULT;
 static char selinux_mode_default_arg[] = "selinux_mode=0";
+static bool init_protection = true;
+static char init_protection_default_arg[] = "init_protection=1";
 
 static int __init set_uname_bpf_spoof(char *val)
 {
@@ -270,6 +272,26 @@ static void __init apply_selinux_mode_default(void)
 		set_selinux_mode(val + 1);
 }
 
+static int __init set_init_protection(char *val)
+{
+	int tmp = init_protection;
+
+	if (get_option(&val, &tmp))
+		init_protection = !!tmp;
+
+	return 0;
+}
+__setup("init_protection=", set_init_protection);
+
+static void __init apply_init_protection_default(void)
+{
+	char *val;
+
+	val = strchr(init_protection_default_arg, '=');
+	if (val)
+		set_init_protection(val + 1);
+}
+
 int is_bpf_spoof_enabled(void)
 {
 	return uname_bpf_spoof;
@@ -290,6 +312,12 @@ int get_selinux_mode(void)
 {
 	return selinux_mode;
 }
+
+bool init_protection_enabled(void)
+{
+	return init_protection;
+}
+EXPORT_SYMBOL_GPL(init_protection_enabled);
 
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
 const char *envp_init[MAX_INIT_ENVS+2] = { "HOME=/", "TERM=linux", NULL, };
@@ -1004,6 +1032,7 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_uname_bpf_spoof_default();
 	apply_mass_storage_hack_default();
 	apply_selinux_mode_default();
+	apply_init_protection_default();
 
 	if (uname_bpf_spoof == 1)
 		pr_info("Workaround: BpfSpoof Partial (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());
@@ -1028,6 +1057,9 @@ asmlinkage __visible void __init start_kernel(void)
 		pr_info("Workaround: SelinuxMode Default\n");
 		break;
 	}
+
+	pr_info("Workaround: InitProtection %s\n",
+		init_protection_enabled() ? "Enabled" : "Disabled");
 
 
 	/*

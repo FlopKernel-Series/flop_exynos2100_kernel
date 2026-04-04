@@ -16,6 +16,7 @@ enum fk_feature_id {
 	FK_FEATURE_UNAME_BPF_SPOOF = 1,
 	FK_FEATURE_MASS_STORAGE_HACK = 2,
 	FK_FEATURE_SELINUX_MODE = 3,
+	FK_FEATURE_INIT_PROTECTION = 4,
 };
 
 enum fk_selinux_mode {
