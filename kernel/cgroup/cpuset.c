@@ -2154,7 +2154,6 @@ static int cpuset_can_attach(struct cgroup_taskset *tset)
 	struct cgroup_subsys_state *css;
 	struct cpuset *cs;
 	struct task_struct *task;
-	const struct cpumask *attach_mask;
 	int ret;
 
 	/* used later by cpuset_attach() */
@@ -2163,16 +2162,14 @@ static int cpuset_can_attach(struct cgroup_taskset *tset)
 
 	percpu_down_write(&cpuset_rwsem);
 
-	attach_mask = block_cpuset_enabled() ? cpu_active_mask : cs->cpus_allowed;
-
 	/* allow moving tasks into an empty cpuset if on default hierarchy */
 	ret = -ENOSPC;
 	if (!is_in_v2_mode() &&
-	    (cpumask_empty(attach_mask) || nodes_empty(cs->mems_allowed)))
+	    (cpumask_empty(cs->cpus_allowed) || nodes_empty(cs->mems_allowed)))
 		goto out_unlock;
 
 	cgroup_taskset_for_each(task, css, tset) {
-		ret = task_can_attach(task, attach_mask);
+		ret = task_can_attach(task, cs->cpus_allowed);
 		if (ret)
 			goto out_unlock;
 		ret = security_task_setscheduler(task);
@@ -2230,9 +2227,7 @@ static void cpuset_attach(struct cgroup_taskset *tset)
 	percpu_down_write(&cpuset_rwsem);
 
 	/* prepare for attach */
-	if (block_cpuset_enabled())
-		cpumask_copy(cpus_attach, cpu_active_mask);
-	else if (cs == &top_cpuset)
+	if (cs == &top_cpuset)
 		cpumask_copy(cpus_attach, cpu_possible_mask);
 	else
 		guarantee_online_cpus(cs, cpus_attach);
@@ -2422,13 +2417,6 @@ static ssize_t cpuset_write_resmask(struct kernfs_open_file *of,
 	if (!is_cpuset_online(cs))
 		goto out_unlock;
 
-	if (block_cpuset_enabled() &&
-	    of_cft(of)->private == FILE_CPULIST &&
-	    cs != &top_cpuset) {
-		retval = 0;
-		goto out_unlock;
-	}
-
 	trialcs = alloc_trial_cpuset(cs);
 	if (!trialcs) {
 		retval = -ENOMEM;
@@ -2475,19 +2463,13 @@ static int cpuset_common_seq_show(struct seq_file *sf, void *v)
 
 	switch (type) {
 	case FILE_CPULIST:
-		if (block_cpuset_enabled() && cs != &top_cpuset)
-			seq_putc(sf, '\n');
-		else
-			seq_printf(sf, "%*pbl\n", cpumask_pr_args(cs->cpus_requested));
+		seq_printf(sf, "%*pbl\n", cpumask_pr_args(cs->cpus_requested));
 		break;
 	case FILE_MEMLIST:
 		seq_printf(sf, "%*pbl\n", nodemask_pr_args(&cs->mems_allowed));
 		break;
 	case FILE_EFFECTIVE_CPULIST:
-		if (block_cpuset_enabled())
-			seq_printf(sf, "%*pbl\n", cpumask_pr_args(cpu_active_mask));
-		else
-			seq_printf(sf, "%*pbl\n", cpumask_pr_args(cs->effective_cpus));
+		seq_printf(sf, "%*pbl\n", cpumask_pr_args(cs->effective_cpus));
 		break;
 	case FILE_EFFECTIVE_MEMLIST:
 		seq_printf(sf, "%*pbl\n", nodemask_pr_args(&cs->effective_mems));
