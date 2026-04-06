@@ -30,10 +30,10 @@ enum SEC_devices {
 };
 
 static const char *const device_names[] = {
-	[SEC_R9S] = "Galaxy S21 FE",
-	[SEC_O1S] = "Galaxy S21",
-	[SEC_P3S] = "Galaxy S21 Ultra",
-	[SEC_T2S] = "Galaxy S21+",
+	[SEC_R9S] = "Galaxy S21 FE 5G",
+	[SEC_O1S] = "Galaxy S21 5G",
+	[SEC_P3S] = "Galaxy S21 Ultra 5G",
+	[SEC_T2S] = "Galaxy S21+ 5G",
 };
 
 enum sec_feat {
