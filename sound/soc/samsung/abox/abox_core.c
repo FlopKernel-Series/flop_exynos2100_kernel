@@ -16,10 +16,8 @@
 #include <linux/sched/clock.h>
 #include <linux/pm_runtime.h>
 #include <soc/samsung/exynos-pmu-if.h>
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 #include <soc/samsung/imgloader.h>
 #include <soc/samsung/exynos-s2mpu.h>
-#endif
 #include "abox_util.h"
 #include "abox_gic.h"
 #include "abox.h"
@@ -33,17 +31,18 @@ enum abox_core_type { CA7, CA32, TYPE_COUNT };
 enum abox_core_sfr_def { OFFSET, MASK, OFFSET_MASK };
 enum abox_core_area { SRAM, DRAM };
 
+struct abox_core;
+
 struct abox_core_firmware {
 	const struct firmware *firmware;
+	struct abox_core *core;
 	const char *name;
 	enum abox_core_area area;
 	unsigned int offset;
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 	/* Exynos Image Loader */
 	bool code_signed;
 	struct imgloader_desc   *fw_imgloader_desc;
 	unsigned int fw_id;
-#endif
 };
 
 struct abox_core {
@@ -67,6 +66,9 @@ static const char * const abox_core_type_name[] = {
 };
 
 static LIST_HEAD(cores);
+
+static void abox_core_complete_firmware_request(
+		const struct firmware *firmware, void *context);
 
 static enum abox_core_type abox_core_name_to_type(const char *name)
 {
@@ -393,7 +395,6 @@ u32 abox_core_read_gpr_dump(int core_id, int gpr_id, unsigned int *dump)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 int abox_imgloader_mem_setup(struct imgloader_desc *desc, const u8 *metadata, size_t size,
 		phys_addr_t *fw_phys_base, size_t *fw_bin_size, size_t *fw_mem_size)
 {
@@ -424,7 +425,8 @@ int abox_imgloader_mem_setup(struct imgloader_desc *desc, const u8 *metadata, si
 		*fw_phys_base = data->sram_phys + fw->offset;
 		*fw_bin_size = fw->firmware->size;
 		*fw_mem_size = fw->firmware->size;
-		abox_info(desc->dev, "Loaded ABOX Signed Firmware : %s\n", fw->name);
+		abox_info(desc->dev, "Loaded ABOX Signed Firmware : %s (%zu bytes)\n",
+				fw->name, fw->firmware->size);
 	}
 
 	return 0;
@@ -480,7 +482,6 @@ static int abox_core_imgloader_desc_init(struct abox_core *core, struct abox_cor
 
 	return imgloader_desc_init(desc);
 }
-#endif
 static int abox_core_load_firmware(struct abox_core *core,
 		struct abox_core_firmware *fw)
 {
@@ -488,12 +489,20 @@ static int abox_core_load_firmware(struct abox_core *core,
 	int ret;
 
 	ret = request_firmware_direct(&fw->firmware, fw->name, core->dev);
-	if (ret >= 0)
-		return 0;
+	if (ret >= 0) {
+		if (fw->firmware && fw->firmware->size > 0)
+			return 0;
+		if (fw->firmware) {
+			release_firmware(fw->firmware);
+			fw->firmware = NULL;
+		}
+	}
 
 	ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
-			fw->name, dev, GFP_KERNEL, &fw->firmware,
-			cache_firmware_simple);
+			fw->name, dev, GFP_KERNEL, fw,
+			abox_core_complete_firmware_request);
+	if (ret < 0)
+		return ret;
 
 	abox_info(dev, "%s isn't loaded yet\n", fw->name);
 	return -EAGAIN;
@@ -520,18 +529,31 @@ int abox_core_download_firmware(void)
 		size_t len = ARRAY_SIZE(core->fw);
 
 		for (fw = core->fw; (fw - core->fw < len) && fw->name; fw++) {
+			int fw_ret = 0;
+
 			if (!fw->firmware) {
-				ret |= abox_core_load_firmware(core, fw);
-				if (ret < 0)
+				fw_ret = abox_core_load_firmware(core, fw);
+				ret |= fw_ret;
+				if (fw_ret < 0)
 					continue;
+			}
+			if (fw->firmware && fw->firmware->size == 0) {
+				abox_err(dev, "%s: invalid firmware (0 bytes)\n", fw->name);
+				release_firmware(fw->firmware);
+				fw->firmware = NULL;
+				fw_ret = abox_core_load_firmware(core, fw);
+				ret |= fw_ret;
+				continue;
 			}
 			if (IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)) {
 				if (fw->code_signed && fw->fw_imgloader_desc) {
-					ret |= imgloader_boot(fw->fw_imgloader_desc);
+					fw_ret = imgloader_boot(fw->fw_imgloader_desc);
+					ret |= fw_ret;
 					continue;
 				}
 			}
-			abox_dbg(dev, "%s: download %s\n", __func__, fw->name);
+			abox_dbg(dev, "%s: download %s (%zu bytes)\n", __func__,
+					fw->name, fw->firmware->size);
 			left = fw->offset + fw->firmware->size;
 			switch (fw->area) {
 			default:
@@ -555,22 +577,44 @@ int abox_core_download_firmware(void)
 	return ret;
 }
 
-static void abox_core_check_firmware(const struct firmware *fw, void *context)
+static void abox_core_complete_firmware_request(const struct firmware *firmware,
+		void *context)
 {
+	struct abox_core_firmware *fw = context;
+	struct abox_core *core = fw ? fw->core : NULL;
+	struct device *log_dev = core ? core->dev : NULL;
 	struct abox_data *data = get_abox_data();
-	struct device *dev = data->dev;
+	struct device *dev = data ? data->dev : log_dev;
 
-	abox_dbg(dev, "%s\n", __func__);
+	if (dev)
+		abox_dbg(dev, "%s\n", __func__);
 
-	pm_runtime_resume(dev);
+	if (!fw) {
+		if (firmware)
+			release_firmware(firmware);
+		return;
+	}
+
+	if (firmware) {
+		if (!firmware->size) {
+			abox_warn(dev, "%s: ignoring 0-byte firmware placeholder\n",
+					fw->name);
+			release_firmware(firmware);
+		} else {
+			if (fw->firmware)
+				release_firmware(fw->firmware);
+			fw->firmware = firmware;
+		}
+	}
+
+	if (data && data->cmpnt)
+		pm_runtime_resume(dev);
 }
 
-static int abox_core_wait_for_firmware(void *context,
-		void (*cont)(const struct firmware *fw, void *context))
+static int abox_core_wait_for_firmware(struct abox_core *core)
 {
 	struct abox_data *data = get_abox_data();
 	struct device *dev = data ? data->dev : NULL;
-	struct abox_core *core = context;
 	struct abox_core_firmware *fw;
 	int ret = 0;
 
@@ -582,8 +626,10 @@ static int abox_core_wait_for_firmware(void *context,
 	for (fw = core->fw; fw - core->fw < ARRAY_SIZE(core->fw); fw++) {
 		if (!fw->name)
 			break;
+		fw->core = core;
 		ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
-				fw->name, dev, GFP_KERNEL, context, cont);
+				fw->name, dev, GFP_KERNEL, fw,
+				abox_core_complete_firmware_request);
 		if (ret < 0)
 			break;
 	}
@@ -684,6 +730,7 @@ static int abox_core_of_parse(struct platform_device *pdev,
 		ret = abox_core_of_parse_firmware(child, fw);
 		if (ret < 0)
 			continue;
+		fw->core = core;
 		if (IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)) {
 			if (fw->code_signed) {
 				ret = abox_core_imgloader_desc_init(core, fw);
@@ -696,7 +743,7 @@ static int abox_core_of_parse(struct platform_device *pdev,
 
 	list_add_tail(&core->list, &cores);
 
-	abox_core_wait_for_firmware(core, abox_core_check_firmware);
+	abox_core_wait_for_firmware(core);
 
 	return 0;
 }

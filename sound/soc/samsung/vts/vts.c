@@ -614,7 +614,7 @@ static int vts_download_firmware(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 
 	vts_dev_info(dev, "%s\n", __func__);
-	if (!data->firmware) {
+	if (!data->firmware || !data->firmware->size) {
 		vts_dev_err(dev, "firmware is not loaded\n");
 		return -EAGAIN;
 	}
@@ -885,6 +885,12 @@ static void vts_complete_firmware_request(
 
 	if (!fw) {
 		vts_dev_err(dev, "Failed to request firmware\n");
+		return;
+	}
+
+	if (!fw->size) {
+		vts_dev_warn(dev, "Ignoring 0-byte firmware placeholder\n");
+		release_firmware(fw);
 		return;
 	}
 
@@ -2681,17 +2687,24 @@ int vts_start_runtime_resume(struct device *dev, int skip_log)
 
 #if (IS_ENABLED(CONFIG_SOC_EXYNOS9830) || IS_ENABLED(CONFIG_SOC_EXYNOS2100))
 	if (!data->firmware) {
-		vts_dev_info(dev, "%s : request_firmware_direct\n",
+		vts_dev_info(dev, "%s : request_firmware\n",
 			__func__);
-		result = request_firmware_direct(
+		result = request_firmware(
 			(const struct firmware **)&data->firmware,
 			"vts.bin", dev);
+		if (result >= 0 && data->firmware && !data->firmware->size) {
+			release_firmware(data->firmware);
+			data->firmware = NULL;
+			result = -ENOENT;
+		}
 
 		if (result < 0) {
-			vts_dev_err(dev, "Failed to request_firmware_nowait\n");
+			vts_dev_err(dev, "%s: Failed to request_firmware\n",
+					__func__);
 			return 0;
 		}
-		vts_dev_info(dev, "vts_complete_firmware_request : OK\n");
+		vts_dev_info(dev, "%s: vts_complete_firmware_request : OK - Size: %zu\n",
+				__func__, data->firmware->size);
 		vts_complete_firmware_request(data->firmware, pdev);
 	}
 #endif
@@ -3431,11 +3444,18 @@ static int vts_component_probe(struct snd_soc_component *component)
 		result = request_firmware_direct(
 			(const struct firmware **)&data->firmware,
 			"vts.bin", dev);
+		if (result >= 0 && data->firmware && data->firmware->size == 0) {
+			release_firmware(data->firmware);
+			data->firmware = NULL;
+			result = -ENOENT;
+		}
 
 		if (result < 0) {
-			vts_dev_err(dev, "Failed to request_firmware_nowait\n");
+			vts_dev_err(dev, "%s: Failed to request_firmware_direct\n",
+					__func__);
 		} else {
-			vts_dev_info(dev, "complete_firmware_request : OK\n");
+			vts_dev_info(dev, "%s: complete_firmware_request : OK - Size: %zu\n",
+					__func__, data->firmware->size);
 			vts_complete_firmware_request(data->firmware, pdev);
 		}
 	}

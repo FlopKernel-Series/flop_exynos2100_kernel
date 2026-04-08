@@ -2533,12 +2533,19 @@ static int abox_ext_bin_request(struct device *dev,
 
 	release_firmware(efw->firmware);
 	ret = request_firmware_direct(&efw->firmware, efw->name, dev);
+	if (ret >= 0 && efw->firmware && efw->firmware->size == 0) {
+		release_firmware(efw->firmware);
+		efw->firmware = NULL;
+		ret = -ENOENT;
+	}
+
 	if (ret == -ENOENT)
 		abox_warn(dev, "%s doesn't exist\n", efw->name);
 	else if (ret < 0)
 		abox_err(dev, "%s request fail: %d\n", efw->name, ret);
 	else
-		abox_info(dev, "%s is loaded\n", efw->name);
+		abox_info(dev, "%s is loaded (%zu bytes)\n",
+				efw->name, efw->firmware->size);
 
 	mutex_unlock(&efw->lock);
 
@@ -2587,8 +2594,8 @@ static void abox_ext_bin_download(struct abox_data *data,
 	}
 
 	memcpy(base + efw->offset, efw->firmware->data, efw->firmware->size);
-	abox_dbg(dev, "%s is downloaded %u, %#x\n", efw->name,
-			efw->area, efw->offset);
+	abox_dbg(dev, "%s is downloaded %u, %#x (%zu bytes)\n", efw->name,
+			efw->area, efw->offset, efw->firmware->size);
 unlock:
 	mutex_unlock(&efw->lock);
 }
@@ -2899,7 +2906,7 @@ static void abox_request_extra_firmware(struct abox_data *data)
 			continue;
 
 		abox_ext_bin_request(dev, efw);
-		if (efw->changeable)
+		if (efw->changeable && efw->firmware)
 			abox_ext_bin_add_controls(data->cmpnt, efw);
 	}
 }
@@ -2977,7 +2984,6 @@ static void abox_parse_extra_firmware(struct abox_data *data)
 
 static int abox_download_firmware(struct device *dev)
 {
-	static bool requested;
 	struct abox_data *data = dev_get_drvdata(dev);
 	int ret;
 
@@ -2985,11 +2991,7 @@ static int abox_download_firmware(struct device *dev)
 	if (ret)
 		return ret;
 
-	/* Requesting missing extra firmware is waste of time. */
-	if (!requested) {
-		abox_request_extra_firmware(data);
-		requested = true;
-	}
+	abox_request_extra_firmware(data);
 	abox_download_extra_firmware(data);
 
 	return 0;
