@@ -37,6 +37,7 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/suspend.h>
+#include <linux/uaccess.h>
 #include <soc/samsung/exynos_pm_qos.h>
 #include <linux/threads.h>
 #include <linux/thermal.h>
@@ -80,6 +81,9 @@ static int tmu_log_work_canceled;
 
 static DEFINE_MUTEX(exynos_tmu_proc_lock);
 static struct proc_dir_entry *exynos_tmu_proc_root;
+
+#define EXYNOS_TMU_TEMP_MAX_MC	(250 * MCELSIUS)
+#define EXYNOS_TMU_TEMP_MAX_C	250
 
 #define EXYNOS_GPU_THERMAL_ZONE_ID		(3)
 
@@ -270,34 +274,60 @@ static void exynos_report_trigger(struct exynos_tmu_data *p)
 	thermal_zone_device_update(tz, THERMAL_EVENT_UNSPECIFIED);
 }
 
-static int exynos_tmu_initialize(struct platform_device *pdev)
+static int __exynos_tmu_sync_hw_trips(struct exynos_tmu_data *data,
+				      int override_trip, int override_temp)
 {
-	struct exynos_tmu_data *data = platform_get_drvdata(pdev);
 	struct thermal_zone_device *tz = data->tzd;
 	enum thermal_trip_type type;
-	int i, temp;
-	unsigned char threshold[8] = {0, };
+	int i, temp, ntrips;
+	unsigned char threshold[EXYNOS_TMU_MAX_TRIPS] = { 0, };
 	unsigned char inten = 0;
 
-	mutex_lock(&data->lock);
+	if (!data || !tz)
+		return -ENODEV;
 
-	for (i = (of_thermal_get_ntrips(tz) - 1); i >= 0; i--) {
+	ntrips = min_t(int, of_thermal_get_ntrips(tz), ARRAY_SIZE(threshold));
+
+	for (i = ntrips - 1; i >= 0; i--) {
 		tz->ops->get_trip_type(tz, i, &type);
 
 		if (type == THERMAL_TRIP_PASSIVE)
 			continue;
 
-		tz->ops->get_trip_temp(tz, i, &temp);
+		if (i == override_trip)
+			temp = override_temp;
+		else
+			tz->ops->get_trip_temp(tz, i, &temp);
 
 		threshold[i] = (unsigned char)(temp / MCELSIUS);
-		inten |= (1 << i);
+		inten |= BIT(i);
 	}
 	exynos_acpm_tmu_set_threshold(tz->id, threshold);
 	exynos_acpm_tmu_set_interrupt_enable(tz->id, inten);
 
+	return 0;
+}
+
+static int exynos_tmu_sync_hw_trips(struct exynos_tmu_data *data,
+				    int override_trip, int override_temp)
+{
+	int ret;
+
+	if (!data)
+		return -ENODEV;
+
+	mutex_lock(&data->lock);
+	ret = __exynos_tmu_sync_hw_trips(data, override_trip, override_temp);
 	mutex_unlock(&data->lock);
 
-	return 0;
+	return ret;
+}
+
+static int exynos_tmu_initialize(struct platform_device *pdev)
+{
+	struct exynos_tmu_data *data = platform_get_drvdata(pdev);
+
+	return exynos_tmu_sync_hw_trips(data, INVALID_TRIP, 0);
 }
 
 static void exynos_tmu_control(struct platform_device *pdev, bool on)
@@ -496,6 +526,28 @@ out:
 static int exynos_tmu_set_emulation(void *drv_data, int temp)
 	{ return -EINVAL; }
 #endif /* CONFIG_THERMAL_EMULATION */
+
+static int exynos_tmu_set_trip_temp(void *drv_data, int trip, int temp)
+{
+	struct exynos_tmu_data *data = drv_data;
+	int ret;
+
+	if (!data || !data->tzd)
+		return -ENODEV;
+
+	if (!data->enabled)
+		return 0;
+
+	if (mutex_trylock(&data->lock)) {
+		ret = __exynos_tmu_sync_hw_trips(data, trip, temp);
+		mutex_unlock(&data->lock);
+		return ret;
+	}
+
+	kthread_mod_delayed_work(&data->thermal_worker,
+				 &data->trip_update_work, 1);
+	return 0;
+}
 
 static void start_pi_polling(struct exynos_tmu_data *data, int delay)
 {
@@ -966,6 +1018,18 @@ static void exynos_pi_polling(struct kthread_work *work)
 	exynos_pi_thermal(data);
 }
 
+static void exynos_tmu_trip_update(struct kthread_work *work)
+{
+	struct exynos_tmu_data *data =
+			container_of(work, struct exynos_tmu_data,
+				     trip_update_work.work);
+
+	mutex_lock(&data->lock);
+	if (data->enabled)
+		__exynos_tmu_sync_hw_trips(data, INVALID_TRIP, 0);
+	mutex_unlock(&data->lock);
+}
+
 static void exynos_tmu_work(struct kthread_work *work)
 {
 	struct exynos_tmu_data *data =
@@ -1075,6 +1139,8 @@ static int exynos_tmu_irq_work_init(struct platform_device *pdev)
 	}
 
 	kthread_init_work(&data->irq_work, exynos_tmu_work);
+	kthread_init_delayed_work(&data->trip_update_work,
+				  exynos_tmu_trip_update);
 
 	wake_up_process(thread);
 
@@ -1251,12 +1317,14 @@ static void exynos_throttle_cpu_hotplug(struct kthread_work *work)
 static const struct thermal_zone_of_device_ops exynos_hotplug_sensor_ops = {
 	.get_temp = exynos_get_temp,
 	.set_emul_temp = exynos_tmu_set_emulation,
+	.set_trip_temp = exynos_tmu_set_trip_temp,
 	.get_trend = exynos_get_trend,
 };
 
 static const struct thermal_zone_of_device_ops exynos_sensor_ops = {
 	.get_temp = exynos_get_temp,
 	.set_emul_temp = exynos_tmu_set_emulation,
+	.set_trip_temp = exynos_tmu_set_trip_temp,
 	.get_trend = exynos_get_trend,
 };
 
@@ -1375,6 +1443,254 @@ temp_show(struct device *dev, struct device_attribute *devattr,
 			data.val[4], data.val[5], data.val[6], data.val[7]);
 }
 
+static int exynos_tmu_offset_to_mc(int base_temp, int offset)
+{
+	int temp = base_temp + offset;
+
+	if (temp < 0)
+		return 0;
+	if (temp > EXYNOS_TMU_TEMP_MAX_MC)
+		return EXYNOS_TMU_TEMP_MAX_MC;
+
+	return temp;
+}
+
+static int exynos_tmu_offset_to_c(int base_temp, int offset)
+{
+	int temp = base_temp + DIV_ROUND_CLOSEST(offset, MCELSIUS);
+
+	if (temp < 0)
+		return 0;
+	if (temp > EXYNOS_TMU_TEMP_MAX_C)
+		return EXYNOS_TMU_TEMP_MAX_C;
+
+	return temp;
+}
+
+static unsigned int exynos_tmu_get_anchor_trip(struct exynos_tmu_data *data)
+{
+	unsigned int i, anchor = 0;
+	int anchor_temp = -1;
+
+	for (i = 0; i < data->base_ntrips; i++) {
+		if (data->base_trip_temps[i] >= anchor_temp) {
+			anchor_temp = data->base_trip_temps[i];
+			anchor = i;
+		}
+	}
+
+	return anchor;
+}
+
+static void exynos_tmu_build_offset_trips(struct exynos_tmu_data *data,
+					  int offset, int *temps,
+					  unsigned int ntrips)
+{
+	unsigned int i, anchor;
+	int max_allowed;
+
+	for (i = 0; i < ntrips; i++)
+		temps[i] = data->base_trip_temps[i];
+
+	if (!ntrips)
+		return;
+
+	anchor = min_t(unsigned int, exynos_tmu_get_anchor_trip(data),
+		       ntrips - 1);
+
+	for (i = 0; i < anchor; i++)
+		temps[i] = exynos_tmu_offset_to_mc(data->base_trip_temps[i], offset);
+
+	if (!anchor)
+		return;
+
+	max_allowed = max(temps[anchor] - MCELSIUS, 0);
+	for (i = anchor; i-- > 0;) {
+		if (temps[i] > max_allowed)
+			temps[i] = max_allowed;
+		max_allowed = max(temps[i] - MCELSIUS, 0);
+	}
+}
+
+static void exynos_tmu_capture_offset_base(struct exynos_tmu_data *data)
+{
+	struct thermal_zone_device *tz;
+	unsigned int i;
+	int temp;
+
+	if (!data || !data->tzd)
+		return;
+
+	tz = data->tzd;
+	data->base_ntrips = min_t(unsigned int, of_thermal_get_ntrips(tz),
+				  EXYNOS_TMU_MAX_TRIPS);
+
+	for (i = 0; i < data->base_ntrips; i++) {
+		if (tz->ops->get_trip_temp(tz, i, &temp))
+			temp = 0;
+		data->base_trip_temps[i] = temp;
+	}
+
+	data->trip_offset = 0;
+	data->base_hotplug_in_threshold = data->hotplug_in_threshold;
+	data->base_hotplug_out_threshold = data->hotplug_out_threshold;
+	data->base_limited_threshold = data->limited_threshold;
+	data->base_limited_threshold_release = data->limited_threshold_release;
+	data->base_limited_threshold_2 = data->limited_threshold_2;
+	data->base_limited_threshold_release_2 =
+		data->limited_threshold_release_2;
+}
+
+static void exynos_tmu_apply_ambient_offset(struct exynos_tmu_data *data)
+{
+	int temp;
+
+	if (!amb_tz || !data || data->id >= AMB_TZ_NUM || !data->tzd)
+		return;
+
+	temp = get_ambient_temp();
+	if (temp < 0)
+		return;
+
+	if (amb_tz->amb_data[data->id].use_pi_thermal) {
+		if (!data->pi_param ||
+		    data->pi_param->trip_control_temp == INVALID_TRIP)
+			return;
+
+		if (temp > emergency_control_threshold * 1000) {
+			data->tzd->ops->set_trip_temp(data->tzd,
+				data->pi_param->trip_control_temp,
+				amb_tz->amb_data[data->id].emg_control_temp);
+		} else if (temp <= (emergency_control_threshold - 5) * 1000) {
+			data->tzd->ops->set_trip_temp(data->tzd,
+				data->pi_param->trip_control_temp,
+				amb_tz->amb_data[data->id].normal_control_temp);
+		}
+	} else if (data->id == AMB_TZ_ISP &&
+		   amb_tz->amb_data[data->id].increase_trip_temp) {
+		if (temp > emergency_control_threshold * 1000) {
+			data->tzd->ops->set_trip_temp(data->tzd, 1,
+				amb_tz->amb_data[data->id].decrease_trip_temp);
+		} else if (temp <= (emergency_control_threshold - 5) * 1000) {
+			data->tzd->ops->set_trip_temp(data->tzd, 1,
+				amb_tz->amb_data[data->id].increase_trip_temp);
+		}
+	}
+}
+
+static int exynos_tmu_apply_trip_offset(struct exynos_tmu_data *data, int offset)
+{
+	struct thermal_zone_device *tz;
+	unsigned int anchor;
+	unsigned int i, ntrips;
+	int temps[EXYNOS_TMU_MAX_TRIPS];
+	int anchor_temp;
+	int max_c;
+	int ret = 0;
+
+	if (!data || !data->tzd || !data->base_ntrips)
+		return -ENODEV;
+
+	tz = data->tzd;
+	ntrips = min_t(unsigned int, data->base_ntrips,
+		       of_thermal_get_ntrips(tz));
+	if (!ntrips)
+		return -ENODEV;
+	exynos_tmu_build_offset_trips(data, offset, temps, ntrips);
+	anchor = min_t(unsigned int, exynos_tmu_get_anchor_trip(data), ntrips - 1);
+	anchor_temp = temps[anchor];
+	max_c = max(anchor_temp / MCELSIUS - 1, 0);
+
+	mutex_lock(&data->lock);
+	data->trip_offset = offset;
+	if (data->base_hotplug_in_threshold)
+		data->hotplug_in_threshold = exynos_tmu_offset_to_c(
+			data->base_hotplug_in_threshold, offset);
+	if (data->base_hotplug_out_threshold)
+		data->hotplug_out_threshold = exynos_tmu_offset_to_c(
+			data->base_hotplug_out_threshold, offset);
+	if (data->base_limited_threshold)
+		data->limited_threshold = exynos_tmu_offset_to_mc(
+			data->base_limited_threshold, offset);
+	if (data->base_limited_threshold_release)
+		data->limited_threshold_release = exynos_tmu_offset_to_mc(
+			data->base_limited_threshold_release, offset);
+	if (data->base_limited_threshold_2)
+		data->limited_threshold_2 = exynos_tmu_offset_to_mc(
+			data->base_limited_threshold_2, offset);
+	if (data->base_limited_threshold_release_2)
+		data->limited_threshold_release_2 = exynos_tmu_offset_to_mc(
+			data->base_limited_threshold_release_2, offset);
+	if (data->hotplug_in_threshold > max_c)
+		data->hotplug_in_threshold = max_c;
+	if (data->hotplug_out_threshold > max_c)
+		data->hotplug_out_threshold = max_c;
+	if (data->hotplug_out_threshold &&
+	    data->hotplug_out_threshold <= data->hotplug_in_threshold)
+		data->hotplug_out_threshold = min(data->hotplug_in_threshold + 1,
+						  max_c);
+	if (data->hotplug_out_threshold &&
+	    data->hotplug_out_threshold <= data->hotplug_in_threshold)
+		data->hotplug_in_threshold = max(data->hotplug_out_threshold - 1, 0);
+	if (data->limited_threshold >= anchor_temp)
+		data->limited_threshold = max(anchor_temp - MCELSIUS, 0);
+	if (data->limited_threshold_release > data->limited_threshold)
+		data->limited_threshold_release = data->limited_threshold;
+	if (data->limited_threshold_2 >= anchor_temp)
+		data->limited_threshold_2 = max(anchor_temp - MCELSIUS, 0);
+	if (data->limited_threshold_2 < data->limited_threshold)
+		data->limited_threshold_2 = data->limited_threshold;
+	if (data->limited_threshold_release_2 > data->limited_threshold_2)
+		data->limited_threshold_release_2 = data->limited_threshold_2;
+	mutex_unlock(&data->lock);
+
+	for (i = 0; i < ntrips; i++) {
+		ret = tz->ops->set_trip_temp(tz, i, temps[i]);
+		if (ret)
+			return ret;
+	}
+
+	if (amb_tz && data->id < AMB_TZ_NUM) {
+		mutex_lock(&amb_tz->lock);
+		if (data->use_pi_thermal && data->pi_param &&
+		    data->pi_param->trip_control_temp != INVALID_TRIP &&
+		    data->pi_param->trip_control_temp < data->base_ntrips) {
+			amb_tz->amb_data[data->id].normal_control_temp = temps[
+				data->pi_param->trip_control_temp];
+			amb_tz->amb_data[data->id].emg_control_temp =
+				exynos_tmu_offset_to_mc(
+					emergency_control_temp * MCELSIUS,
+					offset);
+			if (amb_tz->amb_data[data->id].emg_control_temp >= anchor_temp)
+				amb_tz->amb_data[data->id].emg_control_temp =
+					max(anchor_temp - MCELSIUS, 0);
+			if (amb_tz->amb_data[data->id].emg_control_temp >
+			    amb_tz->amb_data[data->id].normal_control_temp)
+				amb_tz->amb_data[data->id].emg_control_temp =
+					amb_tz->amb_data[data->id].normal_control_temp;
+		} else if (data->id == AMB_TZ_ISP) {
+			if (data->base_ntrips > 1)
+				amb_tz->amb_data[data->id].decrease_trip_temp = temps[1];
+			if (data->base_ntrips > 2)
+				amb_tz->amb_data[data->id].increase_trip_temp = temps[2];
+		}
+		mutex_unlock(&amb_tz->lock);
+
+		exynos_tmu_apply_ambient_offset(data);
+	}
+
+	if (data->hotplug_enable)
+		kthread_queue_work(&data->thermal_worker, &data->hotplug_work);
+
+	if (data->use_pi_thermal)
+		kthread_mod_delayed_work(&data->thermal_worker, &data->pi_work,
+					 0);
+	else
+		thermal_zone_device_update(tz, THERMAL_EVENT_UNSPECIFIED);
+
+	return 0;
+}
+
 static const char *exynos_tmu_trip_type_name(enum thermal_trip_type type)
 {
 	switch (type) {
@@ -1458,6 +1774,7 @@ static ssize_t exynos_tmu_trip_table_show_common(struct exynos_tmu_data *data,
 	int hotplug_in, hotplug_out;
 	int limited_freq, limited_th, limited_rel;
 	int limited_freq_2, limited_th_2, limited_rel_2;
+	int trip_offset;
 	bool enabled, use_pi, switched_on = false;
 	unsigned int ntrips;
 	ssize_t len = 0;
@@ -1486,6 +1803,7 @@ static ssize_t exynos_tmu_trip_table_show_common(struct exynos_tmu_data *data,
 	limited_freq_2 = data->limited_frequency_2;
 	limited_th_2 = data->limited_threshold_2;
 	limited_rel_2 = data->limited_threshold_release_2;
+	trip_offset = data->trip_offset;
 	if (data->pi_param) {
 		trip_switch_on = data->pi_param->trip_switch_on;
 		trip_control = data->pi_param->trip_control_temp;
@@ -1494,9 +1812,9 @@ static ssize_t exynos_tmu_trip_table_show_common(struct exynos_tmu_data *data,
 	mutex_unlock(&data->lock);
 
 	len += scnprintf(buf + len, PAGE_SIZE - len,
-			 "zone=%s temp=%d mode=%s enabled=%d use_pi=%d trips=%u\n",
+			 "zone=%s temp=%d mode=%s enabled=%d use_pi=%d offset=%d trips=%u\n",
 			 tz->type, zone_temp, exynos_tmu_mode_name(mode),
-			 enabled, use_pi, ntrips);
+			 enabled, use_pi, trip_offset, ntrips);
 
 	if (use_pi && trip_control != INVALID_TRIP) {
 		len += scnprintf(buf + len, PAGE_SIZE - len,
@@ -1650,8 +1968,66 @@ static const struct file_operations exynos_tmu_trip_table_proc_fops = {
 	.release	= single_release,
 };
 
+static int exynos_tmu_trip_offset_proc_show(struct seq_file *m, void *v)
+{
+	struct exynos_tmu_data *data = m->private;
+
+	seq_printf(m, "%d\n", data->trip_offset);
+
+	return 0;
+}
+
+static int exynos_tmu_trip_offset_proc_open(struct inode *inode,
+					    struct file *file)
+{
+	return single_open(file, exynos_tmu_trip_offset_proc_show,
+			   PDE_DATA(inode));
+}
+
+static ssize_t exynos_tmu_trip_offset_proc_write(struct file *file,
+						 const char __user *user_buf,
+						 size_t count, loff_t *ppos)
+{
+	struct exynos_tmu_data *data = PDE_DATA(file_inode(file));
+	char buf[32];
+	int offset, ret;
+	size_t len;
+
+	if (!data || !count)
+		return -EINVAL;
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+	len = count;
+
+	if (copy_from_user(buf, user_buf, len))
+		return -EFAULT;
+	buf[len] = '\0';
+
+	ret = kstrtoint(strim(buf), 10, &offset);
+	if (ret)
+		return ret;
+
+	ret = exynos_tmu_apply_trip_offset(data, offset);
+	if (ret)
+		return ret;
+
+	*ppos += count;
+	return count;
+}
+
+static const struct file_operations exynos_tmu_trip_offset_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= exynos_tmu_trip_offset_proc_open,
+	.read		= seq_read,
+	.write		= exynos_tmu_trip_offset_proc_write,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int exynos_tmu_create_trip_table_proc(struct exynos_tmu_data *data)
 {
+	char offset_name[THERMAL_NAME_LENGTH + 8];
 	int ret = 0;
 
 	if (!data)
@@ -1670,8 +2046,20 @@ static int exynos_tmu_create_trip_table_proc(struct exynos_tmu_data *data)
 	data->trip_table_proc_entry = proc_create_data(data->tmu_name, 0444,
 					exynos_tmu_proc_root,
 					&exynos_tmu_trip_table_proc_fops, data);
-	if (!data->trip_table_proc_entry)
+	if (!data->trip_table_proc_entry) {
 		ret = -ENOMEM;
+		goto out_unlock;
+	}
+
+	snprintf(offset_name, sizeof(offset_name), "%s_offset", data->tmu_name);
+	data->trip_offset_proc_entry = proc_create_data(offset_name, 0644,
+					exynos_tmu_proc_root,
+					&exynos_tmu_trip_offset_proc_fops, data);
+	if (!data->trip_offset_proc_entry) {
+		proc_remove(data->trip_table_proc_entry);
+		data->trip_table_proc_entry = NULL;
+		ret = -ENOMEM;
+	}
 
 out_unlock:
 	mutex_unlock(&exynos_tmu_proc_lock);
@@ -1684,6 +2072,11 @@ static void exynos_tmu_remove_trip_table_proc(struct exynos_tmu_data *data)
 		return;
 
 	mutex_lock(&exynos_tmu_proc_lock);
+
+	if (data->trip_offset_proc_entry) {
+		proc_remove(data->trip_offset_proc_entry);
+		data->trip_offset_proc_entry = NULL;
+	}
 
 	if (data->trip_table_proc_entry) {
 		proc_remove(data->trip_table_proc_entry);
@@ -2058,6 +2451,7 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 		}
 	}
 #endif
+	exynos_tmu_capture_offset_base(data);
 
 	ret = exynos_tmu_initialize(pdev);
 	if (ret) {
@@ -2156,6 +2550,7 @@ static int exynos_tmu_remove(struct platform_device *pdev)
 	struct thermal_zone_device *tzd = data->tzd;
 	struct exynos_tmu_data *devnode;
 
+	kthread_cancel_delayed_work_sync(&data->trip_update_work);
 	thermal_zone_of_sensor_unregister(&pdev->dev, tzd);
 	exynos_tmu_control(pdev, false);
 
@@ -2200,6 +2595,7 @@ static int exynos_tmu_suspend(struct device *dev)
 	if (data->hotplug_enable)
 		kthread_flush_work(&data->hotplug_work);
 	kthread_flush_work(&data->irq_work);
+	kthread_cancel_delayed_work_sync(&data->trip_update_work);
 
 	cp_call_mode = is_aud_on() && cap.acpm_irq;
 	if (cp_call_mode) {

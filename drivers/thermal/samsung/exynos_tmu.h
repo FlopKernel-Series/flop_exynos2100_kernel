@@ -30,6 +30,7 @@
 #include <linux/kthread.h>
 
 #define MCELSIUS        1000
+#define EXYNOS_TMU_MAX_TRIPS 8
 
 struct proc_dir_entry;
 
@@ -88,6 +89,7 @@ struct exynos_tmu_data {
 	struct kthread_worker thermal_worker;
 	struct kthread_work irq_work;
 	struct kthread_work hotplug_work;
+	struct kthread_delayed_work trip_update_work;
 	struct mutex lock;
 	struct thermal_zone_device *tzd;
 	unsigned int ntrip;
@@ -106,6 +108,16 @@ struct exynos_tmu_data {
 	struct notifier_block nb;
 	atomic_t in_suspend;
 	struct proc_dir_entry *trip_table_proc_entry;
+	struct proc_dir_entry *trip_offset_proc_entry;
+	int trip_offset;
+	unsigned int base_ntrips;
+	int base_trip_temps[EXYNOS_TMU_MAX_TRIPS];
+	int base_hotplug_in_threshold;
+	int base_hotplug_out_threshold;
+	int base_limited_threshold;
+	int base_limited_threshold_release;
+	int base_limited_threshold_2;
+	int base_limited_threshold_release_2;
 };
 
 extern int exynos_build_static_power_table(struct device_node *np, int **var_table,
