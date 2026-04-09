@@ -768,10 +768,10 @@ static int hotplug_out_mid = 65;
 static int hotplug_in_mid = 60;
 static int hotplug_out_lit = 75;
 static int hotplug_in_lit = 65;
-static int default_offset_big = -21000;
-static int default_offset_mid = -19000;
-static int default_offset_lit = -13000;
-static int default_offset_gpu = -19000;
+static int default_offset_big = -10000;
+static int default_offset_mid = -10000;
+static int default_offset_lit = -8000;
+static int default_offset_gpu = -13000;
 #define EXYNOS_TMU_OFFSET_MIN_MC	(-50000)
 #define EXYNOS_TMU_OFFSET_MAX_MC	15000
 #define EXYNOS_TMU_DEFAULT_OFFSET_DELAY_MS	45000
