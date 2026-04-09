@@ -767,6 +767,11 @@ static int hotplug_out_mid = 65;
 static int hotplug_in_mid = 60;
 static int hotplug_out_lit = 75;
 static int hotplug_in_lit = 65;
+static int default_offset_big = -21000;
+static int default_offset_mid = -19000;
+static int default_offset_lit = -13000;
+
+static int exynos_tmu_offset_to_mc(int base_temp, int offset);
 
 static void amb_tz_init(struct exynos_tmu_data *data)
 {
@@ -821,7 +826,9 @@ set_control_temp:
 		data->tzd->ops->get_trip_temp(data->tzd,
 				data->pi_param->trip_control_temp, &control_temp);
 		amb_tz->amb_data[data->id].normal_control_temp = control_temp;
-		amb_tz->amb_data[data->id].emg_control_temp = emergency_control_temp * 1000;
+		amb_tz->amb_data[data->id].emg_control_temp =
+			exynos_tmu_offset_to_mc(emergency_control_temp * MCELSIUS,
+						data->trip_offset);
 	} else if (data->id == AMB_TZ_ISP) {
 		amb_tz->amb_data[data->id].tzd = data->tzd;
 		data->tzd->ops->get_trip_temp(data->tzd,
@@ -1541,6 +1548,21 @@ static void exynos_tmu_capture_offset_base(struct exynos_tmu_data *data)
 		data->limited_threshold_release_2;
 }
 
+static int exynos_tmu_get_default_offset(struct exynos_tmu_data *data)
+{
+	if (!data)
+		return 0;
+
+	if (!strncmp(data->tmu_name, "BIG", THERMAL_NAME_LENGTH))
+		return default_offset_big;
+	if (!strncmp(data->tmu_name, "MID", THERMAL_NAME_LENGTH))
+		return default_offset_mid;
+	if (!strncmp(data->tmu_name, "LITTLE", THERMAL_NAME_LENGTH))
+		return default_offset_lit;
+
+	return 0;
+}
+
 static void exynos_tmu_apply_ambient_offset(struct exynos_tmu_data *data)
 {
 	int temp;
@@ -1679,14 +1701,16 @@ static int exynos_tmu_apply_trip_offset(struct exynos_tmu_data *data, int offset
 		exynos_tmu_apply_ambient_offset(data);
 	}
 
-	if (data->hotplug_enable)
-		kthread_queue_work(&data->thermal_worker, &data->hotplug_work);
+	if (data->enabled) {
+		if (data->hotplug_enable)
+			kthread_queue_work(&data->thermal_worker, &data->hotplug_work);
 
-	if (data->use_pi_thermal)
-		kthread_mod_delayed_work(&data->thermal_worker, &data->pi_work,
-					 0);
-	else
-		thermal_zone_device_update(tz, THERMAL_EVENT_UNSPECIFIED);
+		if (data->use_pi_thermal)
+			kthread_mod_delayed_work(&data->thermal_worker,
+						 &data->pi_work, 0);
+		else
+			thermal_zone_device_update(tz, THERMAL_EVENT_UNSPECIFIED);
+	}
 
 	return 0;
 }
@@ -2452,6 +2476,11 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 	}
 #endif
 	exynos_tmu_capture_offset_base(data);
+	ret = exynos_tmu_apply_trip_offset(data, exynos_tmu_get_default_offset(data));
+	if (ret) {
+		tmu_dev_err(&pdev->dev, "Failed to apply default trip offset\n");
+		goto err_thermal;
+	}
 
 	ret = exynos_tmu_initialize(pdev);
 	if (ret) {
