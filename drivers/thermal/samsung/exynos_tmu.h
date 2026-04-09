@@ -90,6 +90,7 @@ struct exynos_tmu_data {
 	struct kthread_work irq_work;
 	struct kthread_work hotplug_work;
 	struct kthread_delayed_work trip_update_work;
+	struct kthread_delayed_work default_offset_work;
 	struct mutex lock;
 	struct thermal_zone_device *tzd;
 	unsigned int ntrip;
@@ -110,6 +111,9 @@ struct exynos_tmu_data {
 	struct proc_dir_entry *trip_table_proc_entry;
 	struct proc_dir_entry *trip_offset_proc_entry;
 	int trip_offset;
+	unsigned long offset_defer_until_jiffies;
+	int deferred_trip_offset;
+	bool deferred_trip_offset_valid;
 	unsigned int base_ntrips;
 	int base_trip_temps[EXYNOS_TMU_MAX_TRIPS];
 	int base_hotplug_in_threshold;

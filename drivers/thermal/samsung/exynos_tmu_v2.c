@@ -34,6 +34,7 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/cpufreq.h>
+#include <linux/jiffies.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/suspend.h>
@@ -770,8 +771,11 @@ static int hotplug_in_lit = 65;
 static int default_offset_big = -21000;
 static int default_offset_mid = -19000;
 static int default_offset_lit = -13000;
+#define EXYNOS_TMU_DEFAULT_OFFSET_DELAY_MS	45000
 
 static int exynos_tmu_offset_to_mc(int base_temp, int offset);
+static int exynos_tmu_get_default_offset(struct exynos_tmu_data *data);
+static int exynos_tmu_apply_trip_offset(struct exynos_tmu_data *data, int offset);
 
 static void amb_tz_init(struct exynos_tmu_data *data)
 {
@@ -1037,6 +1041,27 @@ static void exynos_tmu_trip_update(struct kthread_work *work)
 	mutex_unlock(&data->lock);
 }
 
+static void exynos_tmu_default_offset_update(struct kthread_work *work)
+{
+	struct exynos_tmu_data *data =
+			container_of(work, struct exynos_tmu_data,
+				     default_offset_work.work);
+	int offset = 0;
+	bool valid = false;
+
+	mutex_lock(&data->lock);
+	if (data->deferred_trip_offset_valid) {
+		offset = data->deferred_trip_offset;
+		valid = true;
+		data->deferred_trip_offset_valid = false;
+	}
+	data->offset_defer_until_jiffies = 0;
+	mutex_unlock(&data->lock);
+
+	if (valid)
+		exynos_tmu_apply_trip_offset(data, offset);
+}
+
 static void exynos_tmu_work(struct kthread_work *work)
 {
 	struct exynos_tmu_data *data =
@@ -1148,6 +1173,8 @@ static int exynos_tmu_irq_work_init(struct platform_device *pdev)
 	kthread_init_work(&data->irq_work, exynos_tmu_work);
 	kthread_init_delayed_work(&data->trip_update_work,
 				  exynos_tmu_trip_update);
+	kthread_init_delayed_work(&data->default_offset_work,
+				  exynos_tmu_default_offset_update);
 
 	wake_up_process(thread);
 
@@ -1995,8 +2022,17 @@ static const struct file_operations exynos_tmu_trip_table_proc_fops = {
 static int exynos_tmu_trip_offset_proc_show(struct seq_file *m, void *v)
 {
 	struct exynos_tmu_data *data = m->private;
+	int offset;
 
-	seq_printf(m, "%d\n", data->trip_offset);
+	mutex_lock(&data->lock);
+	if (time_before(jiffies, data->offset_defer_until_jiffies) &&
+	    data->deferred_trip_offset_valid)
+		offset = data->deferred_trip_offset;
+	else
+		offset = data->trip_offset;
+	mutex_unlock(&data->lock);
+
+	seq_printf(m, "%d\n", offset);
 
 	return 0;
 }
@@ -2032,6 +2068,22 @@ static ssize_t exynos_tmu_trip_offset_proc_write(struct file *file,
 	if (ret)
 		return ret;
 
+	mutex_lock(&data->lock);
+	if (time_before(jiffies, data->offset_defer_until_jiffies)) {
+		data->deferred_trip_offset = offset;
+		data->deferred_trip_offset_valid = true;
+		mutex_unlock(&data->lock);
+		*ppos += count;
+		return count;
+	}
+	mutex_unlock(&data->lock);
+
+	kthread_cancel_delayed_work_sync(&data->default_offset_work);
+	mutex_lock(&data->lock);
+	data->offset_defer_until_jiffies = 0;
+	data->deferred_trip_offset = offset;
+	data->deferred_trip_offset_valid = false;
+	mutex_unlock(&data->lock);
 	ret = exynos_tmu_apply_trip_offset(data, offset);
 	if (ret)
 		return ret;
@@ -2476,11 +2528,12 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 	}
 #endif
 	exynos_tmu_capture_offset_base(data);
-	ret = exynos_tmu_apply_trip_offset(data, exynos_tmu_get_default_offset(data));
-	if (ret) {
-		tmu_dev_err(&pdev->dev, "Failed to apply default trip offset\n");
-		goto err_thermal;
-	}
+	mutex_lock(&data->lock);
+	data->offset_defer_until_jiffies =
+		jiffies + msecs_to_jiffies(EXYNOS_TMU_DEFAULT_OFFSET_DELAY_MS);
+	data->deferred_trip_offset = exynos_tmu_get_default_offset(data);
+	data->deferred_trip_offset_valid = data->deferred_trip_offset != 0;
+	mutex_unlock(&data->lock);
 
 	ret = exynos_tmu_initialize(pdev);
 	if (ret) {
@@ -2556,6 +2609,11 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 
 	exynos_tmu_control(pdev, true);
 
+	kthread_mod_delayed_work(&data->thermal_worker,
+				 &data->default_offset_work,
+				 msecs_to_jiffies(
+				 EXYNOS_TMU_DEFAULT_OFFSET_DELAY_MS));
+
 	ret = exynos_tmu_create_trip_table_proc(data);
 	if (ret)
 		tmu_dev_err(&pdev->dev, "cannot create exynos tmu trip table proc (%d)\n",
@@ -2579,6 +2637,7 @@ static int exynos_tmu_remove(struct platform_device *pdev)
 	struct thermal_zone_device *tzd = data->tzd;
 	struct exynos_tmu_data *devnode;
 
+	kthread_cancel_delayed_work_sync(&data->default_offset_work);
 	kthread_cancel_delayed_work_sync(&data->trip_update_work);
 	thermal_zone_of_sensor_unregister(&pdev->dev, tzd);
 	exynos_tmu_control(pdev, false);
