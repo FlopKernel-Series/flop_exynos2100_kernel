@@ -771,6 +771,7 @@ static int hotplug_in_lit = 65;
 static int default_offset_big = -21000;
 static int default_offset_mid = -19000;
 static int default_offset_lit = -13000;
+static int default_offset_gpu = -19000;
 #define EXYNOS_TMU_DEFAULT_OFFSET_DELAY_MS	45000
 
 static int exynos_tmu_offset_to_mc(int base_temp, int offset);
@@ -1586,6 +1587,8 @@ static int exynos_tmu_get_default_offset(struct exynos_tmu_data *data)
 		return default_offset_mid;
 	if (!strncmp(data->tmu_name, "LITTLE", THERMAL_NAME_LENGTH))
 		return default_offset_lit;
+	if (!strncmp(data->tmu_name, "G3D", THERMAL_NAME_LENGTH))
+		return default_offset_gpu;
 
 	return 0;
 }
