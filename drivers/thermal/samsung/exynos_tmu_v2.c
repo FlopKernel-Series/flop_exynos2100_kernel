@@ -772,11 +772,19 @@ static int default_offset_big = -21000;
 static int default_offset_mid = -19000;
 static int default_offset_lit = -13000;
 static int default_offset_gpu = -19000;
+#define EXYNOS_TMU_OFFSET_MIN_MC	(-50000)
+#define EXYNOS_TMU_OFFSET_MAX_MC	15000
 #define EXYNOS_TMU_DEFAULT_OFFSET_DELAY_MS	45000
 
 static int exynos_tmu_offset_to_mc(int base_temp, int offset);
 static int exynos_tmu_get_default_offset(struct exynos_tmu_data *data);
 static int exynos_tmu_apply_trip_offset(struct exynos_tmu_data *data, int offset);
+
+static int exynos_tmu_clamp_offset(int offset)
+{
+	return clamp(offset, EXYNOS_TMU_OFFSET_MIN_MC,
+		     EXYNOS_TMU_OFFSET_MAX_MC);
+}
 
 static void amb_tz_init(struct exynos_tmu_data *data)
 {
@@ -1643,6 +1651,7 @@ static int exynos_tmu_apply_trip_offset(struct exynos_tmu_data *data, int offset
 	if (!data || !data->tzd || !data->base_ntrips)
 		return -ENODEV;
 
+	offset = exynos_tmu_clamp_offset(offset);
 	tz = data->tzd;
 	ntrips = min_t(unsigned int, data->base_ntrips,
 		       of_thermal_get_ntrips(tz));
@@ -2070,6 +2079,7 @@ static ssize_t exynos_tmu_trip_offset_proc_write(struct file *file,
 	ret = kstrtoint(strim(buf), 10, &offset);
 	if (ret)
 		return ret;
+	offset = exynos_tmu_clamp_offset(offset);
 
 	mutex_lock(&data->lock);
 	if (time_before(jiffies, data->offset_defer_until_jiffies)) {
@@ -2534,7 +2544,8 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 	mutex_lock(&data->lock);
 	data->offset_defer_until_jiffies =
 		jiffies + msecs_to_jiffies(EXYNOS_TMU_DEFAULT_OFFSET_DELAY_MS);
-	data->deferred_trip_offset = exynos_tmu_get_default_offset(data);
+	data->deferred_trip_offset =
+		exynos_tmu_clamp_offset(exynos_tmu_get_default_offset(data));
 	data->deferred_trip_offset_valid = data->deferred_trip_offset != 0;
 	mutex_unlock(&data->lock);
 
