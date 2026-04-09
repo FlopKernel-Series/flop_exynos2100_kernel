@@ -34,11 +34,14 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/cpufreq.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 #include <linux/suspend.h>
 #include <soc/samsung/exynos_pm_qos.h>
 #include <linux/threads.h>
 #include <linux/thermal.h>
-#include <soc/samsung/gpu_cooling.h>
+#include <soc/samsung/cpu_cooling.h>
+#include <soc/samsung/dev_cooling.h>
 #include <soc/samsung/isp_cooling.h>
 #include <linux/slab.h>
 #include <linux/debugfs.h>
@@ -74,6 +77,9 @@ static void exynos_tmu_show_curr_temp_work(struct work_struct *work);
 static DECLARE_DELAYED_WORK(tmu_log_work, exynos_tmu_show_curr_temp_work);
 static int tmu_log_work_canceled;
 #endif /* CONFIG_SEC_PM */
+
+static DEFINE_MUTEX(exynos_tmu_proc_lock);
+static struct proc_dir_entry *exynos_tmu_proc_root;
 
 #define EXYNOS_GPU_THERMAL_ZONE_ID		(3)
 
@@ -1369,6 +1375,329 @@ temp_show(struct device *dev, struct device_attribute *devattr,
 			data.val[4], data.val[5], data.val[6], data.val[7]);
 }
 
+static const char *exynos_tmu_trip_type_name(enum thermal_trip_type type)
+{
+	switch (type) {
+	case THERMAL_TRIP_ACTIVE:
+		return "active";
+	case THERMAL_TRIP_PASSIVE:
+		return "passive";
+	case THERMAL_TRIP_HOT:
+		return "hot";
+	case THERMAL_TRIP_CRITICAL:
+		return "critical";
+	default:
+		return "unknown";
+	}
+}
+
+static const char *exynos_tmu_mode_name(enum thermal_device_mode mode)
+{
+	switch (mode) {
+	case THERMAL_DEVICE_DISABLED:
+		return "disabled";
+	case THERMAL_DEVICE_ENABLED:
+		return "enabled";
+	default:
+		return "unknown";
+	}
+}
+
+static bool exynos_tmu_resolve_state_cap(struct thermal_cooling_device *cdev,
+					 unsigned long state,
+					 unsigned long *value,
+					 const char **unit)
+{
+	unsigned long cap;
+
+	if (!cdev || !value || !unit || state == THERMAL_NO_TARGET)
+		return false;
+
+	if (!strncmp(cdev->type, "thermal-cpufreq-", 16)) {
+		cap = exynos_cpufreq_cooling_get_freq(cdev, state);
+		if (!cap)
+			return false;
+
+		*value = cap;
+		*unit = "kHz";
+		return true;
+	}
+
+	if (!strncmp(cdev->type, "thermal-dev-", 12)) {
+		cap = exynos_dev_cooling_get_freq(cdev, state);
+		if (!cap)
+			return false;
+
+		*value = cap;
+		*unit = "kHz";
+		return true;
+	}
+
+	if (!strncmp(cdev->type, "thermal-isp-", 12)) {
+		cap = isp_cooling_get_fps(0, state);
+		if (cap == ISP_FPS_INVALID)
+			return false;
+
+		*value = cap;
+		*unit = "fps";
+		return true;
+	}
+
+	return false;
+}
+
+static ssize_t exynos_tmu_trip_table_show_common(struct exynos_tmu_data *data,
+						 char *buf)
+{
+	struct thermal_zone_device *tz;
+	struct thermal_instance *instance;
+	enum thermal_device_mode mode = THERMAL_DEVICE_DISABLED;
+	enum thermal_trip_type type;
+	int trip, trip_temp, hyst = 0, ret, zone_temp = THERMAL_TEMP_INVALID;
+	int trip_switch_on = INVALID_TRIP, trip_control = INVALID_TRIP;
+	int hotplug_in, hotplug_out;
+	int limited_freq, limited_th, limited_rel;
+	int limited_freq_2, limited_th_2, limited_rel_2;
+	bool enabled, use_pi, switched_on = false;
+	unsigned int ntrips;
+	ssize_t len = 0;
+
+	if (!data || !data->tzd)
+		return -ENODEV;
+
+	tz = data->tzd;
+	ntrips = min_t(unsigned int, of_thermal_get_ntrips(tz), tz->trips);
+
+	ret = thermal_zone_get_temp(tz, &zone_temp);
+	if (ret)
+		zone_temp = THERMAL_TEMP_INVALID;
+
+	if (tz->ops->get_mode && tz->ops->get_mode(tz, &mode))
+		mode = THERMAL_DEVICE_DISABLED;
+
+	mutex_lock(&data->lock);
+	enabled = data->enabled;
+	use_pi = data->use_pi_thermal;
+	hotplug_in = data->hotplug_in_threshold;
+	hotplug_out = data->hotplug_out_threshold;
+	limited_freq = data->limited_frequency;
+	limited_th = data->limited_threshold;
+	limited_rel = data->limited_threshold_release;
+	limited_freq_2 = data->limited_frequency_2;
+	limited_th_2 = data->limited_threshold_2;
+	limited_rel_2 = data->limited_threshold_release_2;
+	if (data->pi_param) {
+		trip_switch_on = data->pi_param->trip_switch_on;
+		trip_control = data->pi_param->trip_control_temp;
+		switched_on = data->pi_param->switched_on;
+	}
+	mutex_unlock(&data->lock);
+
+	len += scnprintf(buf + len, PAGE_SIZE - len,
+			 "zone=%s temp=%d mode=%s enabled=%d use_pi=%d trips=%u\n",
+			 tz->type, zone_temp, exynos_tmu_mode_name(mode),
+			 enabled, use_pi, ntrips);
+
+	if (use_pi && trip_control != INVALID_TRIP) {
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				 "pi switch_on=%d control=%d switched_on=%d\n",
+				 trip_switch_on, trip_control, switched_on);
+	}
+
+	if (data->id < AMB_TZ_NUM && amb_tz &&
+	    amb_tz->amb_data[data->id].tzd == tz) {
+		len += scnprintf(buf + len, PAGE_SIZE - len,
+				 "ambient normal_control=%u emergency_control=%u hotplugged_out=%d\n",
+				 amb_tz->amb_data[data->id].normal_control_temp,
+				 amb_tz->amb_data[data->id].emg_control_temp,
+				 amb_tz->amb_data[data->id].is_cpu_hotplugged_out);
+	}
+
+	len += scnprintf(buf + len, PAGE_SIZE - len,
+			 "limits hotplug_in=%d hotplug_out=%d limited_freq_1=%d limited_th_1=%d limited_rel_1=%d limited_freq_2=%d limited_th_2=%d limited_rel_2=%d\n",
+			 hotplug_in, hotplug_out, limited_freq, limited_th,
+			 limited_rel, limited_freq_2, limited_th_2,
+			 limited_rel_2);
+
+	mutex_lock(&tz->lock);
+	for (trip = 0; trip < ntrips && len < PAGE_SIZE - 1; trip++) {
+		bool found_binding = false;
+
+		if (tz->ops->get_trip_type(tz, trip, &type))
+			type = THERMAL_TRIP_ACTIVE;
+
+		if (tz->ops->get_trip_temp(tz, trip, &trip_temp))
+			trip_temp = THERMAL_TEMP_INVALID;
+
+		if (tz->ops->get_trip_hyst &&
+		    tz->ops->get_trip_hyst(tz, trip, &hyst))
+			hyst = 0;
+
+		list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
+			unsigned long cur_state = 0, upper_value = 0;
+			unsigned long target_value = 0, cur_value = 0;
+			const char *upper_unit = NULL, *target_unit = NULL;
+			const char *cur_unit = NULL;
+			int cur_ret = -EINVAL;
+
+			if (instance->trip != trip)
+				continue;
+
+			found_binding = true;
+			if (instance->cdev->ops->get_cur_state)
+				cur_ret = instance->cdev->ops->get_cur_state(
+						instance->cdev, &cur_state);
+
+			len += scnprintf(buf + len, PAGE_SIZE - len,
+					 "trip=%d type=%s temp=%d hyst=%d crossed=%d cdev=%s lower=%lu upper=%lu target=",
+					 trip, exynos_tmu_trip_type_name(type),
+					 trip_temp, hyst,
+					 (zone_temp != THERMAL_TEMP_INVALID &&
+					  trip_temp != THERMAL_TEMP_INVALID &&
+					  zone_temp >= trip_temp),
+					 instance->cdev->type, instance->lower,
+					 instance->upper);
+
+			if (instance->target == THERMAL_NO_TARGET)
+				len += scnprintf(buf + len, PAGE_SIZE - len,
+						 "none");
+			else
+				len += scnprintf(buf + len, PAGE_SIZE - len,
+						 "%lu", instance->target);
+
+			len += scnprintf(buf + len, PAGE_SIZE - len, " cur=");
+			if (cur_ret)
+				len += scnprintf(buf + len, PAGE_SIZE - len,
+						 "unknown");
+			else
+				len += scnprintf(buf + len, PAGE_SIZE - len,
+						 "%lu", cur_state);
+
+			if (exynos_tmu_resolve_state_cap(instance->cdev,
+							 instance->upper,
+							 &upper_value,
+							 &upper_unit))
+				len += scnprintf(buf + len, PAGE_SIZE - len,
+						 " upper_cap=%lu%s",
+						 upper_value, upper_unit);
+
+			if (instance->target != THERMAL_NO_TARGET &&
+			    exynos_tmu_resolve_state_cap(instance->cdev,
+							 instance->target,
+							 &target_value,
+							 &target_unit))
+				len += scnprintf(buf + len, PAGE_SIZE - len,
+						 " target_cap=%lu%s",
+						 target_value, target_unit);
+
+			if (!cur_ret &&
+			    exynos_tmu_resolve_state_cap(instance->cdev,
+							 cur_state, &cur_value,
+							 &cur_unit))
+				len += scnprintf(buf + len, PAGE_SIZE - len,
+						 " cur_cap=%lu%s",
+						 cur_value, cur_unit);
+
+			len += scnprintf(buf + len, PAGE_SIZE - len, "\n");
+		}
+
+		if (!found_binding) {
+			len += scnprintf(buf + len, PAGE_SIZE - len,
+					 "trip=%d type=%s temp=%d hyst=%d crossed=%d cdev=none\n",
+					 trip, exynos_tmu_trip_type_name(type),
+					 trip_temp, hyst,
+					 (zone_temp != THERMAL_TEMP_INVALID &&
+					  trip_temp != THERMAL_TEMP_INVALID &&
+					  zone_temp >= trip_temp));
+		}
+	}
+	mutex_unlock(&tz->lock);
+
+	return len;
+}
+
+static int exynos_tmu_trip_table_proc_show(struct seq_file *m, void *v)
+{
+	struct exynos_tmu_data *data = m->private;
+	ssize_t len;
+	char *buf;
+
+	buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	len = exynos_tmu_trip_table_show_common(data, buf);
+	if (len > 0)
+		seq_write(m, buf, len);
+
+	kfree(buf);
+
+	return len < 0 ? len : 0;
+}
+
+static int exynos_tmu_trip_table_proc_open(struct inode *inode,
+					   struct file *file)
+{
+	return single_open(file, exynos_tmu_trip_table_proc_show,
+			   PDE_DATA(inode));
+}
+
+static const struct file_operations exynos_tmu_trip_table_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= exynos_tmu_trip_table_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int exynos_tmu_create_trip_table_proc(struct exynos_tmu_data *data)
+{
+	int ret = 0;
+
+	if (!data)
+		return -ENODEV;
+
+	mutex_lock(&exynos_tmu_proc_lock);
+
+	if (!exynos_tmu_proc_root) {
+		exynos_tmu_proc_root = proc_mkdir("exynos_tmu", NULL);
+		if (!exynos_tmu_proc_root) {
+			ret = -ENOMEM;
+			goto out_unlock;
+		}
+	}
+
+	data->trip_table_proc_entry = proc_create_data(data->tmu_name, 0444,
+					exynos_tmu_proc_root,
+					&exynos_tmu_trip_table_proc_fops, data);
+	if (!data->trip_table_proc_entry)
+		ret = -ENOMEM;
+
+out_unlock:
+	mutex_unlock(&exynos_tmu_proc_lock);
+	return ret;
+}
+
+static void exynos_tmu_remove_trip_table_proc(struct exynos_tmu_data *data)
+{
+	if (!data)
+		return;
+
+	mutex_lock(&exynos_tmu_proc_lock);
+
+	if (data->trip_table_proc_entry) {
+		proc_remove(data->trip_table_proc_entry);
+		data->trip_table_proc_entry = NULL;
+	}
+
+	if (exynos_tmu_proc_root && list_empty(&dtm_dev_list)) {
+		proc_remove(exynos_tmu_proc_root);
+		exynos_tmu_proc_root = NULL;
+	}
+
+	mutex_unlock(&exynos_tmu_proc_lock);
+}
+
 #define create_s32_param_attr(name)						\
 	static ssize_t								\
 	name##_show(struct device *dev, struct device_attribute *devattr, 	\
@@ -1803,6 +2132,12 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 #endif
 
 	exynos_tmu_control(pdev, true);
+
+	ret = exynos_tmu_create_trip_table_proc(data);
+	if (ret)
+		tmu_dev_err(&pdev->dev, "cannot create exynos tmu trip table proc (%d)\n",
+			    ret);
+
 #if IS_ENABLED(CONFIG_SEC_PM)
 	exynos_tmu_sec_pm_init();
 #endif
@@ -1833,6 +2168,7 @@ static int exynos_tmu_remove(struct platform_device *pdev)
 		}
 	}
 	mutex_unlock(&data->lock);
+	exynos_tmu_remove_trip_table_proc(data);
 
 	return 0;
 }

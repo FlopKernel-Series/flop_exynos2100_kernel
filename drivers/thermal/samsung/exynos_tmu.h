@@ -31,6 +31,8 @@
 
 #define MCELSIUS        1000
 
+struct proc_dir_entry;
+
 struct exynos_pi_param {
 	s64 err_integral;
 	int trip_switch_on;
@@ -103,6 +105,7 @@ struct exynos_tmu_data {
 	struct exynos_pi_param *pi_param;
 	struct notifier_block nb;
 	atomic_t in_suspend;
+	struct proc_dir_entry *trip_table_proc_entry;
 };
 
 extern int exynos_build_static_power_table(struct device_node *np, int **var_table,

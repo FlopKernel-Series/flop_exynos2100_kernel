@@ -139,6 +139,21 @@ unsigned long cpufreq_cooling_get_level(unsigned int cpu, unsigned int freq)
 }
 EXPORT_SYMBOL_GPL(cpufreq_cooling_get_level);
 
+unsigned long exynos_cpufreq_cooling_get_freq(struct thermal_cooling_device *cdev,
+					      unsigned long state)
+{
+	struct exynos_cpufreq_cooling_device *cpufreq_cdev;
+
+	if (!cdev)
+		return 0;
+
+	cpufreq_cdev = cdev->devdata;
+	if (!cpufreq_cdev || state > cpufreq_cdev->max_level)
+		return 0;
+
+	return cpufreq_cdev->freq_table[state].frequency;
+}
+
 /**
  * update_freq_table() - Update the freq table with power numbers
  * @cpufreq_cdev:	the cpufreq cooling device in which to update the table

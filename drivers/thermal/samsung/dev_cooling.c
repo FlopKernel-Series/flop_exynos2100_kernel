@@ -150,6 +150,21 @@ static int dev_cooling_get_level(struct thermal_cooling_device *cdev,
 	return level;
 }
 
+unsigned long exynos_dev_cooling_get_freq(struct thermal_cooling_device *cdev,
+					  unsigned long state)
+{
+	struct dev_cooling_device *dev;
+
+	if (!cdev)
+		return 0;
+
+	dev = cdev->devdata;
+	if (!dev || state >= dev->max_state)
+		return 0;
+
+	return dev->freq_table[state].freq;
+}
+
 
 static int parse_ect_cooling_level(struct thermal_cooling_device *cdev,
 				   char *tz_name)

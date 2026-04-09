@@ -102,6 +102,8 @@ struct thermal_cooling_device *
 exynos_cpufreq_cooling_register(struct device_node *np, struct cpufreq_policy *policy);
 int cpu_cooling_notifier_register(struct notifier_block *n);
 int cpu_cooling_notifier_unregister(struct notifier_block *n);
+unsigned long exynos_cpufreq_cooling_get_freq(struct thermal_cooling_device *cdev,
+					      unsigned long state);
 
 #else
 static inline struct thermal_cooling_device *
@@ -125,6 +127,13 @@ static inline int cpu_cooling_notifier_register(struct notifier_block *n)
 }
 
 static inline int cpu_cooling_notifier_unregister(struct notifier_block *n)
+{
+	return 0;
+}
+
+static inline unsigned long
+exynos_cpufreq_cooling_get_freq(struct thermal_cooling_device *cdev,
+				unsigned long state)
 {
 	return 0;
 }
