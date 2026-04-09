@@ -326,10 +326,10 @@ static int build_dyn_power_table(struct gpufreq_cooling_device *gpufreq_cdev,
 		power = (u64)capacitance * (freq / 1000) * voltage_mv * voltage_mv;
 		do_div(power, 1000000000);
 
-		power_table[i].frequency = (unsigned int)freq;
+		power_table[cnt].frequency = (unsigned int)freq;
 
 		/* power is stored in mW */
-		power_table[i].power = power;
+		power_table[cnt].power = power;
 		cnt++;
 	}
 
