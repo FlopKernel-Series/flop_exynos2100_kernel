@@ -2771,7 +2771,6 @@ static const struct snd_kcontrol_new abox_ext_bin_reload_all_control =
 static int abox_ext_bin_add_controls(struct snd_soc_component *cmpnt,
 		struct abox_extra_firmware *efw)
 {
-	static bool reload_all_added;
 	struct device *dev;
 	struct snd_kcontrol_new *control, *controls;
 	struct soc_bytes_ext *be;
@@ -2784,10 +2783,6 @@ static int abox_ext_bin_add_controls(struct snd_soc_component *cmpnt,
 		return -EINVAL;
 
 	dev = cmpnt->dev;
-
-	if (!reload_all_added)
-		reload_all_added = !snd_soc_add_component_controls(cmpnt,
-				&abox_ext_bin_reload_all_control, 1);
 
 	controls = kmemdup(&abox_ext_bin_controls,
 			sizeof(abox_ext_bin_controls), GFP_KERNEL);
@@ -2834,6 +2829,67 @@ err:
 	return ret;
 }
 
+int abox_add_extra_firmware_controls(struct abox_data *data)
+{
+	struct device *dev = data->dev;
+	struct snd_soc_component *cmpnt = data->cmpnt;
+	struct abox_extra_firmware *efw;
+	int ret, err = 0;
+
+	abox_dbg(dev, "%s\n", __func__);
+
+	if (!cmpnt)
+		return 0;
+
+	list_for_each_entry(efw, &data->firmware_extra, list) {
+		if (!efw->changeable || efw->controls_added)
+			continue;
+
+		/*
+		 * Register extra firmware controls during component setup
+		 * instead of the runtime firmware load path.
+		 */
+		if (!data->ext_bin_reload_all_added) {
+			ret = snd_soc_add_component_controls(cmpnt,
+					&abox_ext_bin_reload_all_control, 1);
+			if (ret < 0) {
+				abox_warn(dev,
+						"failed to add extra firmware reload control: %d\n",
+						ret);
+				if (!err)
+					err = ret;
+				continue;
+			}
+
+			data->ext_bin_reload_all_added = true;
+		}
+
+		ret = abox_ext_bin_add_controls(cmpnt, efw);
+		if (ret < 0) {
+			abox_warn(dev,
+					"failed to add controls for %s: %d\n",
+					efw->name, ret);
+			if (!err)
+				err = ret;
+			continue;
+		}
+
+		efw->controls_added = true;
+	}
+
+	return err;
+}
+
+void abox_clear_extra_firmware_controls(struct abox_data *data)
+{
+	struct abox_extra_firmware *efw;
+
+	data->ext_bin_reload_all_added = false;
+
+	list_for_each_entry(efw, &data->firmware_extra, list)
+		efw->controls_added = false;
+}
+
 static struct abox_extra_firmware *abox_get_extra_firmware(
 		struct abox_data *data, unsigned int idx)
 {
@@ -2853,6 +2909,7 @@ int abox_add_extra_firmware(struct device *dev,
 		unsigned int offset, bool changeable)
 {
 	struct abox_extra_firmware *efw;
+	int ret;
 
 	efw = abox_get_extra_firmware(data, idx);
 	if (efw) {
@@ -2861,7 +2918,7 @@ int abox_add_extra_firmware(struct device *dev,
 		efw->area = area;
 		efw->offset = offset;
 		efw->changeable = changeable;
-		return 0;
+		goto add_controls;
 	}
 
 	efw = devm_kzalloc(dev, sizeof(*efw), GFP_KERNEL);
@@ -2876,6 +2933,13 @@ int abox_add_extra_firmware(struct device *dev,
 	efw->changeable = changeable;
 	mutex_init(&efw->lock);
 	list_add_tail(&efw->list, &data->firmware_extra);
+
+add_controls:
+	ret = abox_add_extra_firmware_controls(data);
+	if (ret < 0)
+		abox_warn(dev, "failed to update extra firmware controls: %d\n",
+				ret);
+
 	return 0;
 }
 
@@ -2906,8 +2970,6 @@ static void abox_request_extra_firmware(struct abox_data *data)
 			continue;
 
 		abox_ext_bin_request(dev, efw);
-		if (efw->changeable && efw->firmware)
-			abox_ext_bin_add_controls(data->cmpnt, efw);
 	}
 }
 

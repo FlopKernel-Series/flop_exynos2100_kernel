@@ -6685,6 +6685,7 @@ static int cmpnt_probe(struct snd_soc_component *cmpnt)
 	}
 
 	data->cmpnt = cmpnt;
+	abox_add_extra_firmware_controls(data);
 
 	abox_atune_probe(data);
 
@@ -6707,6 +6708,8 @@ static void cmpnt_remove(struct snd_soc_component *cmpnt)
 
 	abox_dbg(dev, "%s\n", __func__);
 
+	abox_clear_extra_firmware_controls(data);
+	data->cmpnt = NULL;
 	wakeup_source_unregister(data->ws);
 }
 

@@ -389,6 +389,7 @@ struct abox_extra_firmware {
 	unsigned int iova;
 	bool kcontrol;
 	bool changeable;
+	bool controls_added;
 };
 
 struct abox_event_notifier {
@@ -464,6 +465,7 @@ struct abox_data {
 	unsigned int udma_wr_count;
 	unsigned int calliope_version;
 	struct list_head firmware_extra;
+	bool ext_bin_reload_all_added;
 	const char *bootargs;
 	struct device *dev_gic;
 	struct device *dev_if[8];
@@ -869,6 +871,8 @@ extern int abox_add_extra_firmware(struct device *dev,
 		struct abox_data *data, int idx,
 		const char *name, unsigned int area,
 		unsigned int offset, bool changeable);
+extern int abox_add_extra_firmware_controls(struct abox_data *data);
+extern void abox_clear_extra_firmware_controls(struct abox_data *data);
 /**
  * abox silent reset for abox recovery
  * @param[in]	data		pointer to abox_data structure

@@ -5259,6 +5259,7 @@ static int cmpnt_probe(struct snd_soc_component *cmpnt)
 	}
 
 	data->cmpnt = cmpnt;
+	abox_add_extra_firmware_controls(data);
 
 	/* vdma and dump are initialized in abox component probe
 	 * to set vdma to sound card 1 and dump to sound card 2.
@@ -5278,6 +5279,8 @@ static void cmpnt_remove(struct snd_soc_component *cmpnt)
 
 	abox_dbg(dev, "%s\n", __func__);
 
+	abox_clear_extra_firmware_controls(data);
+	data->cmpnt = NULL;
 	wakeup_source_trash(&data->ws);
 }
 
