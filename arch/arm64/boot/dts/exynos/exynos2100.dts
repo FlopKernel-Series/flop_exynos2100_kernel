@@ -14511,24 +14511,7 @@
 		};
 
 		ecs {
-
-			stage0 {
-				cpus = "0-5";
-				monitor-cpus = "4-5";
-				busy-threshold = <0x220>;
-			};
-
-			stage1 {
-				cpus = "0-6";
-				monitor-cpus = "4-6";
-				busy-threshold = <0x35f>;
-			};
-
-			stage2 {
-				cpus = "0-7";
-				monitor-cpus = "4-7";
-				busy-threshold = <0x4d5>;
-			};
+			/* A/B: fall back to the default all-CPU ECS stage in normal mode. */
 		};
 
 		tiny_cd_sched {
