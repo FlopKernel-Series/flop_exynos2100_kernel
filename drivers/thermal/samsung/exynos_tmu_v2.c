@@ -531,13 +531,19 @@ static int exynos_tmu_set_emulation(void *drv_data, int temp)
 static int exynos_tmu_set_trip_temp(void *drv_data, int trip, int temp)
 {
 	struct exynos_tmu_data *data = drv_data;
-	int ret;
+	int ret, current_temp;
 
 	if (!data || !data->tzd)
 		return -ENODEV;
 
 	if (!data->enabled)
 		return 0;
+
+	if (data->tzd->ops->get_trip_temp &&
+	    !data->tzd->ops->get_trip_temp(data->tzd, trip, &current_temp)) {
+		if (current_temp == temp)
+			return 0;
+	}
 
 	if (mutex_trylock(&data->lock)) {
 		ret = __exynos_tmu_sync_hw_trips(data, trip, temp);
