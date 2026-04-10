@@ -121,7 +121,7 @@ freqboost_update_timestamp(struct task_struct *p)
 	return task_has_rt_policy(p);
 }
 
-static int vip_threshold = 50;
+static int vip_threshold = 40;
 
 static ssize_t show_vip_threshold(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
