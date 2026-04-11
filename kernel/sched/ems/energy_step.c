@@ -117,8 +117,10 @@ DEFINE_PER_CPU(struct esgov_policy *, esgov_policy);
 DEFINE_PER_CPU(struct esgov_cpu, esgov_cpu);
 DEFINE_PER_CPU(struct esgov_param *, esgov_param);
 
-#define ESG_DEFAULT_UCLAMP_BUSY_RATIO		80
+#define ESG_DEFAULT_UCLAMP_BUSY_RATIO		72
 #define ESG_SHORT_BURST_UCLAMP_BUSY_RATIO	60
+#define ESG_DEFAULT_IOWAIT_FLOOR		(SCHED_CAPACITY_SCALE >> 2)
+#define ESG_DEFAULT_FRONT_RATE_DELAY_NS		(2 * NSEC_PER_MSEC)
 static int esg_short_burst;
 
 static inline int esgov_effective_uclamp_busy_ratio(struct esgov_policy *esg_policy)
@@ -433,7 +435,8 @@ static void esgov_iowait_boost(struct esgov_cpu *esg_cpu, u64 time,
 		esg_cpu->iowait_boost =
 			max_t(unsigned long, esg_cpu->min, SCHED_CAPACITY_SCALE >> 1);
 	else
-		esg_cpu->iowait_boost = esg_cpu->min;
+		esg_cpu->iowait_boost =
+			max_t(unsigned long, esg_cpu->min, ESG_DEFAULT_IOWAIT_FLOOR);
 }
 
 /**
@@ -907,7 +910,8 @@ esgov_apply_uclamp(struct esgov_cpu *esg_cpu, unsigned int orig_util)
 	hist_idx = get_part_hist_idx(esg_cpu->cpu);
 	cur_idx = hist_idx ? hist_idx - 1 : HIST_SIZE - 1;
 
-	busy_ratio = (SCHED_CAPACITY_SCALE * esg_policy->uclamp_busy_ratio) / 100;
+	busy_ratio = (SCHED_CAPACITY_SCALE *
+			esgov_effective_uclamp_busy_ratio(esg_policy)) / 100;
 	total_indices = esg_policy->uclamp_monitor_len;
 	while (total_indices) {
 		active_ratio = get_part_hist_value(esg_cpu->cpu, cur_idx);
@@ -1113,7 +1117,8 @@ static bool esgov_check_rate_delay(struct esgov_policy *esg_policy, u64 time)
 
 	if (delta_ns < (esg_short_burst ?
 			min_t(u64, esg_policy->rate_delay_ns, NSEC_PER_MSEC) :
-			esg_policy->rate_delay_ns))
+			min_t(u64, esg_policy->rate_delay_ns,
+				ESG_DEFAULT_FRONT_RATE_DELAY_NS)))
 		return false;
 
 	return true;
