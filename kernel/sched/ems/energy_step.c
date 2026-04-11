@@ -60,6 +60,7 @@ struct esgov_policy {
 
 	/* no work freq press */
 	int			no_work_press_ratio;
+	bool			uclamp_busy_ratio_user_defined;
 
 	/* Tracking min max information */
 	int			min_cap;	/* allowed max capacity */
@@ -115,6 +116,39 @@ struct kobject *esg_kobj;
 DEFINE_PER_CPU(struct esgov_policy *, esgov_policy);
 DEFINE_PER_CPU(struct esgov_cpu, esgov_cpu);
 DEFINE_PER_CPU(struct esgov_param *, esgov_param);
+
+#define ESG_DEFAULT_UCLAMP_BUSY_RATIO		80
+#define ESG_SHORT_BURST_UCLAMP_BUSY_RATIO	60
+static int esg_short_burst;
+
+static inline int esgov_effective_uclamp_busy_ratio(struct esgov_policy *esg_policy)
+{
+	if (esg_short_burst && !esg_policy->uclamp_busy_ratio_user_defined)
+		return ESG_SHORT_BURST_UCLAMP_BUSY_RATIO;
+
+	return esg_policy->uclamp_busy_ratio;
+}
+
+static ssize_t show_short_burst(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", !!esg_short_burst);
+}
+
+static ssize_t store_short_burst(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int data;
+
+	if (!sscanf(buf, "%d", &data))
+		return -EINVAL;
+
+	esg_short_burst = !!data;
+	return count;
+}
+
+static struct kobj_attribute esg_short_burst_attr =
+__ATTR(short_burst, 0644, show_short_burst, store_short_burst);
 
 /*************************************************************************/
 /*			       HELPER FUNCTION				 */
@@ -395,8 +429,11 @@ static void esgov_iowait_boost(struct esgov_cpu *esg_cpu, u64 time,
 		return;
 	}
 
-	/* First wakeup after IO: start with minimum boost */
-	esg_cpu->iowait_boost = esg_cpu->min;
+	if (esg_short_burst)
+		esg_cpu->iowait_boost =
+			max_t(unsigned long, esg_cpu->min, SCHED_CAPACITY_SCALE >> 1);
+	else
+		esg_cpu->iowait_boost = esg_cpu->min;
 }
 
 /**
@@ -556,8 +593,42 @@ esg_show(uclamp_monitor_len);
 esg_store_protected(uclamp_monitor_len);
 esg_attr_rw(uclamp_monitor_len);
 
-esg_show(uclamp_busy_ratio);
-esg_store_protected(uclamp_busy_ratio);
+static ssize_t show_uclamp_busy_ratio(struct kobject *k, char *buf)
+{
+	struct esgov_policy *esg_policy =
+			container_of(k, struct esgov_policy, kobj);
+
+	return sprintf(buf, "%d\n", esgov_effective_uclamp_busy_ratio(esg_policy));
+}
+
+static ssize_t store_uclamp_busy_ratio(struct kobject *k,
+		const char *buf, size_t count)
+{
+	struct esgov_policy *esg_policy =
+			container_of(k, struct esgov_policy, kobj);
+	int data;
+
+	if (!sscanf(buf, "%d", &data))
+		return -EINVAL;
+
+	if (data < -1 || data > 100)
+		return -EINVAL;
+
+	if (task_is_booster(current) && esg_policy->policy &&
+			esg_policy->policy->cpu == 4)
+		return count;
+
+	if (data < 0) {
+		esg_policy->uclamp_busy_ratio = ESG_DEFAULT_UCLAMP_BUSY_RATIO;
+		esg_policy->uclamp_busy_ratio_user_defined = false;
+		return count;
+	}
+
+	esg_policy->uclamp_busy_ratio = data;
+	esg_policy->uclamp_busy_ratio_user_defined = true;
+	return count;
+}
+
 esg_attr_rw(uclamp_busy_ratio);
 
 esg_show(slack_expired_time_ms);
@@ -767,7 +838,8 @@ complete_esg_init:
 	esg_policy->uclamp_min = 0;
 	esg_policy->uclamp_max = SCHED_CAPACITY_SCALE;
 	esg_policy->uclamp_monitor_len = 1;	/* Default 1 window == 4ms */
-	esg_policy->uclamp_busy_ratio = 80;	/* Default 80% */
+	esg_policy->uclamp_busy_ratio = ESG_DEFAULT_UCLAMP_BUSY_RATIO;
+	esg_policy->uclamp_busy_ratio_user_defined = false;
 	up_write(&esg_policy->rwsem);
 
 	return 0;
@@ -1039,7 +1111,9 @@ static bool esgov_check_rate_delay(struct esgov_policy *esg_policy, u64 time)
 {
 	s64 delta_ns = time - esg_policy->last_freq_update_time;
 
-	if (delta_ns < esg_policy->rate_delay_ns)
+	if (delta_ns < (esg_short_burst ?
+			min_t(u64, esg_policy->rate_delay_ns, NSEC_PER_MSEC) :
+			esg_policy->rate_delay_ns))
 		return false;
 
 	return true;
@@ -1381,9 +1455,17 @@ struct cpufreq_governor *cpufreq_default_governor(void)
 
 static int esgov_register(void)
 {
+	int ret;
+
 	esg_kobj = kobject_create_and_add("energy_step", ems_kobj);
 	if (!esg_kobj)
 		return -EINVAL;
+
+	ret = sysfs_create_file(esg_kobj, &esg_short_burst_attr.attr);
+	if (ret) {
+		kobject_put(esg_kobj);
+		return ret;
+	}
 
 	cpu_pm_register_notifier(&esg_cpu_pm_notifier);
 	emstune_register_mode_update_notifier(&esg_mode_update_notifier);
