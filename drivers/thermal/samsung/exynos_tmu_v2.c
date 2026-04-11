@@ -57,6 +57,7 @@
 #include <soc/samsung/cal-if.h>
 
 #include "exynos_tmu.h"
+#include "exynos_amb_control.h"
 #include "../thermal_core.h"
 #if IS_ENABLED(CONFIG_EXYNOS_ACPM_THERMAL)
 #include "exynos_acpm_tmu.h"
@@ -740,63 +741,6 @@ static int exynos_pi_controller(struct exynos_tmu_data *data, int control_temp)
 	return ret;
 }
 
-#define AMB_TZ_NUM	(5)
-#define AMB_DEFAULT_SAMPLING_RATE_MS	1000
-#define AMB_HIGH_SAMPLING_RATE_MS	100
-#define AMB_INCREASE_SAMPLING_TEMP_MC	55000
-#define AMB_DECREASE_SAMPLING_TEMP_MC	50000
-enum tz_id {
-	AMB_TZ_BIG,
-	AMB_TZ_MID,
-	AMB_TZ_LIT,
-	AMB_TZ_GPU,
-	AMB_TZ_ISP,
-};
-struct ambient_thermal_zone_data {
-	int hotplug_in_threshold;
-	int hotplug_out_threshold;
-	bool is_cpu_hotplugged_out;
-	char cpuhp_name[THERMAL_NAME_LENGTH + 1];
-	int hotplug_disabled;
-	struct cpumask cpu_domain;
-	struct thermal_zone_device *tzd;
-	unsigned int emg_control_temp;
-	unsigned int normal_control_temp;
-	unsigned int use_pi_thermal;
-	unsigned int increase_trip_temp;
-	unsigned int decrease_trip_temp;
-};
-
-struct ambient_thermal_zone {
-	struct thermal_zone_device *amb_tzd;
-
-	struct ambient_thermal_zone_data amb_data[AMB_TZ_NUM];
-	struct exynos_pm_qos_request mif_max_pm_qos;
-	struct exynos_pm_qos_request mif_min_pm_qos;
-	struct mutex lock;
-	unsigned int default_sampling_rate;
-	unsigned int high_sampling_rate;
-	unsigned int increase_sampling_temp;
-	unsigned int decrease_sampling_temp;
-	unsigned int current_sampling_rate;
-	unsigned int status;
-	unsigned long next_update_jiffies;
-	bool mif_throttled;
-	bool s2d_disabled;
-	bool status_valid;
-};
-
-struct ambient_thermal_zone *amb_tz;
-static unsigned int hotplug_threshold = 75;
-static unsigned int emergency_control_temp = 75;
-static unsigned int emergency_control_threshold  = 60;
-
-static int hotplug_out_big = 65;
-static int hotplug_in_big = 60;
-static int hotplug_out_mid = 65;
-static int hotplug_in_mid = 60;
-static int hotplug_out_lit = 75;
-static int hotplug_in_lit = 65;
 static int default_offset_big = -10000;
 static int default_offset_mid = -10000;
 static int default_offset_lit = -8000;
@@ -813,214 +757,6 @@ static int exynos_tmu_clamp_offset(int offset)
 {
 	return clamp(offset, EXYNOS_TMU_OFFSET_MIN_MC,
 		     EXYNOS_TMU_OFFSET_MAX_MC);
-}
-
-static void amb_tz_init(struct exynos_tmu_data *data)
-{
-	int control_temp;
-
-	if (data->id >= AMB_TZ_NUM)
-		return;
-
-	if (data->id != 0) {
-		if (!amb_tz)
-			return;
-
-		goto set_control_temp;
-	}
-
-	amb_tz = kzalloc(sizeof(struct ambient_thermal_zone), GFP_KERNEL);
-
-	amb_tz->amb_data[AMB_TZ_BIG].hotplug_in_threshold = hotplug_in_big * 1000;
-	amb_tz->amb_data[AMB_TZ_BIG].hotplug_out_threshold = hotplug_out_big * 1000;
-	amb_tz->amb_data[AMB_TZ_MID].hotplug_in_threshold = hotplug_in_mid * 1000;
-	amb_tz->amb_data[AMB_TZ_MID].hotplug_out_threshold = hotplug_out_mid * 1000;
-	amb_tz->amb_data[AMB_TZ_LIT].hotplug_in_threshold = hotplug_in_lit * 1000;
-	amb_tz->amb_data[AMB_TZ_LIT].hotplug_out_threshold = hotplug_out_lit * 1000;
-
-	cpulist_parse("7", &amb_tz->amb_data[AMB_TZ_BIG].cpu_domain);
-	cpulist_parse("4-6", &amb_tz->amb_data[AMB_TZ_MID].cpu_domain);
-	cpulist_parse("2-3", &amb_tz->amb_data[AMB_TZ_LIT].cpu_domain);
-
-	snprintf(amb_tz->amb_data[AMB_TZ_BIG].cpuhp_name, THERMAL_NAME_LENGTH, "AMB_BIG");
-	exynos_cpuhp_register(amb_tz->amb_data[AMB_TZ_BIG].cpuhp_name, *cpu_possible_mask);
-
-	snprintf(amb_tz->amb_data[AMB_TZ_MID].cpuhp_name, THERMAL_NAME_LENGTH, "AMB_MID");
-	exynos_cpuhp_register(amb_tz->amb_data[AMB_TZ_MID].cpuhp_name, *cpu_possible_mask);
-
-	snprintf(amb_tz->amb_data[AMB_TZ_LIT].cpuhp_name, THERMAL_NAME_LENGTH, "AMB_LIT");
-	exynos_cpuhp_register(amb_tz->amb_data[AMB_TZ_LIT].cpuhp_name, *cpu_possible_mask);
-
-	mutex_init(&amb_tz->lock);
-	amb_tz->default_sampling_rate = AMB_DEFAULT_SAMPLING_RATE_MS;
-	amb_tz->high_sampling_rate = AMB_HIGH_SAMPLING_RATE_MS;
-	amb_tz->increase_sampling_temp = AMB_INCREASE_SAMPLING_TEMP_MC;
-	amb_tz->decrease_sampling_temp = AMB_DECREASE_SAMPLING_TEMP_MC;
-	amb_tz->current_sampling_rate = amb_tz->default_sampling_rate;
-	amb_tz->next_update_jiffies = jiffies;
-
-	exynos_pm_qos_add_request(&amb_tz->mif_max_pm_qos,
-			PM_QOS_BUS_THROUGHPUT_MAX,
-			PM_QOS_BUS_THROUGHPUT_MAX_DEFAULT_VALUE);
-
-	exynos_pm_qos_add_request(&amb_tz->mif_min_pm_qos,
-			PM_QOS_BUS_THROUGHPUT,
-			PM_QOS_BUS_THROUGHPUT_DEFAULT_VALUE);
-
-set_control_temp:
-	if (data->use_pi_thermal) {
-		amb_tz->amb_data[data->id].use_pi_thermal = data->use_pi_thermal;
-		amb_tz->amb_data[data->id].tzd = data->tzd;
-		data->tzd->ops->get_trip_temp(data->tzd,
-				data->pi_param->trip_control_temp, &control_temp);
-		amb_tz->amb_data[data->id].normal_control_temp = control_temp;
-		amb_tz->amb_data[data->id].emg_control_temp =
-			exynos_tmu_offset_to_mc(emergency_control_temp * MCELSIUS,
-						data->trip_offset);
-	} else if (data->id == AMB_TZ_ISP) {
-		amb_tz->amb_data[data->id].tzd = data->tzd;
-		data->tzd->ops->get_trip_temp(data->tzd,
-				1, &control_temp);
-		amb_tz->amb_data[data->id].decrease_trip_temp = control_temp;
-
-		data->tzd->ops->get_trip_temp(data->tzd,
-				2, &control_temp);
-		amb_tz->amb_data[data->id].increase_trip_temp = control_temp;
-	}
-}
-
-int get_ambient_temp(void)
-{
-	int temp;
-	int ret;
-
-	if (!amb_tz)
-		return -ENODEV;
-
-	if (!amb_tz->amb_tzd)
-		return -ENODEV;
-
-	ret = thermal_zone_get_temp(amb_tz->amb_tzd, &temp);
-	if (ret) {
-		if (ret != -EAGAIN)
-			pr_warn("[%s] failed to read ambient thermal zone (%d)\n",
-					__func__, ret);
-		return -EINVAL;
-	}
-
-	return temp;
-}
-
-unsigned int check_ambient_temp(struct exynos_tmu_data *data)
-{
-	int temp;
-	int i;
-	struct cpumask mask;
-	int status = 0;
-
-	if (!amb_tz)
-		return 0;
-
-	if (amb_tz->status_valid &&
-	    time_before(jiffies, amb_tz->next_update_jiffies))
-		return amb_tz->status;
-
-	temp = get_ambient_temp();
-
-	if (temp < 0) {
-		amb_tz->next_update_jiffies = jiffies +
-			msecs_to_jiffies(amb_tz->high_sampling_rate);
-		return amb_tz->status_valid ? amb_tz->status : 0;
-	}
-
-	if (!temp) {
-		amb_tz->current_sampling_rate = amb_tz->high_sampling_rate;
-		amb_tz->next_update_jiffies = jiffies +
-			msecs_to_jiffies(amb_tz->current_sampling_rate);
-		return amb_tz->status_valid ? amb_tz->status : 0;
-	}
-
-	for (i = 0; i < 3; i++) {
-		if (amb_tz->amb_data[i].hotplug_disabled)
-			continue;
-
-		if (amb_tz->amb_data[i].is_cpu_hotplugged_out) {
-			if (temp < amb_tz->amb_data[i].hotplug_in_threshold) {
-
-				exynos_cpuhp_request(amb_tz->amb_data[i].cpuhp_name, *cpu_possible_mask);
-				amb_tz->amb_data[i].is_cpu_hotplugged_out = false;
-			}
-		} else {
-			if (temp >= amb_tz->amb_data[i].hotplug_out_threshold) {
-
-				amb_tz->amb_data[i].is_cpu_hotplugged_out = true;
-				cpumask_andnot(&mask, cpu_possible_mask, &amb_tz->amb_data[i].cpu_domain);
-				exynos_cpuhp_request(amb_tz->amb_data[i].cpuhp_name, mask);
-			}
-		}
-	}
-
-	if (temp > hotplug_threshold * 1000) {
-		if (!amb_tz->mif_throttled) {
-			exynos_pm_qos_update_request(&amb_tz->mif_max_pm_qos,
-						     2028000);
-			amb_tz->mif_throttled = true;
-		}
-		if (!amb_tz->s2d_disabled) {
-			adv_tracer_s2d_set_enable(0);
-			amb_tz->s2d_disabled = true;
-		}
-	} else {
-		if (amb_tz->s2d_disabled) {
-			adv_tracer_s2d_set_enable(1);
-			amb_tz->s2d_disabled = false;
-		}
-		if (amb_tz->mif_throttled) {
-			exynos_pm_qos_update_request(&amb_tz->mif_max_pm_qos,
-					PM_QOS_BUS_THROUGHPUT_MAX_DEFAULT_VALUE);
-			amb_tz->mif_throttled = false;
-		}
-	}
-
-	if (temp > emergency_control_threshold * 1000) {
-		for (i = 0; i < AMB_TZ_NUM; i++) {
-			if (amb_tz->amb_data[i].use_pi_thermal) {
-				amb_tz->amb_data[i].tzd->ops->set_trip_temp(amb_tz->amb_data[i].tzd, 2,
-						amb_tz->amb_data[i].emg_control_temp);
-			} else if (amb_tz->amb_data[i].increase_trip_temp) {
-				amb_tz->amb_data[i].tzd->ops->set_trip_temp(amb_tz->amb_data[i].tzd, 1,
-						amb_tz->amb_data[i].decrease_trip_temp);
-			}
-		}
-	} else if (temp <= (emergency_control_threshold - 5) * 1000) {
-		for (i = 0; i < AMB_TZ_NUM; i++) {
-			if (amb_tz->amb_data[i].use_pi_thermal) {
-				amb_tz->amb_data[i].tzd->ops->set_trip_temp(amb_tz->amb_data[i].tzd, 2,
-						amb_tz->amb_data[i].normal_control_temp);
-			} else if (amb_tz->amb_data[i].increase_trip_temp) {
-				amb_tz->amb_data[i].tzd->ops->set_trip_temp(amb_tz->amb_data[i].tzd, 1,
-						amb_tz->amb_data[i].increase_trip_temp);
-			}
-		}
-	}
-
-	status = amb_tz->amb_data[0].is_cpu_hotplugged_out ||
-		amb_tz->amb_data[1].is_cpu_hotplugged_out ||
-		amb_tz->amb_data[2].is_cpu_hotplugged_out;
-
-	if (temp > amb_tz->increase_sampling_temp)
-		amb_tz->current_sampling_rate = amb_tz->high_sampling_rate;
-	else if (temp <= amb_tz->decrease_sampling_temp)
-		amb_tz->current_sampling_rate = amb_tz->default_sampling_rate;
-
-	amb_tz->status = status;
-	amb_tz->status_valid = true;
-	amb_tz->next_update_jiffies = jiffies +
-		msecs_to_jiffies(amb_tz->current_sampling_rate);
-
-	update_ambient_status(status);
-
-	return status;
 }
 
 static void exynos_pi_thermal(struct exynos_tmu_data *data)
@@ -1045,25 +781,11 @@ static void exynos_pi_thermal(struct exynos_tmu_data *data)
 
 	thermal_zone_device_update(tz, THERMAL_EVENT_UNSPECIFIED);
 
-	if (amb_tz && !amb_tz->amb_tzd) {
-		mutex_lock(&amb_tz->lock);
-
-		if (!amb_tz->amb_tzd) {
-			amb_tz->amb_tzd = thermal_zone_get_zone_by_name("battery");
-			if (PTR_ERR(amb_tz->amb_tzd) == -ENODEV)
-				amb_tz->amb_tzd = NULL;
-		}
-
-		mutex_unlock(&amb_tz->lock);
-	}
-
 	mutex_lock(&data->lock);
 
-	if (data->id == 0) {
-		if (check_ambient_temp(data)) {
-			params->switched_on = true;
-			goto polling;
-		}
+	if (data->id == 0 && exynos_amb_control_get_status()) {
+		params->switched_on = true;
+		goto polling;
 	}
 
 	ret = tz->ops->get_trip_temp(tz, params->trip_switch_on,
@@ -2675,13 +2397,6 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (data->use_pi_thermal) {
-		reset_pi_trips(data);
-		reset_pi_params(data);
-		start_pi_polling(data, 0);
-	}
-	amb_tz_init(data);
-
 	if (!IS_ERR(data->tzd))
 		data->tzd->ops->set_mode(data->tzd, THERMAL_DEVICE_ENABLED);
 
@@ -2699,6 +2414,13 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 #endif
 
 	exynos_tmu_control(pdev, true);
+	exynos_amb_control_register_tmu(data);
+
+	if (data->use_pi_thermal) {
+		reset_pi_trips(data);
+		reset_pi_params(data);
+		start_pi_polling(data, 0);
+	}
 
 	kthread_mod_delayed_work(&data->thermal_worker,
 				 &data->default_offset_work,
@@ -2730,6 +2452,7 @@ static int exynos_tmu_remove(struct platform_device *pdev)
 
 	kthread_cancel_delayed_work_sync(&data->default_offset_work);
 	kthread_cancel_delayed_work_sync(&data->trip_update_work);
+	exynos_amb_control_unregister_tmu(data);
 	thermal_zone_of_sensor_unregister(&pdev->dev, tzd);
 	exynos_tmu_control(pdev, false);
 
@@ -2914,12 +2637,15 @@ static int hotplug_threshold_set(void *data, unsigned long long val)
 	if (!amb_tz)
 		return 0;
 
+	mutex_lock(&amb_tz->lock);
 	amb_tz->amb_data[AMB_TZ_BIG].hotplug_in_threshold = (hotplug_in_big + val) * 1000;
 	amb_tz->amb_data[AMB_TZ_BIG].hotplug_out_threshold = (hotplug_out_big + val) * 1000;
 	amb_tz->amb_data[AMB_TZ_MID].hotplug_in_threshold = (hotplug_in_mid + val) * 1000;
 	amb_tz->amb_data[AMB_TZ_MID].hotplug_out_threshold = (hotplug_out_mid + val) * 1000;
 	amb_tz->amb_data[AMB_TZ_LIT].hotplug_in_threshold = (hotplug_in_lit + val) * 1000;
 	amb_tz->amb_data[AMB_TZ_LIT].hotplug_out_threshold = (hotplug_out_lit + val) * 1000;
+	mutex_unlock(&amb_tz->lock);
+	exynos_amb_control_kick(0);
 
 	return 0;
 }
@@ -2935,6 +2661,7 @@ static int emergency_control_threshold_get(void *data, unsigned long long *val)
 static int emergency_control_threshold_set(void *data, unsigned long long val)
 {
 	emergency_control_threshold = val;
+	exynos_amb_control_kick(0);
 
 	return 0;
 }
@@ -2955,9 +2682,13 @@ static int emergency_control_temp_set(void *data, unsigned long long val)
 	if (!amb_tz)
 		return 0;
 
+	mutex_lock(&amb_tz->lock);
 	amb_tz->amb_data[1].emg_control_temp = emergency_control_temp * 1000;
 	amb_tz->amb_data[2].emg_control_temp = emergency_control_temp * 1000;
 	amb_tz->amb_data[3].emg_control_temp = emergency_control_temp * 1000;
+	mutex_unlock(&amb_tz->lock);
+	exynos_amb_control_kick(0);
+
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(emergency_control_temp_fops,

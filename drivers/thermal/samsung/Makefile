@@ -4,6 +4,7 @@
 #
 obj-$(CONFIG_EXYNOS_THERMAL_V2)		+= exynos_thermal.o
 exynos_thermal-y			+= exynos_tmu_v2.o
+exynos_thermal-y			+= exynos_amb_control.o
 exynos_thermal-y			+= exynos_acpm_tmu.o
 exynos_thermal-$(CONFIG_EXYNOS_CPU_THERMAL)	+= cpu_cooling.o
 exynos_thermal-$(CONFIG_ISP_THERMAL)	+= isp_cooling.o
