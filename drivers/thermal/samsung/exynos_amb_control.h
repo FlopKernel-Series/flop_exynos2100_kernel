@@ -89,6 +89,7 @@ extern int hotplug_in_lit;
 
 int get_ambient_temp(void);
 unsigned int exynos_amb_control_get_status(void);
+unsigned int exynos_amb_control_sync_if_needed(void);
 void exynos_amb_control_kick(unsigned int delay_ms);
 void exynos_amb_control_register_tmu(struct exynos_tmu_data *data);
 void exynos_amb_control_unregister_tmu(struct exynos_tmu_data *data);

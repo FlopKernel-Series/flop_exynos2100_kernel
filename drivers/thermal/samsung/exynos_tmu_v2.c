@@ -763,6 +763,7 @@ static void exynos_pi_thermal(struct exynos_tmu_data *data)
 {
 	struct thermal_zone_device *tz = data->tzd;
 	struct exynos_pi_param *params = data->pi_param;
+	unsigned int ambient_active = 0;
 	int ret = 0;
 	int switch_on_temp, control_temp, delay;
 	enum thermal_device_mode mode;
@@ -781,9 +782,12 @@ static void exynos_pi_thermal(struct exynos_tmu_data *data)
 
 	thermal_zone_device_update(tz, THERMAL_EVENT_UNSPECIFIED);
 
+	if (data->id == 0)
+		ambient_active = exynos_amb_control_sync_if_needed();
+
 	mutex_lock(&data->lock);
 
-	if (data->id == 0 && exynos_amb_control_get_status()) {
+	if (ambient_active) {
 		params->switched_on = true;
 		goto polling;
 	}

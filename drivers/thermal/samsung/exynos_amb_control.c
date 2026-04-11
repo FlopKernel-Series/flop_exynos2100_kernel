@@ -182,17 +182,23 @@ static void exynos_amb_control_apply(struct ambient_thermal_zone *amb, int temp)
 	update_ambient_status(status);
 }
 
-static void exynos_amb_control_work_fn(struct kthread_work *work)
+static unsigned int exynos_amb_control_delay_remaining(struct ambient_thermal_zone *amb)
 {
-	struct ambient_thermal_zone *amb =
-		container_of(work, struct ambient_thermal_zone, dwork.work);
+	unsigned long remaining;
+
+	if (!amb || !amb->status_valid ||
+	    !time_before(jiffies, amb->next_update_jiffies))
+		return 0;
+
+	remaining = jiffies_to_msecs(amb->next_update_jiffies - jiffies);
+
+	return remaining ? remaining : 1;
+}
+
+static unsigned int exynos_amb_control_update_locked(struct ambient_thermal_zone *amb)
+{
 	int temp;
 	unsigned int delay;
-
-	mutex_lock(&amb->lock);
-
-	if (amb->in_suspend)
-		goto out;
 
 	exynos_amb_control_lookup_zone(amb);
 	temp = get_ambient_temp();
@@ -200,20 +206,36 @@ static void exynos_amb_control_work_fn(struct kthread_work *work)
 	if (temp < 0) {
 		delay = amb->high_sampling_rate;
 		amb->next_update_jiffies = jiffies + msecs_to_jiffies(delay);
-		goto schedule;
+		return delay;
 	}
 
 	if (!temp) {
 		amb->current_sampling_rate = amb->high_sampling_rate;
 		delay = amb->current_sampling_rate;
 		amb->next_update_jiffies = jiffies + msecs_to_jiffies(delay);
-		goto schedule;
+		return delay;
 	}
 
 	exynos_amb_control_apply(amb, temp);
-	delay = amb->current_sampling_rate;
 
-schedule:
+	return amb->current_sampling_rate;
+}
+
+static void exynos_amb_control_work_fn(struct kthread_work *work)
+{
+	struct ambient_thermal_zone *amb =
+		container_of(work, struct ambient_thermal_zone, dwork.work);
+	unsigned int delay;
+
+	mutex_lock(&amb->lock);
+
+	if (amb->in_suspend)
+		goto out;
+
+	delay = exynos_amb_control_delay_remaining(amb);
+	if (!delay)
+		delay = exynos_amb_control_update_locked(amb);
+
 	if (!amb->in_suspend)
 		exynos_amb_control_set_polling(amb, delay);
 out:
@@ -252,6 +274,7 @@ static int exynos_amb_control_pm_notify(struct notifier_block *nb,
 
 static bool exynos_amb_control_init(struct ambient_thermal_zone *amb)
 {
+	struct cpumask mask;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 
 	amb->amb_data[AMB_TZ_BIG].hotplug_in_threshold = hotplug_in_big * 1000;
@@ -293,7 +316,10 @@ static bool exynos_amb_control_init(struct ambient_thermal_zone *amb)
 		return false;
 	}
 
-	kthread_bind(amb->thread, 0);
+	cpulist_parse("0-3", &mask);
+	cpumask_and(&mask, cpu_possible_mask, &mask);
+	set_cpus_allowed_ptr(amb->thread, &mask);
+
 	if (sched_setscheduler_nocheck(amb->thread, SCHED_FIFO, &param))
 		pr_warn("thermal: failed to set ambient worker priority\n");
 	wake_up_process(amb->thread);
@@ -395,6 +421,40 @@ unsigned int exynos_amb_control_get_status(void)
 		return 0;
 
 	return READ_ONCE(amb_tz->status);
+}
+
+unsigned int exynos_amb_control_sync_if_needed(void)
+{
+	struct ambient_thermal_zone *amb = amb_tz;
+	unsigned int delay, status;
+	bool updated = false;
+
+	if (!amb)
+		return 0;
+
+	if (READ_ONCE(amb->status_valid) &&
+	    time_before(jiffies, READ_ONCE(amb->next_update_jiffies)))
+		return READ_ONCE(amb->status);
+
+	mutex_lock(&amb->lock);
+
+	if (amb->in_suspend)
+		goto out;
+
+	delay = exynos_amb_control_delay_remaining(amb);
+	if (!delay) {
+		delay = exynos_amb_control_update_locked(amb);
+		updated = true;
+	}
+
+	if (updated)
+		exynos_amb_control_set_polling(amb, delay);
+
+out:
+	status = amb->status_valid ? amb->status : 0;
+	mutex_unlock(&amb->lock);
+
+	return status;
 }
 
 void exynos_amb_control_kick(unsigned int delay_ms)
