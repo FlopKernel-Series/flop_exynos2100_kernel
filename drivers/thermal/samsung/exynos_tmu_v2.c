@@ -775,6 +775,7 @@ static void exynos_pi_thermal(struct exynos_tmu_data *data)
 		data->tzd->ops->get_mode(data->tzd, &mode);
 		if (mode == THERMAL_DEVICE_DISABLED) {
 			params->switched_on = false;
+			params->ambient_preempted = false;
 			mutex_lock(&data->lock);
 			goto polling;
 		}
@@ -788,9 +789,15 @@ static void exynos_pi_thermal(struct exynos_tmu_data *data)
 	mutex_lock(&data->lock);
 
 	if (ambient_active) {
+		if (!params->ambient_preempted) {
+			reset_pi_params(data);
+			allow_maximum_power(data);
+			params->ambient_preempted = true;
+		}
 		params->switched_on = true;
 		goto polling;
 	}
+	params->ambient_preempted = false;
 
 	ret = tz->ops->get_trip_temp(tz, params->trip_switch_on,
 				     &switch_on_temp);
@@ -799,6 +806,7 @@ static void exynos_pi_thermal(struct exynos_tmu_data *data)
 		reset_pi_params(data);
 		allow_maximum_power(data);
 		params->switched_on = false;
+		params->ambient_preempted = false;
 		goto polling;
 	}
 

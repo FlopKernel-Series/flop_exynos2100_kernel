@@ -50,6 +50,7 @@ struct exynos_pi_param {
 	int polling_delay_off;
 
 	bool switched_on;
+	bool ambient_preempted;
 };
 
 /**
