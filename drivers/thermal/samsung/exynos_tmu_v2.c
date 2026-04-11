@@ -732,6 +732,10 @@ static int exynos_pi_controller(struct exynos_tmu_data *data, int control_temp)
 }
 
 #define AMB_TZ_NUM	(5)
+#define AMB_DEFAULT_SAMPLING_RATE_MS	1000
+#define AMB_HIGH_SAMPLING_RATE_MS	100
+#define AMB_INCREASE_SAMPLING_TEMP_MC	55000
+#define AMB_DECREASE_SAMPLING_TEMP_MC	50000
 enum tz_id {
 	AMB_TZ_BIG,
 	AMB_TZ_MID,
@@ -761,6 +765,14 @@ struct ambient_thermal_zone {
 	struct exynos_pm_qos_request mif_max_pm_qos;
 	struct exynos_pm_qos_request mif_min_pm_qos;
 	struct mutex lock;
+	unsigned int default_sampling_rate;
+	unsigned int high_sampling_rate;
+	unsigned int increase_sampling_temp;
+	unsigned int decrease_sampling_temp;
+	unsigned int current_sampling_rate;
+	unsigned int status;
+	unsigned long next_update_jiffies;
+	bool status_valid;
 };
 
 struct ambient_thermal_zone *amb_tz;
@@ -829,6 +841,12 @@ static void amb_tz_init(struct exynos_tmu_data *data)
 	exynos_cpuhp_register(amb_tz->amb_data[AMB_TZ_LIT].cpuhp_name, *cpu_possible_mask);
 
 	mutex_init(&amb_tz->lock);
+	amb_tz->default_sampling_rate = AMB_DEFAULT_SAMPLING_RATE_MS;
+	amb_tz->high_sampling_rate = AMB_HIGH_SAMPLING_RATE_MS;
+	amb_tz->increase_sampling_temp = AMB_INCREASE_SAMPLING_TEMP_MC;
+	amb_tz->decrease_sampling_temp = AMB_DECREASE_SAMPLING_TEMP_MC;
+	amb_tz->current_sampling_rate = amb_tz->default_sampling_rate;
+	amb_tz->next_update_jiffies = jiffies;
 
 	exynos_pm_qos_add_request(&amb_tz->mif_max_pm_qos,
 			PM_QOS_BUS_THROUGHPUT_MAX,
@@ -889,10 +907,27 @@ unsigned int check_ambient_temp(struct exynos_tmu_data *data)
 	struct cpumask mask;
 	int status = 0;
 
+	if (!amb_tz)
+		return 0;
+
+	if (amb_tz->status_valid &&
+	    time_before(jiffies, amb_tz->next_update_jiffies))
+		return amb_tz->status;
+
 	temp = get_ambient_temp();
 
-	if (temp < 0)
-		return 0;
+	if (temp < 0) {
+		amb_tz->next_update_jiffies = jiffies +
+			msecs_to_jiffies(amb_tz->high_sampling_rate);
+		return amb_tz->status_valid ? amb_tz->status : 0;
+	}
+
+	if (!temp) {
+		amb_tz->current_sampling_rate = amb_tz->high_sampling_rate;
+		amb_tz->next_update_jiffies = jiffies +
+			msecs_to_jiffies(amb_tz->current_sampling_rate);
+		return amb_tz->status_valid ? amb_tz->status : 0;
+	}
 
 	for (i = 0; i < 3; i++) {
 		if (amb_tz->amb_data[i].hotplug_disabled)
@@ -948,6 +983,16 @@ unsigned int check_ambient_temp(struct exynos_tmu_data *data)
 	status = amb_tz->amb_data[0].is_cpu_hotplugged_out ||
 		amb_tz->amb_data[1].is_cpu_hotplugged_out ||
 		amb_tz->amb_data[2].is_cpu_hotplugged_out;
+
+	if (temp > amb_tz->increase_sampling_temp)
+		amb_tz->current_sampling_rate = amb_tz->high_sampling_rate;
+	else if (temp <= amb_tz->decrease_sampling_temp)
+		amb_tz->current_sampling_rate = amb_tz->default_sampling_rate;
+
+	amb_tz->status = status;
+	amb_tz->status_valid = true;
+	amb_tz->next_update_jiffies = jiffies +
+		msecs_to_jiffies(amb_tz->current_sampling_rate);
 
 	update_ambient_status(status);
 
