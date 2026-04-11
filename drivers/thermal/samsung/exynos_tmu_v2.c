@@ -303,8 +303,16 @@ static int __exynos_tmu_sync_hw_trips(struct exynos_tmu_data *data,
 		threshold[i] = (unsigned char)(temp / MCELSIUS);
 		inten |= BIT(i);
 	}
+	if (data->hw_trips_valid &&
+	    !memcmp(threshold, data->hw_trip_thresholds, sizeof(threshold)) &&
+	    inten == data->hw_trip_inten)
+		return 0;
+
 	exynos_acpm_tmu_set_threshold(tz->id, threshold);
 	exynos_acpm_tmu_set_interrupt_enable(tz->id, inten);
+	memcpy(data->hw_trip_thresholds, threshold, sizeof(threshold));
+	data->hw_trip_inten = inten;
+	data->hw_trips_valid = true;
 
 	return 0;
 }
@@ -338,6 +346,7 @@ static void exynos_tmu_control(struct platform_device *pdev, bool on)
 	mutex_lock(&data->lock);
 	exynos_acpm_tmu_tz_control(data->tzd->id, on);
 	data->enabled = on;
+	data->hw_trips_valid = false;
 	mutex_unlock(&data->lock);
 }
 
@@ -772,6 +781,8 @@ struct ambient_thermal_zone {
 	unsigned int current_sampling_rate;
 	unsigned int status;
 	unsigned long next_update_jiffies;
+	bool mif_throttled;
+	bool s2d_disabled;
 	bool status_valid;
 };
 
@@ -950,12 +961,25 @@ unsigned int check_ambient_temp(struct exynos_tmu_data *data)
 	}
 
 	if (temp > hotplug_threshold * 1000) {
-		exynos_pm_qos_update_request(&amb_tz->mif_max_pm_qos, 2028000);
-		adv_tracer_s2d_set_enable(0);
+		if (!amb_tz->mif_throttled) {
+			exynos_pm_qos_update_request(&amb_tz->mif_max_pm_qos,
+						     2028000);
+			amb_tz->mif_throttled = true;
+		}
+		if (!amb_tz->s2d_disabled) {
+			adv_tracer_s2d_set_enable(0);
+			amb_tz->s2d_disabled = true;
+		}
 	} else {
-		adv_tracer_s2d_set_enable(1);
-		exynos_pm_qos_update_request(&amb_tz->mif_max_pm_qos,
-				PM_QOS_BUS_THROUGHPUT_MAX_DEFAULT_VALUE);
+		if (amb_tz->s2d_disabled) {
+			adv_tracer_s2d_set_enable(1);
+			amb_tz->s2d_disabled = false;
+		}
+		if (amb_tz->mif_throttled) {
+			exynos_pm_qos_update_request(&amb_tz->mif_max_pm_qos,
+					PM_QOS_BUS_THROUGHPUT_MAX_DEFAULT_VALUE);
+			amb_tz->mif_throttled = false;
+		}
 	}
 
 	if (temp > emergency_control_threshold * 1000) {
@@ -1161,6 +1185,7 @@ static int exynos_tmu_pm_notify(struct notifier_block *nb,
 	case PM_HIBERNATION_PREPARE:
 	case PM_RESTORE_PREPARE:
 	case PM_SUSPEND_PREPARE:
+		data->hw_trips_valid = false;
 #if IS_ENABLED(CONFIG_SEC_PM)
 		if (!tmu_log_work_canceled) {
 			tmu_log_work_canceled = 1;
@@ -1180,6 +1205,7 @@ static int exynos_tmu_pm_notify(struct notifier_block *nb,
 	case PM_POST_HIBERNATION:
 	case PM_POST_RESTORE:
 	case PM_POST_SUSPEND:
+		data->hw_trips_valid = false;
 		atomic_set(&data->in_suspend, 0);
 		if (data->use_pi_thermal)
 			exynos_pi_thermal(data);

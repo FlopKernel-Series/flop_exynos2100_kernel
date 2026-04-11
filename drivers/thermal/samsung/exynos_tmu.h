@@ -122,6 +122,9 @@ struct exynos_tmu_data {
 	int base_limited_threshold_release;
 	int base_limited_threshold_2;
 	int base_limited_threshold_release_2;
+	unsigned char hw_trip_thresholds[EXYNOS_TMU_MAX_TRIPS];
+	unsigned char hw_trip_inten;
+	bool hw_trips_valid;
 };
 
 extern int exynos_build_static_power_table(struct device_node *np, int **var_table,
