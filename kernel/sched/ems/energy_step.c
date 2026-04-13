@@ -1154,6 +1154,12 @@ static bool esgov_postpone_freq_update(struct esgov_policy *esg_policy,
 		if (rapid_scale == RAPID_SCALE_UP)
 			return false;
 
+		if (esg_short_burst)
+			ramp_up_bound = min_t(u64, ramp_up_bound, NSEC_PER_MSEC);
+		else
+			ramp_up_bound = min_t(u64, ramp_up_bound,
+					ESG_DEFAULT_FRONT_RATE_DELAY_NS);
+
 		if (elapsed < ramp_up_bound)
 			return true;
 	} else {
