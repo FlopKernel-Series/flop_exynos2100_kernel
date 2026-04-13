@@ -1116,8 +1116,8 @@ static bool esgov_check_rate_delay(struct esgov_policy *esg_policy, u64 time)
 	s64 delta_ns = time - esg_policy->last_freq_update_time;
 
 	if (delta_ns < (esg_short_burst ?
-			min_t(u64, esg_policy->rate_delay_ns, NSEC_PER_MSEC) :
-			min_t(u64, esg_policy->rate_delay_ns,
+			min_t(s64, esg_policy->rate_delay_ns, NSEC_PER_MSEC) :
+			min_t(s64, esg_policy->rate_delay_ns,
 				ESG_DEFAULT_FRONT_RATE_DELAY_NS)))
 		return false;
 
@@ -1379,7 +1379,7 @@ int get_gov_next_cap(int grp_cpu, int dst_cpu, struct tp_env *env)
 		return -ENODEV;
 
 	/* get task util and convert to uss */
-	task_util = ml_task_util_est(p);
+	task_util = env->task_util;
 
 	if (esg_policy->min_cap >= esg_policy->max_cap)
 		return esg_policy->max_cap;
