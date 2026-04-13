@@ -1591,11 +1591,6 @@ int decon_hiber_block_exit(struct decon_device *decon)
 		return 0;
 
 	decon_hiber_block(decon);
-
-	if (READ_ONCE(decon->state) != DECON_STATE_HIBER &&
-			!atomic_read(&decon->hiber.remaining_hiber))
-		return 0;
-
 	ret = decon_exit_hiber(decon);
 
 	return ret;
