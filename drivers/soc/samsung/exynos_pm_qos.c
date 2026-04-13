@@ -46,7 +46,6 @@
 #include <linux/seq_file.h>
 #include <linux/plist.h>
 #include <linux/binfmts.h>
-#include <linux/workqueue.h>
 
 #include <linux/uaccess.h>
 #include <linux/export.h>
@@ -977,12 +976,6 @@ static void __exynos_pm_qos_update_request(struct exynos_pm_qos_request *req,
 			&req->node, EXYNOS_PM_QOS_UPDATE_REQ, new_value);
 }
 
-static bool exynos_pm_qos_timeout_work_busy(struct exynos_pm_qos_request *req)
-{
-	return work_busy(&req->work.work) &
-		(WORK_BUSY_PENDING | WORK_BUSY_RUNNING);
-}
-
 /**
  * exynos_pm_qos_work_fn - the timeout handler of exynos_pm_qos_update_request_timeout
  * @work: work struct for the delayed work (timeout)
@@ -1052,10 +1045,6 @@ void exynos_pm_qos_update_request(struct exynos_pm_qos_request *req,
 		WARN(1, KERN_ERR "exynos_pm_qos_update_request() called for unknown object\n");
 		return;
 	}
-
-	if (!exynos_pm_qos_timeout_work_busy(req) &&
-			new_value == READ_ONCE(req->node.prio))
-		return;
 
 	cancel_delayed_work_sync(&req->work);
 	__exynos_pm_qos_update_request(req, new_value);
