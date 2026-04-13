@@ -202,6 +202,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 		pitched_rate_mil = (unsigned long long) prm->srate * prm->pitch;
 		div_result = pitched_rate_mil;
 		do_div(div_result, uac->p_interval);
+		do_div(div_result, 1000000);
 		frames = (unsigned int) div_result;
 
 		pr_debug("p_srate %d, pitch %d, interval_mil %llu, frames %d\n",
@@ -212,7 +213,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 					ep->maxpacket);
 
 		if (p_pktsize < ep->maxpacket) {
-			residue_frames_mil = pitched_rate_mil - frames * uac->p_interval;
+			residue_frames_mil = pitched_rate_mil - frames * p_interval_mil;
 			p_pktsize_residue_mil = uac->p_framesize * residue_frames_mil;
 		} else
 			p_pktsize_residue_mil = 0;
@@ -227,6 +228,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 		 */
 		div_result = uac->p_residue_mil;
 		do_div(div_result, uac->p_interval);
+		do_div(div_result, 1000000);
 		if ((unsigned int) div_result >= uac->p_framesize) {
 			req->length += uac->p_framesize;
 			uac->p_residue_mil -= uac->p_framesize * p_interval_mil;
@@ -636,7 +638,7 @@ int u_audio_start_capture(struct g_audio *audio_dev)
 			req->context = prm;
 			req->length = req_len;
 			req->complete = u_audio_iso_complete;
-			req->buf = prm->rbuf + i * prm->max_psize;
+			req->buf = prm->rbuf + i * ep->maxpacket;
 		}
 
 		if (usb_ep_queue(ep, prm->reqs[i], GFP_ATOMIC))
@@ -772,7 +774,7 @@ int u_audio_start_playback(struct g_audio *audio_dev)
 			req->context = prm;
 			req->length = req_len;
 			req->complete = u_audio_iso_complete;
-			req->buf = prm->rbuf + i * prm->max_psize;
+			req->buf = prm->rbuf + i * ep->maxpacket;
 		}
 
 		if (usb_ep_queue(ep, prm->reqs[i], GFP_ATOMIC))
@@ -1363,7 +1365,7 @@ int g_audio_setup(struct g_audio *g_audio, const char *pcm_name,
 			}
 
 			kctl->id.device = pcm->device;
-			kctl->id.subdevice = i;
+			kctl->id.subdevice = 0;
 
 			err = snd_ctl_add(card, kctl);
 			if (err < 0)
@@ -1386,7 +1388,7 @@ int g_audio_setup(struct g_audio *g_audio, const char *pcm_name,
 			}
 
 			kctl->id.device = pcm->device;
-			kctl->id.subdevice = i;
+			kctl->id.subdevice = 0;
 
 
 			kctl->tlv.c = u_audio_volume_tlv;
