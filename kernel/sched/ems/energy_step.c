@@ -121,7 +121,7 @@ DEFINE_PER_CPU(struct esgov_param *, esgov_param);
 #define ESG_SHORT_BURST_UCLAMP_BUSY_RATIO	60
 #define ESG_DEFAULT_IOWAIT_FLOOR		(SCHED_CAPACITY_SCALE >> 2)
 #define ESG_DEFAULT_FRONT_RATE_DELAY_NS		(2 * NSEC_PER_MSEC)
-static int esg_short_burst = 1;
+static int esg_short_burst;
 
 static inline int esgov_effective_uclamp_busy_ratio(struct esgov_policy *esg_policy)
 {
