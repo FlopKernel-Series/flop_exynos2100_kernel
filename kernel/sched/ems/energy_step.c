@@ -1115,10 +1115,8 @@ static bool esgov_check_rate_delay(struct esgov_policy *esg_policy, u64 time)
 {
 	s64 delta_ns = time - esg_policy->last_freq_update_time;
 
-	if (delta_ns < (esg_short_burst ?
-			min_t(s64, esg_policy->rate_delay_ns, NSEC_PER_MSEC) :
-			min_t(s64, esg_policy->rate_delay_ns,
-				ESG_DEFAULT_FRONT_RATE_DELAY_NS)))
+	if (delta_ns < min_t(s64, esg_policy->rate_delay_ns,
+				ESG_DEFAULT_FRONT_RATE_DELAY_NS))
 		return false;
 
 	return true;
@@ -1154,11 +1152,8 @@ static bool esgov_postpone_freq_update(struct esgov_policy *esg_policy,
 		if (rapid_scale == RAPID_SCALE_UP)
 			return false;
 
-		if (esg_short_burst)
-			ramp_up_bound = min_t(u64, ramp_up_bound, NSEC_PER_MSEC);
-		else
-			ramp_up_bound = min_t(u64, ramp_up_bound,
-					ESG_DEFAULT_FRONT_RATE_DELAY_NS);
+		ramp_up_bound = min_t(u64, ramp_up_bound,
+				ESG_DEFAULT_FRONT_RATE_DELAY_NS);
 
 		if (elapsed < ramp_up_bound)
 			return true;
