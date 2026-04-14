@@ -415,7 +415,7 @@ void ufs_perf_populate_dt(void *data, struct device_node *np)
 	/* Queue-depth threshold: lock perf when this many requests are
 	 * simultaneously in flight, independent of individual request size. */
 	if (of_property_read_u32(np, "perf-queue-depth", &perf->th_queue_depth))
-		perf->th_queue_depth = 8;
+		perf->th_queue_depth = 6;
 }
 
 bool ufs_perf_init(void **data, struct device *dev)
