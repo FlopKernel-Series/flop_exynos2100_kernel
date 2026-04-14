@@ -2258,6 +2258,7 @@ static int exynos_devfreq_resume(struct device *dev)
 		}
 #endif
 		data->suspend_flag= false;
+		exynos_acpm_rate_cache_invalidate();
 		ret = update_devfreq(data->devfreq);
 		if (ret && ret != -EAGAIN) {
 			dev_err(&data->devfreq->dev, "devfreq failed with (%d) error\n", ret);

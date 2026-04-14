@@ -9,6 +9,7 @@
 #include <soc/samsung/exynos-devfreq.h>
 #include <soc/samsung/exynos_debug_freq.h>
 #include <linux/module.h>
+#include <dt-bindings/soc/samsung/exynos2100-devfreq.h>
 
 #include "acpm_dvfs.h"
 #include "cmucal.h"
@@ -17,11 +18,24 @@ static struct acpm_dvfs acpm_dvfs;
 static struct acpm_dvfs acpm_noti_mif;
 static struct exynos_pm_qos_request mif_request_from_acpm;
 
+/* Per-domain last-sent rate cache. Avoids redundant ACPM IPC round-trips
+ * when the requested rate hasn't changed since the last call. */
+static unsigned long acpm_dvfs_last_rate[DEVFREQ_TYPE_END];
+
+void exynos_acpm_rate_cache_invalidate(void)
+{
+	memset(acpm_dvfs_last_rate, 0, sizeof(acpm_dvfs_last_rate));
+}
+EXPORT_SYMBOL_GPL(exynos_acpm_rate_cache_invalidate);
+
 int exynos_acpm_set_rate(unsigned int id, unsigned long rate)
 {
 	struct ipc_config config;
 	unsigned int cmd[4];
 	int ret;
+
+	if (id < DEVFREQ_TYPE_END && acpm_dvfs_last_rate[id] == rate)
+		return 0;
 
 	config.cmd = cmd;
 	config.response = true;
@@ -37,6 +51,8 @@ int exynos_acpm_set_rate(unsigned int id, unsigned long rate)
 	ret = acpm_ipc_send_data_lazy(acpm_dvfs.ch_num, &config);
 	if (ret)
 		pr_err("%s:[%d] ret = %d", __func__, id, ret);
+	else if (id < DEVFREQ_TYPE_END)
+		acpm_dvfs_last_rate[id] = rate;
 
 	return ret;
 }

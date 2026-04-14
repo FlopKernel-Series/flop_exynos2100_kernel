@@ -33,6 +33,7 @@ extern unsigned long exynos_acpm_get_rate(unsigned int id);
 extern void exynos_acpm_set_device(void *dev);
 extern int exynos_acpm_set_volt_margin(unsigned int id, int volt);
 extern int exynos_acpm_set_cold_temp(unsigned int id, bool is_cold_temp);
+extern void exynos_acpm_rate_cache_invalidate(void);
 #else
 static int exynos_acpm_dvfs_init(void)
 {
