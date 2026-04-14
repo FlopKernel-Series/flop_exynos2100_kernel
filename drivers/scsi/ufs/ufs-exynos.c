@@ -1208,6 +1208,22 @@ static ssize_t ufs_transferred_cnt_show(struct device *dev,
 }
 static DEVICE_ATTR(transferred_cnt, 0444, ufs_transferred_cnt_show, NULL);
 
+static ssize_t ufs_perf_queue_depth_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct exynos_ufs *ufs = to_exynos_ufs(dev_get_drvdata(dev));
+	struct ufs_perf_control *perf = (struct ufs_perf_control *)ufs->perf;
+	unsigned int current_depth = 0;
+
+	if (perf && !IS_ERR(perf->handler))
+		current_depth = hweight_long(ufs->hba->outstanding_reqs);
+
+	return sprintf(buf, "current:%u threshold:%u\n",
+			current_depth,
+			(perf && !IS_ERR(perf->handler)) ? perf->th_queue_depth : 0);
+}
+static DEVICE_ATTR(perf_queue_depth, 0444, ufs_perf_queue_depth_show, NULL);
+
 #if IS_ENABLED(CONFIG_SEC_UFS_WB_FEATURE)
 static ssize_t ufs_sec_wb_support_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -1381,6 +1397,9 @@ static inline int create_ufs_sys_file(struct device *dev, struct exynos_ufs *ufs
 		if (device_create_file(sec_ufs_cmd_dev,
 					&dev_attr_transferred_cnt) < 0)
 			pr_err("Fail to create transferred_cnt sysfs file\n");
+		if (device_create_file(sec_ufs_cmd_dev,
+					&dev_attr_perf_queue_depth) < 0)
+			pr_err("Fail to create perf_queue_depth sysfs file\n");
 		if (device_create_file(sec_ufs_cmd_dev,
 					&dev_attr_flt) < 0)
 			pr_err("Fail to create flt sysfs file\n");
