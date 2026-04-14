@@ -1795,6 +1795,8 @@ static void exynos_ufs_set_nexus_t_xfer_req(struct ufs_hba *hba,
 		else if (scmd->cmnd[0] == 0x2A)
 			op = UFS_PERF_OP_W;
 		ufs_perf_update_stat(ufs->perf, scmd->request->__data_len, op);
+		/* queue-depth based lock: fires independently of request size */
+		ufs_perf_update_queue_depth(ufs->perf, hba);
 
 		/* cmnd[7] & cmnd[8] is the length of the data, 4KB unit*/
 		if (op == UFS_PERF_OP_R || op == UFS_PERF_OP_W)

@@ -54,6 +54,10 @@ struct ufs_perf_control {
 
 	u32 th_count_b_r_cont;
 
+	/* queue-depth based lock: trigger perf lock when this many
+	 * requests are simultaneously in flight, regardless of size */
+	u32 th_queue_depth;
+
 #if IS_ENABLED(CONFIG_EXYNOS_PM_QOS)
 	struct exynos_pm_qos_request	pm_qos_int;
 	s32			pm_qos_int_value;
@@ -106,6 +110,7 @@ struct ufs_perf_control {
 /* EXTERNAL FUNCTIONS */
 void ufs_perf_reset(void *data, struct ufs_hba *hba, bool boot);
 void ufs_perf_update_stat(void *data, unsigned int len, enum ufs_perf_op op);
+void ufs_perf_update_queue_depth(void *data, struct ufs_hba *hba);
 void ufs_perf_populate_dt(void *data, struct device_node *np);
 bool ufs_perf_init(void **data, struct device *dev);
 void ufs_perf_exit(void *data);

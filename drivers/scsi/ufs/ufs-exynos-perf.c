@@ -338,6 +338,32 @@ void ufs_perf_update_stat(void *data, unsigned int len, enum ufs_perf_op op)
 	ufs_perf_cp_and_trg(perf, is_big, is_cp_time, time, ctrl_flag);
 }
 
+/* trigger perf lock based on queue depth */
+void ufs_perf_update_queue_depth(void *data, struct ufs_hba *hba)
+{
+	struct ufs_perf_control *perf = (struct ufs_perf_control *)data;
+	unsigned int depth;
+
+	if (!perf || IS_ERR(perf->handler) || IS_ERR(perf->hba))
+		return;
+
+	/* already locked — nothing to do */
+	if (perf->is_held)
+		return;
+
+	/* th_queue_depth of 0 means uninitialised — skip */
+	if (!perf->th_queue_depth)
+		return;
+
+	/* +1 to account for the current command whose bit is set in
+	 * outstanding_reqs only after setup_xfer_req returns */
+	depth = hweight_long(hba->outstanding_reqs) + 1;
+	if (depth >= perf->th_queue_depth)
+		ufs_perf_cp_and_trg(perf, true, true,
+				    cpu_clock(raw_smp_processor_id()),
+				    UFS_PERF_CTRL_LOCK);
+}
+
 void ufs_perf_populate_dt(void *data, struct device_node *np)
 {
 	struct ufs_perf_control *perf = (struct ufs_perf_control *)data;
@@ -385,6 +411,11 @@ void ufs_perf_populate_dt(void *data, struct device_node *np)
 
 	perf->th_count_b_r_cont = 30;
 	perf->count_b_r_cont = 0;
+
+	/* Queue-depth threshold: lock perf when this many requests are
+	 * simultaneously in flight, independent of individual request size. */
+	if (of_property_read_u32(np, "perf-queue-depth", &perf->th_queue_depth))
+		perf->th_queue_depth = 8;
 }
 
 bool ufs_perf_init(void **data, struct device *dev)
