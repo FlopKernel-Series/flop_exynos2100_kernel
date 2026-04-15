@@ -772,7 +772,8 @@ static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base
 	int i, j;
 
 	fvmap_header = map_base;
-	header = sram_base;
+	header = vmalloc(FVMAP_SIZE);
+	memcpy_fromio(header, sram_base, FVMAP_SIZE);
 
 	size = cmucal_get_list_size(ACPM_VCLK_TYPE);
 
@@ -874,6 +875,7 @@ static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base
 #endif
 		}
 	}
+	vfree((void *)header);
 }
 
 int fvmap_init(void __iomem *sram_base)
