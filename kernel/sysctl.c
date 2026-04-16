@@ -430,7 +430,6 @@ static struct ctl_table kern_table[] = {
 		.proc_handler	= proc_dointvec,
 	},
 #endif /* CONFIG_SMP */
-#ifdef CONFIG_SCHED_DEBUG
 	{
 		.procname	= "sched_min_granularity_ns",
 		.data		= &sysctl_sched_min_granularity,
@@ -448,7 +447,9 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
-#ifdef CONFIG_SCHEDSTATS
+#endif /* CONFIG_SMP */
+#ifdef CONFIG_SCHED_DEBUG
+#if defined(CONFIG_SMP) && defined(CONFIG_SCHEDSTATS)
 	{
 		.procname	= "sched_schedstats",
 		.data		= NULL,
@@ -458,8 +459,7 @@ static struct ctl_table kern_table[] = {
 		.extra1		= SYSCTL_ZERO,
 		.extra2		= SYSCTL_ONE,
 	},
-#endif /* CONFIG_SCHEDSTATS */
-#endif /* CONFIG_SMP */
+#endif /* CONFIG_SMP && CONFIG_SCHEDSTATS */
 #ifdef CONFIG_NUMA_BALANCING
 	{
 		.procname	= "numa_balancing_scan_delay_ms",
