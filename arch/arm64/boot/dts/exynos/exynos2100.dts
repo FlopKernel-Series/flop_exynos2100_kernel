@@ -19473,11 +19473,11 @@
 
 				mode_0 {
 					mode_id = <0x00>;
-					target_load = "35 676000:45 1014000:55 1539000:65 2028000:75 2535000:90 3172000:95";
+					target_load = "45 676000:60 1014000:70 1539000:80 2028000:88 2535000:93 3172000:97";
 					min_sample_time = <0x32>;
 					hold_sample_time = <0x64>;
-					hispeed_load = <0x37>;
-					hispeed_freq = <0x26ae58>;
+					hispeed_load = <0x46>;
+					hispeed_freq = <0x177bb8>;
 				};
 
 				mode_1 {
