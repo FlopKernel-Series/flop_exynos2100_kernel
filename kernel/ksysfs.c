@@ -184,7 +184,7 @@ static ssize_t rcu_normal_store(struct kobject *kobj,
 KERNEL_ATTR_RW(rcu_normal);
 #endif /* #ifndef CONFIG_TINY_RCU */
 
-static bool freq_control_blocking = true;
+static bool freq_control_blocking = false;
 
 bool freq_control_blocking_enabled(void)
 {
