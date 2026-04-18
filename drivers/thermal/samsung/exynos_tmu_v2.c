@@ -38,6 +38,7 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/suspend.h>
+#include <linux/binfmts.h>
 #include <linux/uaccess.h>
 #include <soc/samsung/exynos_pm_qos.h>
 #include <linux/threads.h>
@@ -1593,6 +1594,9 @@ static void exynos_tmu_capture_offset_base(struct exynos_tmu_data *data)
 static int exynos_tmu_get_default_offset(struct exynos_tmu_data *data)
 {
 	if (!data)
+		return 0;
+
+	if (!freq_control_blocking_enabled())
 		return 0;
 
 	if (!strncmp(data->tmu_name, "BIG", THERMAL_NAME_LENGTH))
