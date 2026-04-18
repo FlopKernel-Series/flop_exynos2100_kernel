@@ -148,7 +148,7 @@ GPEX_STATIC ssize_t set_max_lock_dvfs(const char *buf, size_t count)
 {
 	int ret, clock = 0;
 
-	if (task_controls_frequencies(current))
+	if (task_controls_frequencies_with_throttlers_protection(current, !gpu_unlock))
 		return count;
 
 	if (sysfs_streq("0", buf)) {
