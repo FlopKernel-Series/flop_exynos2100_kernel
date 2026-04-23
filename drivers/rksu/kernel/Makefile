@@ -2,9 +2,17 @@ obj-$(CONFIG_KSU) := ksu.o
 
 ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
 ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
-ccflags-y += -I$(srctree)/$(src) -I$(srctree)/$(src)/include
 
-ccflags-y += -DKSU_VERSION=32447
+ifeq ($(filter /%,$(src)),)
+KSU_KERNEL_DIR := $(srctree)/$(src)
+else
+KSU_KERNEL_DIR := $(src)
+endif
+
+$(info -- KernelSU: Multi-managers: RKSU, MKSU, Official KernelSU, KowSU, KSUN, WKSU)
+ccflags-y += -I$(KSU_KERNEL_DIR) -I$(KSU_KERNEL_DIR)/include
+
+ccflags-y += -DKSU_VERSION=32473
 
 ifeq ($(shell grep -q " current_sid(void)" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
 ccflags-y += -DKSU_COMPAT_HAS_CURRENT_SID
