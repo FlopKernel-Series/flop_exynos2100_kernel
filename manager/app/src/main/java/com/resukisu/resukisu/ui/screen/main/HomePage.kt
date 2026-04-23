@@ -115,7 +115,7 @@ import com.resukisu.resukisu.ui.theme.getCardElevation
 import com.resukisu.resukisu.ui.theme.haze
 import com.resukisu.resukisu.ui.theme.hazeSource
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
-import com.resukisu.resukisu.ui.util.checkNewVersion
+import com.resukisu.resukisu.ui.util.downloader.checkNewVersion
 import com.resukisu.resukisu.ui.util.module.LatestVersionInfo
 import com.resukisu.resukisu.ui.util.reboot
 import com.resukisu.resukisu.ui.viewmodel.HomeViewModel
@@ -266,6 +266,22 @@ fun HomePage(
                             message = stringResource(
                                 R.string.unofficial_version_notice,
                                 stringResource(R.string.app_name)
+                            ),
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.TwoTone.Error,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        )
+                    }
+
+                    if (viewModel.systemStatus.kernelPatchImplement == Natives.KernelPatchImplement.KERNEL_PATCH_OFFICIAL) {
+                        WarningCard(
+                            message = stringResource(
+                                R.string.conflict_with_apatch,
                             ),
                             icon = {
                                 Icon(
@@ -528,7 +544,6 @@ private fun StatusCard(
                             // 工作模式标签
                             LabelText(
                                 label = workingModeSurfaceText,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
 
@@ -536,7 +551,6 @@ private fun StatusCard(
                                 Spacer(Modifier.width(6.dp))
                                 LabelText(
                                     label = stringResource(id = R.string.jailbreak_mode),
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
                                     containerColor = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -546,7 +560,6 @@ private fun StatusCard(
                                 Spacer(Modifier.width(6.dp))
                                 LabelText(
                                     label = Os.uname().machine,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
                                     containerColor = MaterialTheme.colorScheme.primary
                                 )
                             }

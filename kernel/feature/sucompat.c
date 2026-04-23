@@ -181,10 +181,7 @@ do_orig_execve:
 
 #if defined(CONFIG_KSU_SUSFS) || defined(CONFIG_KSU_MANUAL_HOOK)
 
-// This is only used when we are in manual hook/susfs inline hook
-// We can't remove __never_use params, because it were using by the fucking susfs
-int ksu_handle_execveat_sucompat(int *fd, const char *filename, struct user_arg_ptr *argv, void *__never_use_envp,
-                                 int *__never_use_flags)
+static inline int do_ksu_handle_execveat_sucompat(int *fd, const char *filename, struct user_arg_ptr *argv)
 {
     struct ksu_sulog_pending_event *pending_sucompat = NULL;
     struct path kpath;
@@ -221,7 +218,7 @@ out:
     return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0) || defined(KSU_HAS_MODERN_STATIC_KEY_INTERFACE)
+#ifdef KSU_COMPAT_USE_STATIC_KEY
 extern struct static_key_true ksud_execve_key;
 #else
 extern bool ksud_execve_key;
@@ -254,25 +251,22 @@ int ksu_handle_execve(int *fd, const char *filename, void *argv, void *envp, int
 
     ksu_handle_execveat_init(filename, envp);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0) || defined(KSU_HAS_MODERN_STATIC_KEY_INTERFACE)
+#ifdef KSU_COMPAT_USE_STATIC_KEY
     if (static_branch_unlikely(&ksud_execve_key)) {
         ksu_handle_execveat_ksud(filename, argv, envp, flags);
     }
 #else
-    if (ksud_execve_key) {
+    if (unlikely(ksud_execve_key)) {
         ksu_handle_execveat_ksud(filename, argv, envp, flags);
     }
 #endif
 
-    // Yep, we write check in there maybe cause susfs can't record sulog
-    // But i don't want care about it, susfs even revert that in their's patch file
-    // susfs, go to hell!
     if (ksu_get_uid_t(current_uid()) == 0) {
         pending_root_execve =
             ksu_sulog_capture_root_execve_manual(filename, *((struct user_arg_ptr *)argv), GFP_KERNEL);
     }
 
-    int ret = ksu_handle_execveat_sucompat(fd, filename, argv, envp, flags);
+    int ret = do_ksu_handle_execveat_sucompat(fd, filename, argv);
 
     // record sulog!
     ksu_sulog_emit_pending(pending_root_execve, ret, GFP_KERNEL);
@@ -291,6 +285,22 @@ int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv, voi
 
     return ksu_handle_execve(fd, filename->name, argv, envp, flags);
 }
+
+// because simonpunk, he do check in hook side
+// and call ksu_handle_execveat_sucompat
+// we need unpack filename* in here, and pass it to ksu_handle_execveat
+#ifdef CONFIG_KSU_SUSFS
+int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv, void *envp, int *flags)
+{
+    // workaround susfs codes as below
+    //	if (static_branch_unlikely(&susfs_set_sdcard_android_data_decrypted_key_false))
+    //		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
+    //	else
+    //		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
+
+    return ksu_handle_execveat(fd, filename_ptr, argv, envp, flags);
+}
+#endif
 #endif
 
 int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode, int *__unused_flags)
