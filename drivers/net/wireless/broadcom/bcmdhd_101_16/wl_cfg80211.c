@@ -4252,7 +4252,7 @@ wl_set_wpa_version(struct net_device *dev, struct cfg80211_connect_params *sme)
 	if (sme->crypto.wpa_versions & NL80211_WPA_VERSION_1)
 		val = WPA_AUTH_PSK |
 			WPA_AUTH_UNSPECIFIED;
-	else if (sme->crypto.wpa_versions & NL80211_WPA_VERSION_2)
+	else if (sme->crypto.wpa_versions & NL80211_WPA_VERSION_2 || sme->crypto.wpa_versions & NL80211_WPA_VERSION_3)
 		val = WPA2_AUTH_PSK|
 			WPA2_AUTH_UNSPECIFIED;
 	else
