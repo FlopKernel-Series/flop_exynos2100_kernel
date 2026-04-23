@@ -6,6 +6,7 @@
 #include <generated/utsrelease.h>
 #include <generated/compile.h>
 #include <linux/version.h> /* LINUX_VERSION_CODE, KERNEL_VERSION macros */
+#include <linux/moduleparam.h>
 
 #ifdef CONFIG_KSU_SUSFS
 #include <linux/susfs.h>
@@ -29,6 +30,10 @@
 #include "feature/dynamic_manager.h"
 #include "feature/sucompat.h"
 #include "hook/setuid_hook.h"
+
+#ifdef CONFIG_ARM64
+#include "compat/apatch_conflict.h"
+#endif
 
 // if we are using the upstream hook, check x86-64 compatible
 #if defined(KSU_TP_HOOK) && defined(__x86_64__)
@@ -113,6 +118,12 @@ static inline void ksu_hook_exit(void)
 #endif
 }
 
+#ifdef CONFIG_KSU_DEBUG
+bool allow_shell = true;
+#else
+bool allow_shell = false;
+#endif
+
 int __init kernelsu_init(void)
 {
     pr_info("Initialized on: %s (%s) with driver version: %u\n", UTS_RELEASE, UTS_MACHINE, KSU_VERSION);
@@ -147,6 +158,14 @@ int __init kernelsu_init(void)
     pr_alert("**														 **");
     pr_alert("**	 NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE	**");
     pr_alert("*************************************************************");
+#endif
+
+    if (allow_shell) {
+        pr_alert("shell is allowed at init!");
+    }
+
+#ifdef CONFIG_ARM64
+    ksu_start_apatch_conflict_check();
 #endif
 
     ksu_cred = prepare_creds();
@@ -247,6 +266,7 @@ module_init(kernelsu_init_early);
 module_init(kernelsu_init);
 #endif
 module_exit(kernelsu_exit);
+module_param(allow_shell, bool, 0);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("weishu");

@@ -26,14 +26,21 @@ static int ksu_task_fix_setuid(struct cred *new, const struct cred *old, int fla
 #endif
 
 #ifdef CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+extern struct static_key_true ksu_init_rc_hook;
+#else
 extern bool ksu_init_rc_hook __read_mostly;
+#endif
 
 static int ksu_file_permission(struct file *file, int mask)
 {
-    if (!ksu_init_rc_hook)
-        return 0;
-
-    ksu_handle_initrc(file);
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+    if (static_branch_unlikely(&ksu_init_rc_hook))
+        ksu_handle_initrc(file);
+#else
+    if (unlikely(ksu_init_rc_hook))
+        ksu_handle_initrc(file);
+#endif
 
     return 0;
 }
@@ -55,6 +62,10 @@ static struct security_hook_list ksu_hooks[] = {
 
 #ifdef CONFIG_KSU_MANUAL_HOOK_AUTO_INITRC_HOOK
     LSM_HOOK_INIT(file_permission, ksu_file_permission),
+#endif
+
+#ifdef KSU_COMPAT_REQUIRE_SESSION_KEYRING
+    LSM_HOOK_INIT(key_permission, ksu_key_permission),
 #endif
 };
 
