@@ -15,6 +15,7 @@ interface SettingsRepository {
     var enableFloatingBottomBarBlur: Boolean
     var pageScale: Float
     var enableWebDebugging: Boolean
+    var enableSmoothCorner: Boolean
     var autoJailbreak: Boolean
 
     suspend fun getSuCompatStatus(): String
@@ -31,6 +32,10 @@ interface SettingsRepository {
     suspend fun getSulogStatus(): String
     suspend fun getSulogPersistValue(): Long?
     fun setSulogEnabled(enabled: Boolean): Boolean
+
+    suspend fun getAdbRootStatus(): String
+    suspend fun getAdbRootPersistValue(): Long?
+    fun setAdbRootEnabled(enabled: Boolean): Boolean
 
     fun isDefaultUmountModules(): Boolean
     fun setDefaultUmountModules(enabled: Boolean): Boolean

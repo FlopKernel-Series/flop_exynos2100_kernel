@@ -21,6 +21,7 @@ data class SettingsUiState(
     val enableFloatingBottomBarBlur: Boolean = false,
     val pageScale: Float = 1.0f,
     val enableWebDebugging: Boolean = false,
+    val enableSmoothCorner: Boolean = true,
 
     // Su Compat
     val suCompatStatus: String = "",
@@ -37,6 +38,10 @@ data class SettingsUiState(
 
     // Umount Modules
     val isDefaultUmountModules: Boolean = false,
+
+    // ADB Root
+    val adbRootStatus: String = "",
+    val isAdbRootEnabled: Boolean = false,
 
     val isLkmMode: Boolean = false,
     val isLateLoadMode: Boolean = false,
@@ -55,6 +60,7 @@ data class SettingsScreenActions(
     val onSetSuCompatMode: (Int) -> Unit,
     val onSetKernelUmountEnabled: (Boolean) -> Unit,
     val onSetSulogEnabled: (Boolean) -> Unit,
+    val onSetAdbRootEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,

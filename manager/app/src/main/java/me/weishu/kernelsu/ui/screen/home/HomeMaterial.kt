@@ -1,5 +1,6 @@
 package me.weishu.kernelsu.ui.screen.home
 
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -80,6 +81,14 @@ fun HomePagerMaterial(
                 state = state,
                 actions = actions,
             )
+            if (state.showRequireKernelWarning) {
+                WarningCard(
+                    stringResource(id = R.string.require_kernel_version,
+                        state.ksuVersion ?: 0,
+                        me.weishu.kernelsu.Natives.MINIMAL_SUPPORTED_KERNEL
+                    )
+                )
+            }
             if (state.showRootWarning) {
                 WarningCard(stringResource(id = R.string.grant_root_failed))
             }
@@ -127,7 +136,7 @@ private fun UpdateCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null
@@ -171,7 +180,7 @@ private fun StatusCard(
                 when {
                     state.ksuVersion != null -> {
                         val workingMode = when (state.lkmMode) {
-                            null -> ""
+                            null -> if (Build.SUPPORTED_64_BIT_ABIS.isEmpty()) "32-BIT" else "LEGACY"
                             true -> "LKM"
                             else -> "GKI"
                         }
@@ -232,6 +241,17 @@ private fun StatusCard(
                                 text = stringResource(R.string.home_click_to_install),
                                 style = MaterialTheme.typography.bodyMedium
                             )
+                        }
+                        if (state.isSELinuxPermissive) {
+                            Button(
+                                onClick = actions.onJailbreakClick,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                )
+                            ) {
+                                Text(stringResource(R.string.home_jailbreak))
+                            }
                         }
                     }
 
@@ -406,6 +426,7 @@ private fun InfoCard(systemInfo: SystemInfo) {
                 else -> stringResource(R.string.selinux_status_unknown)
             }
             InfoCardItem(stringResource(R.string.home_selinux_status), selinuxDisplay)
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -447,7 +468,8 @@ private val previewSystemInfo = SystemInfo(
     kernelVersion = "6.1.0-android14-0-g1234567",
     managerVersion = "1.0.0 (10000)",
     fingerprint = "google/raven/raven:14/AP1A.240305.019:user/release-keys",
-    selinuxStatus = "Enforcing"
+    selinuxStatus = "Enforcing",
+    seccompStatus = 2
 )
 
 private val previewUriHandler = object : UriHandler {
