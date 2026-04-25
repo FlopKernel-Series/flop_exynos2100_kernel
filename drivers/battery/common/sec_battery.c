@@ -3475,10 +3475,32 @@ static void sec_bat_check_store_mode(struct sec_battery_info *battery)
 
 	if (sec_bat_get_facmode())
 		return;
+
+	if (!is_nocharge_type(battery->cable_type) && !battery->charging_enabled) {
+		int chg_mode = SEC_BAT_CHG_MODE_CHARGING_OFF;
+
+		pr_info("%s: capacity(%d), status(%d), charging_enabled(%d)\n",
+			 __func__, battery->capacity, battery->status, battery->charging_enabled);
+
+		/* Keep bypass on when requested, with low-SOC safety fallback. */
+		if (battery->capacity > battery->pdata->store_mode_charging_max ||
+				battery->pdata->store_mode_buckoff)
+			chg_mode = SEC_BAT_CHG_MODE_BUCK_OFF;
+
+		sec_bat_set_charging_status(battery, POWER_SUPPLY_STATUS_DISCHARGING);
+		sec_bat_set_charge(battery, chg_mode);
+
+		/* Allow charging at very low capacity for boot safety. */
+		if (battery->capacity <= 5 && battery->status == POWER_SUPPLY_STATUS_DISCHARGING) {
+			sec_bat_set_charging_status(battery, POWER_SUPPLY_STATUS_CHARGING);
+			sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING);
+		}
+	}
+
 #if defined(CONFIG_SEC_FACTORY)
 	if (!is_nocharge_type(battery->cable_type)) {
 #else
-	if (!is_nocharge_type(battery->cable_type) && (battery->store_mode || !battery->charging_enabled)) {
+	if (!is_nocharge_type(battery->cable_type) && battery->store_mode) {
 #endif
 		pr_info("%s: capacity(%d), status(%d), store_mode(%d)\n",
 			 __func__, battery->capacity, battery->status, battery->store_mode);
@@ -3510,6 +3532,15 @@ static void sec_bat_check_store_mode(struct sec_battery_info *battery)
 			sec_bat_set_charging_status(battery, POWER_SUPPLY_STATUS_CHARGING);
 			sec_vote(battery->chgen_vote, VOTER_STORE_MODE, false, 0);
 		}
+	}
+
+	if (!is_nocharge_type(battery->cable_type) && battery->charging_suspended &&
+			battery->charging_enabled && !battery->store_mode) {
+		pr_info("%s: capacity(%d), status(%d), charging_enabled(%d)\n",
+			 __func__, battery->capacity, battery->status, battery->charging_enabled);
+		sec_bat_set_charging_status(battery, POWER_SUPPLY_STATUS_CHARGING);
+		sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING);
+		battery->charging_suspended = false;
 	}
 }
 
