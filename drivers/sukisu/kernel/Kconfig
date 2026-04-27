@@ -104,6 +104,8 @@ config KSU_TRACEPOINT_HOOK
 # 	  with a manually-patched function.
 # 	  Support for kernel 3.4+
 
+endchoice
+
 config KSU_SUSFS
 	bool "SUSFS Inline Hook"
 	depends on THREAD_INFO_IN_TASK
@@ -112,8 +114,6 @@ config KSU_SUSFS
 	  SuSFS Officially support kernel 5.10+
 	  This KSU driver support it for 4.3+ in KSU side, 
 	  But the kernel side susfs compatibility MUST completed by yourself.
-
-endchoice
 
 menu "KernelSU - Manual Hook Auto hook"
     depends on KSU_MANUAL_HOOK
