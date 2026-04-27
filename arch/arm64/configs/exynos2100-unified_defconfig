@@ -1629,17 +1629,13 @@ CONFIG_GNSS=y
 #
 # KernelSU - SUSFS
 #
+# CONFIG_KSU_SUSFS is not set
 # end of KernelSU - SUSFS
 # end of KernelSU
 
 #
 # KernelSU
 #
-
-#
-# KernelSU - SUSFS
-#
-# end of KernelSU - SUSFS
 # end of KernelSU
 
 #
@@ -6639,6 +6635,7 @@ CONFIG_NETWORK_FILESYSTEMS=y
 # CONFIG_NFSD is not set
 # CONFIG_CEPH_FS is not set
 # CONFIG_CIFS is not set
+# CONFIG_SMB_SERVER is not set
 # CONFIG_CODA_FS is not set
 # CONFIG_AFS_FS is not set
 CONFIG_NLS=y
