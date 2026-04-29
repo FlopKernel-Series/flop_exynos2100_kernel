@@ -27,6 +27,7 @@ build() {
     [ "$DO_KSU" = "1" ] && FRAGMENTS="$FRAGMENTS ksu.config"
     [ "$DO_SUKI" = "1" ] && FRAGMENTS="$FRAGMENTS sukisu.config"
     [ "$DO_RKSU" = "1" ] && FRAGMENTS="$FRAGMENTS rksu.config"
+    [ "$DROIDSPACES" = "1" ] && [ "$DO_REGEN" != "1" ] && FRAGMENTS="$FRAGMENTS droidspaces.config"
 
     MAKE_JOBS="-j$(nproc --all)"
     MAKE_COMMON_ARGS=(

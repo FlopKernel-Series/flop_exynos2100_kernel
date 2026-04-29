@@ -75,6 +75,10 @@ else
     SECRETS="0"
 fi
 
+# Droidspaces support
+DROIDSPACES=1
+
+# Other variables
 DO_KSU=0
 DO_SUKI=0
 DO_RKSU=0
