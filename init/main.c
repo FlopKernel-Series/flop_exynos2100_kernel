@@ -201,6 +201,45 @@ static char selinux_mode_default_arg[] = "selinux_mode=0";
 static bool init_protection = true;
 static char init_protection_default_arg[] = "init_protection=1";
 
+#if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
+static bool aosp_mode;
+static char aosp_mode_default_arg[] = "aosp_mode=0";
+DEFINE_STATIC_KEY_FALSE(aosp_mode_key);
+EXPORT_SYMBOL(aosp_mode_key);
+
+static int __init set_aosp_mode(char *val)
+{
+	int tmp = aosp_mode;
+
+	if (get_option(&val, &tmp))
+		aosp_mode = tmp != 0;
+
+	/* Update static branch for hot path optimization */
+	if (aosp_mode)
+		static_branch_enable(&aosp_mode_key);
+	else
+		static_branch_disable(&aosp_mode_key);
+
+	return 0;
+}
+__setup("aosp_mode=", set_aosp_mode);
+
+static void __init apply_aosp_mode_default(void)
+{
+	char *val;
+
+	val = strchr(aosp_mode_default_arg, '=');
+	if (val)
+		set_aosp_mode(val + 1);
+}
+
+bool is_aosp_mode(void)
+{
+	return aosp_mode;
+}
+EXPORT_SYMBOL(is_aosp_mode);
+#endif
+
 static int __init set_uname_bpf_spoof(char *val)
 {
 	int tmp = uname_bpf_spoof;
@@ -1033,6 +1072,12 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_mass_storage_hack_default();
 	apply_selinux_mode_default();
 	apply_init_protection_default();
+#if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
+	apply_aosp_mode_default();
+#endif
+
+	pr_info("Workaround: aosp_mode=%s\n",
+		is_aosp_mode() ? "enabled" : "disabled");
 
 	if (uname_bpf_spoof == 1)
 		pr_info("Workaround: BpfSpoof Partial (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());

@@ -35,14 +35,33 @@ build_images() {
     echo -e "\n$(log_info "Building dtb image...")"
     python3 "$MKDTBOIMG" create "$OUT_DTBIMAGE" --custom0=0x00000000 --custom1=0xff000000 --version=0 --page_size=2048 "$DTB_INPUT" || exit 1
 
-    echo -e "\n$(log_info "Building boot image...")"
+    # OneUI boot image: stock kernel (cmdline contains aosp_mode=0)
+    echo -e "\n$(log_info "Building OneUI boot image...")"
     python3 "$MKBOOTIMG" --header_version "$BOOT_HEADER_VERSION" \
         --kernel "$OUT_KERNEL" \
-        --output "$OUT_BOOTIMG" \
+        --output "$OUT_BOOTIMG_ONEUI" \
         --ramdisk "$PREBUILT_RAMDISK" \
         --os_version "$BOOT_OS_VERSION" \
         --os_patch_level "$BOOT_OS_PATCH_LEVEL" || exit 1
-    echo -e "$(log_info "boot.img created!")"
+    echo -e "$(log_info "OneUI boot.img created!")"
+
+    # AOSP boot image: hexpatch the kernel cmdline aosp_mode=0 -> aosp_mode=1
+    echo -e "\n$(log_info "Building AOSP boot image...")"
+    local AOSP_KERNEL="$TMPDIR/Image_aosp"
+    cp "$OUT_KERNEL" "$AOSP_KERNEL"
+
+    "$KDIR/build/bin/magiskboot" hexpatch "$AOSP_KERNEL" \
+        616f73705f6d6f64653d30 \
+        616f73705f6d6f64653d31 || exit 1
+
+    python3 "$MKBOOTIMG" --header_version "$BOOT_HEADER_VERSION" \
+        --kernel "$AOSP_KERNEL" \
+        --output "$OUT_BOOTIMG_AOSP" \
+        --ramdisk "$PREBUILT_RAMDISK" \
+        --os_version "$BOOT_OS_VERSION" \
+        --os_patch_level "$BOOT_OS_PATCH_LEVEL" || exit 1
+    rm -f "$AOSP_KERNEL"
+    echo -e "$(log_info "AOSP boot.img created!")"
 
     echo -e "\n$(log_info "Building vendor_boot image...")"
     cd "$RAMDISK_DIR"

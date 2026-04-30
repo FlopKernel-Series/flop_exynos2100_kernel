@@ -7,7 +7,7 @@ kernel_modules() {
 
     rm -rf "$RAMDISK_DIR"
     rm -f "$TMPDIR/modules.load"
-    rm -f "$OUT_BOOTIMG" "$OUT_VENDORBOOTIMG"
+    rm -f "$OUT_BOOTIMG_ONEUI" "$OUT_BOOTIMG_AOSP" "$OUT_VENDORBOOTIMG"
     mkdir -p "$TMPDIR" "$RAMDISK_DIR" "$MODULES_DIR/0.0"
 
     cp -a "$IN_VBOOT/." "$RAMDISK_DIR/"

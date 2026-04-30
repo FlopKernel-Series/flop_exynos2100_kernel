@@ -52,7 +52,8 @@ PREBUILT_RAMDISK="$KDIR/build/boot/ramdisk"
 MODULES_DIR="$RAMDISK_DIR/lib/modules"
 OUT_KERNEL="$OUTDIR/arch/arm64/boot/Image"
 IMAGES_DIR="$KDIR/build/images"
-OUT_BOOTIMG="$IMAGES_DIR/boot.img"
+OUT_BOOTIMG_ONEUI="$IMAGES_DIR/boot_oneui.img"
+OUT_BOOTIMG_AOSP="$IMAGES_DIR/boot_aosp.img"
 OUT_VENDORBOOTIMG="$IMAGES_DIR/vendor_boot.img"
 OUT_DTBIMAGE="$TMPDIR/dtb.img"
 
@@ -182,7 +183,8 @@ else
 fi
 
 ZIP_PATH="$KDIR/build/Floppy_$FK_VER-$FK_TYPE-$CODENAME-$DATE.zip"
-TAR_PATH="$KDIR/build/Floppy_$FK_VER-$FK_TYPE-$CODENAME-$DATE.tar"
+TAR_PATH_ONEUI="$KDIR/build/FloppyOneUI_$FK_VER-$FK_TYPE-$CODENAME-$DATE.tar"
+TAR_PATH_AOSP="$KDIR/build/FloppyAOSP_$FK_VER-$FK_TYPE-$CODENAME-$DATE.tar"
 PACKAGE_PATH=""
 
 echo -e "\n$(log_info "Build info:")

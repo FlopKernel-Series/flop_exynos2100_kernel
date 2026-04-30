@@ -22,18 +22,31 @@ packing() {
     fi
 
     if [ "$DO_TAR" = "1" ]; then
-        echo -e "\n$(log_info "Building TAR package...")"
+        echo -e "\n$(log_info "Building TAR packages...")"
         cd "$TMPDIR"
-        rm -f "$TAR_PATH"
-        lz4 -c -12 -B6 --content-size "$OUT_BOOTIMG" > boot.img.lz4 2>/dev/null
+
+        # OneUI TAR
+        echo -e "$(log_info "Creating OneUI TAR...")"
+        rm -f "$TAR_PATH_ONEUI"
+        lz4 -c -12 -B6 --content-size "$OUT_BOOTIMG_ONEUI" > boot.img.lz4 2>/dev/null
         lz4 -c -12 -B6 --content-size "$OUT_VENDORBOOTIMG" > vendor_boot.img.lz4 2>/dev/null
-        tar -cf "$TAR_PATH" boot.img.lz4 vendor_boot.img.lz4
+        tar -cf "$TAR_PATH_ONEUI" boot.img.lz4 vendor_boot.img.lz4
         rm -f boot.img.lz4 vendor_boot.img.lz4
+        echo -e "$(log_info "Output: $TAR_PATH_ONEUI")"
+
+        # AOSP TAR
+        echo -e "$(log_info "Creating AOSP TAR...")"
+        rm -f "$TAR_PATH_AOSP"
+        lz4 -c -12 -B6 --content-size "$OUT_BOOTIMG_AOSP" > boot.img.lz4 2>/dev/null
+        lz4 -c -12 -B6 --content-size "$OUT_VENDORBOOTIMG" > vendor_boot.img.lz4 2>/dev/null
+        tar -cf "$TAR_PATH_AOSP" boot.img.lz4 vendor_boot.img.lz4
+        rm -f boot.img.lz4 vendor_boot.img.lz4
+        echo -e "$(log_info "Output: $TAR_PATH_AOSP")\n"
+
         cd "$KDIR"
 
         if [ -z "$PACKAGE_PATH" ]; then
-            PACKAGE_PATH="$TAR_PATH"
+            PACKAGE_PATH="$TAR_PATH_ONEUI"
         fi
-        echo -e "$(log_info "Output: $TAR_PATH")\n"
     fi
 }

@@ -7,4 +7,25 @@
 int is_bpf_spoof_enabled(void);
 const char *get_bpf_spoof_version(void);
 
+#if defined(CONFIG_DEFAULT_SUPPORT_AOSP)
+static inline bool is_aosp_mode(void)
+{
+	return true;
+}
+
+static inline bool is_aosp_mode_fast(void)
+{
+	return true;
+}
+#else
+bool is_aosp_mode(void);
+
+/* Optimized hot path version using static branch */
+extern struct static_key_false aosp_mode_key;
+static inline bool is_aosp_mode_fast(void)
+{
+	return static_branch_unlikely(&aosp_mode_key);
+}
+#endif
+
 #endif /* _WORKAROUNDS_H */
