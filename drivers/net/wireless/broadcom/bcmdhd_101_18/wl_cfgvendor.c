@@ -31,6 +31,7 @@
 #include <osl.h>
 #include <linux/kernel.h>
 #include <linux/vmalloc.h>
+#include <linux/workarounds.h>
 
 #include <bcmutils.h>
 #include <bcmwifi_channels.h>
@@ -7459,27 +7460,33 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 		err = BCME_BADLEN;
 		goto exit;
 	}
-	mem_needed = VENDOR_REPLY_OVERHEAD + (ATTRIBUTE_U32_LEN) + total_len;
-	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
-	if (unlikely(!skb)) {
-		WL_ERR(("skb alloc failed"));
-		err = -ENOMEM;
-		goto exit;
-	}
-	err = nla_put_u32(skb, ANDR_WIFI_STATS_ATTRIBUTE_NUM_RADIO, 1);
-	if (unlikely(err)) {
-		kfree_skb(skb);
-		goto exit;
-	}
-	err = nla_put(skb, ANDR_WIFI_STATS_ATTRIBUTE_STATS_INFO, total_len, outdata);
-	if (unlikely(err)) {
-		kfree_skb(skb);
-		goto exit;
-	}
+	if (is_aosp_mode()) {
+		mem_needed = VENDOR_REPLY_OVERHEAD + (ATTRIBUTE_U32_LEN) + total_len;
+		skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
+		if (unlikely(!skb)) {
+			WL_ERR(("skb alloc failed"));
+			err = -ENOMEM;
+			goto exit;
+		}
+		err = nla_put_u32(skb, ANDR_WIFI_STATS_ATTRIBUTE_NUM_RADIO, 1);
+		if (unlikely(err)) {
+			kfree_skb(skb);
+			goto exit;
+		}
+		err = nla_put(skb, ANDR_WIFI_STATS_ATTRIBUTE_STATS_INFO, total_len, outdata);
+		if (unlikely(err)) {
+			kfree_skb(skb);
+			goto exit;
+		}
 
-	err = cfg80211_vendor_cmd_reply(skb);
-	if (unlikely(err)) {
-		WL_ERR(("Vendor command reply failed ret:%d\n", err));
+		err = cfg80211_vendor_cmd_reply(skb);
+		if (unlikely(err)) {
+			WL_ERR(("Vendor command reply failed ret:%d\n", err));
+		}
+	} else {
+		err = wl_cfgvendor_send_cmd_reply(wiphy, outdata, total_len);
+		if (unlikely(err))
+			WL_ERR(("Vendor Command reply failed ret:%d \n", err));
 	}
 
 exit:
