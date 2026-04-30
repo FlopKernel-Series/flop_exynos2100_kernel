@@ -206,6 +206,21 @@ typedef struct {
 	uint32 num_channels;
 } wifi_radio_stat_h;
 
+typedef struct {
+	wifi_radio radio;
+	uint32 on_time;
+	uint32 tx_time;
+	uint32 rx_time;
+	uint32 on_time_scan;
+	uint32 on_time_nbd;
+	uint32 on_time_gscan;
+	uint32 on_time_roam_scan;
+	uint32 on_time_pno_scan;
+	uint32 on_time_hs20;
+	uint32 num_channels;
+} wifi_radio_stat_h_legacy;
+
+
 /* per rate statistics */
 typedef struct {
 	wifi_rate_v1 rate;     /* rate information */
@@ -265,6 +280,14 @@ typedef struct {
 	uint32 num_rate;                  /* number of rates */
 	wifi_rate_stat_v1 rate_stats[NUM_RATE];   /* per rate statistics, number of entries  = num_rate */
 } wifi_peer_info;
+
+typedef struct {
+	wifi_peer_type type;           /* peer type (AP, TDLS, GO etc.) */
+	uint8 peer_mac_address[6];        /* mac address */
+	uint32 capabilities;              /* peer WIFI_CAPABILITY_XXX */
+	uint32 num_rate;                  /* number of rates */
+	wifi_rate_stat rate_stats[1];   /* per rate statistics, number of entries  = num_rate */
+} wifi_peer_info_legacy;
 
 /* per access category statistics */
 typedef struct {

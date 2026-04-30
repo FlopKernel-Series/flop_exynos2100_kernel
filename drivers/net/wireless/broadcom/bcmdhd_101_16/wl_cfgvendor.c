@@ -7296,14 +7296,36 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 		cur_channel_stat.cca_busy_time = cca_busy_time;
 	}
 
-	ret = memcpy_s(output, WLC_IOCTL_MAXLEN, &radio_h, sizeof(wifi_radio_stat_h));
-	if (ret) {
-		WL_ERR(("Failed to copy wifi_radio_stat_h: %d\n", ret));
-		goto exit;
-	}
-	output += sizeof(wifi_radio_stat_h);
+	if (is_aosp_mode()) {
+		ret = memcpy_s(output, WLC_IOCTL_MAXLEN, &radio_h, sizeof(wifi_radio_stat_h));
+		if (ret) {
+			WL_ERR(("Failed to copy wifi_radio_stat_h: %d\n", ret));
+			goto exit;
+		}
+		output += sizeof(wifi_radio_stat_h);
+	} else {
+		wifi_radio_stat_h_legacy legacy_radio;
+		legacy_radio.radio = radio_h.radio;
+		legacy_radio.on_time = radio_h.on_time;
+		legacy_radio.tx_time = radio_h.tx_time;
+		legacy_radio.rx_time = radio_h.rx_time;
+		legacy_radio.on_time_scan = radio_h.on_time_scan;
+		legacy_radio.on_time_nbd = radio_h.on_time_nbd;
+		legacy_radio.on_time_gscan = radio_h.on_time_gscan;
+		legacy_radio.on_time_roam_scan = radio_h.on_time_roam_scan;
+		legacy_radio.on_time_pno_scan = radio_h.on_time_pno_scan;
+		legacy_radio.on_time_hs20 = radio_h.on_time_hs20;
+		legacy_radio.num_channels = radio_h.num_channels;
 
-	ret = memcpy_s(output, (WLC_IOCTL_MAXLEN - sizeof(wifi_radio_stat_h)),
+		ret = memcpy_s(output, WLC_IOCTL_MAXLEN, &legacy_radio, sizeof(wifi_radio_stat_h_legacy));
+		if (ret) {
+			WL_ERR(("Failed to copy wifi_radio_stat_h_legacy: %d\n", ret));
+			goto exit;
+		}
+		output += sizeof(wifi_radio_stat_h_legacy);
+	}
+
+	ret = memcpy_s(output, (WLC_IOCTL_MAXLEN - (is_aosp_mode() ? sizeof(wifi_radio_stat_h) : sizeof(wifi_radio_stat_h_legacy))),
 		chan_stats, chan_stats_size);
 	if (ret) {
 		WL_ERR(("Failed to copy wifi_channel_stat: %d\n", ret));
@@ -7422,10 +7444,17 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 		p_wifi_rate_stat_v1->retries_long = p_wifi_rate_stat->retries_long;
 	}
 
-	total_len = sizeof(wifi_radio_stat_h) + chan_stats_size;
-	total_len = total_len - sizeof(wifi_peer_info) +
-		NUM_PEER * (sizeof(wifi_peer_info) - sizeof(wifi_rate_stat_v1) +
-			NUM_RATE * sizeof(wifi_rate_stat_v1));
+	if (is_aosp_mode()) {
+		total_len = sizeof(wifi_radio_stat_h) + chan_stats_size;
+		total_len = total_len - sizeof(wifi_peer_info) +
+			NUM_PEER * (sizeof(wifi_peer_info) - sizeof(wifi_rate_stat_v1) +
+				NUM_RATE * sizeof(wifi_rate_stat_v1));
+	} else {
+		total_len = sizeof(wifi_radio_stat_h_legacy) + chan_stats_size;
+		total_len = total_len - sizeof(wifi_peer_info_legacy) +
+			NUM_PEER * (sizeof(wifi_peer_info_legacy) - sizeof(wifi_rate_stat_v1) +
+				NUM_RATE * sizeof(wifi_rate_stat_v1));
+	}
 
 	if (total_len > WLC_IOCTL_MAXLEN) {
 		WL_ERR(("Error! total_len:%d is unexpected value\n", total_len));
