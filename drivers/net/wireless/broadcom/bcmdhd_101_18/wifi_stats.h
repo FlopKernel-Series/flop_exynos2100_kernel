@@ -286,7 +286,7 @@ typedef struct {
 	uint8 peer_mac_address[6];        /* mac address */
 	uint32 capabilities;              /* peer WIFI_CAPABILITY_XXX */
 	uint32 num_rate;                  /* number of rates */
-	wifi_rate_stat rate_stats[1];   /* per rate statistics, number of entries  = num_rate */
+	wifi_rate_stat_v1 rate_stats[NUM_RATE];   /* per rate statistics, number of entries  = num_rate */
 } wifi_peer_info_legacy;
 
 /* per access category statistics */
@@ -360,6 +360,26 @@ typedef struct {
 	wifi_peer_info peer_info[1];           /* per peer statistics */
 } wifi_iface_stat;
 
+/* interface statistics (legacy layout for non-AOSP HALs) */
+typedef struct {
+	wifi_interface_handle iface;
+	wifi_interface_info info;
+	uint32 beacon_rx;
+	uint64 average_tsf_offset;
+	uint32 leaky_ap_detected;
+	uint32 leaky_ap_avg_num_frames_leaked;
+	uint32 leaky_ap_guard_time;
+	uint32 mgmt_rx;
+	uint32 mgmt_action_rx;
+	uint32 mgmt_action_tx;
+	wifi_rssi rssi_mgmt;
+	wifi_rssi rssi_data;
+	wifi_rssi rssi_ack;
+	wifi_wmm_ac_stat ac[WIFI_AC_MAX];
+	uint32 num_peers;
+	wifi_peer_info_legacy peer_info[1];
+} wifi_iface_stat_legacy;
+
 #ifdef CONFIG_COMPAT
 /* interface statistics */
 typedef struct {
@@ -405,6 +425,26 @@ typedef struct {
 	uint32 num_peers;                        /* number of peers */
 	wifi_peer_info peer_info[1];           /* per peer statistics */
 } compat_wifi_iface_stat;
+
+/* interface statistics (legacy layout for non-AOSP HALs) */
+typedef struct {
+	compat_uptr_t iface;
+	wifi_interface_info info;
+	uint32 beacon_rx;
+	uint64 average_tsf_offset;
+	uint32 leaky_ap_detected;
+	uint32 leaky_ap_avg_num_frames_leaked;
+	uint32 leaky_ap_guard_time;
+	uint32 mgmt_rx;
+	uint32 mgmt_action_rx;
+	uint32 mgmt_action_tx;
+	wifi_rssi rssi_mgmt;
+	wifi_rssi rssi_data;
+	wifi_rssi rssi_ack;
+	wifi_wmm_ac_stat ac[WIFI_AC_MAX];
+	uint32 num_peers;
+	wifi_peer_info_legacy peer_info[1];
+} compat_wifi_iface_stat_legacy;
 #endif /* CONFIG_COMPAT */
 
 #endif /* USE_WIFI_STATS_H */

@@ -7470,18 +7470,81 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 		p_wifi_rate_stat_v1->retries = p_wifi_rate_stat->retries;
 		p_wifi_rate_stat_v1->retries_short = p_wifi_rate_stat->retries_short;
 		p_wifi_rate_stat_v1->retries_long = p_wifi_rate_stat->retries_long;
+		COMPAT_ASSIGN_VALUE(iface, peer_info->rate_stats[i], *p_wifi_rate_stat_v1);
 	}
 
 	if (is_aosp_mode()) {
-		total_len = sizeof(wifi_radio_stat_h) + chan_stats_size;
-		total_len = total_len - sizeof(wifi_peer_info) +
-			NUM_PEER * (sizeof(wifi_peer_info) - sizeof(wifi_rate_stat_v1) +
-				NUM_RATE * sizeof(wifi_rate_stat_v1));
+#ifdef CONFIG_COMPAT
+		if (compat_task_state) {
+			total_len = sizeof(wifi_radio_stat_h) + chan_stats_size + sizeof(compat_wifi_iface_stat);
+			memcpy_s(output, (WLC_IOCTL_MAXLEN - (output - outdata)), &compat_iface, sizeof(compat_wifi_iface_stat));
+			output += sizeof(compat_wifi_iface_stat);
+		} else
+#endif
+		{
+			total_len = sizeof(wifi_radio_stat_h) + chan_stats_size + sizeof(wifi_iface_stat);
+			memcpy_s(output, (WLC_IOCTL_MAXLEN - (output - outdata)), &iface, sizeof(wifi_iface_stat));
+			output += sizeof(wifi_iface_stat);
+		}
 	} else {
-		total_len = sizeof(wifi_radio_stat_h_legacy) + chan_stats_size;
-		total_len = total_len - sizeof(wifi_peer_info_legacy) +
-			NUM_PEER * (sizeof(wifi_peer_info_legacy) - sizeof(wifi_rate_stat_v1) +
-				NUM_RATE * sizeof(wifi_rate_stat_v1));
+		wifi_iface_stat_legacy legacy_iface;
+		bzero(&legacy_iface, sizeof(legacy_iface));
+		legacy_iface.iface = iface.iface;
+		legacy_iface.info = iface.info;
+		legacy_iface.beacon_rx = iface.beacon_rx;
+		legacy_iface.average_tsf_offset = iface.average_tsf_offset;
+		legacy_iface.leaky_ap_detected = iface.leaky_ap_detected;
+		legacy_iface.leaky_ap_avg_num_frames_leaked = iface.leaky_ap_avg_num_frames_leaked;
+		legacy_iface.leaky_ap_guard_time = iface.leaky_ap_guard_time;
+		legacy_iface.mgmt_rx = iface.mgmt_rx;
+		legacy_iface.mgmt_action_rx = iface.mgmt_action_rx;
+		legacy_iface.mgmt_action_tx = iface.mgmt_action_tx;
+		legacy_iface.rssi_mgmt = iface.rssi_mgmt;
+		legacy_iface.rssi_data = iface.rssi_data;
+		legacy_iface.rssi_ack = iface.rssi_ack;
+		memcpy(legacy_iface.ac, iface.ac, sizeof(iface.ac));
+		legacy_iface.num_peers = iface.num_peers;
+		legacy_iface.peer_info->type = iface.peer_info->type;
+		memcpy(legacy_iface.peer_info->peer_mac_address, iface.peer_info->peer_mac_address, 6);
+		legacy_iface.peer_info->capabilities = iface.peer_info->capabilities;
+		legacy_iface.peer_info->num_rate = iface.peer_info->num_rate;
+		memcpy(legacy_iface.peer_info->rate_stats, iface.peer_info->rate_stats, sizeof(wifi_rate_stat_v1) * NUM_RATE);
+
+#ifdef CONFIG_COMPAT
+		if (compat_task_state) {
+			compat_wifi_iface_stat_legacy compat_legacy_iface;
+			bzero(&compat_legacy_iface, sizeof(compat_legacy_iface));
+			compat_legacy_iface.iface = (compat_uptr_t)(unsigned long)compat_iface.iface;
+			compat_legacy_iface.info = compat_iface.info;
+			compat_legacy_iface.beacon_rx = compat_iface.beacon_rx;
+			compat_legacy_iface.average_tsf_offset = compat_iface.average_tsf_offset;
+			compat_legacy_iface.leaky_ap_detected = compat_iface.leaky_ap_detected;
+			compat_legacy_iface.leaky_ap_avg_num_frames_leaked = compat_iface.leaky_ap_avg_num_frames_leaked;
+			compat_legacy_iface.leaky_ap_guard_time = compat_iface.leaky_ap_guard_time;
+			compat_legacy_iface.mgmt_rx = compat_iface.mgmt_rx;
+			compat_legacy_iface.mgmt_action_rx = compat_iface.mgmt_action_rx;
+			compat_legacy_iface.mgmt_action_tx = compat_iface.mgmt_action_tx;
+			compat_legacy_iface.rssi_mgmt = compat_iface.rssi_mgmt;
+			compat_legacy_iface.rssi_data = compat_iface.rssi_data;
+			compat_legacy_iface.rssi_ack = compat_iface.rssi_ack;
+			memcpy(compat_legacy_iface.ac, compat_iface.ac, sizeof(compat_iface.ac));
+			compat_legacy_iface.num_peers = compat_iface.num_peers;
+			compat_legacy_iface.peer_info->type = compat_iface.peer_info->type;
+			memcpy(compat_legacy_iface.peer_info->peer_mac_address, compat_iface.peer_info->peer_mac_address, 6);
+			compat_legacy_iface.peer_info->capabilities = compat_iface.peer_info->capabilities;
+			compat_legacy_iface.peer_info->num_rate = compat_iface.peer_info->num_rate;
+			memcpy(compat_legacy_iface.peer_info->rate_stats, compat_iface.peer_info->rate_stats, sizeof(wifi_rate_stat_v1) * NUM_RATE);
+
+			total_len = sizeof(wifi_radio_stat_h_legacy) + chan_stats_size + sizeof(compat_wifi_iface_stat_legacy);
+			memcpy_s(output, (WLC_IOCTL_MAXLEN - (output - outdata)), &compat_legacy_iface, sizeof(compat_wifi_iface_stat_legacy));
+			output += sizeof(compat_wifi_iface_stat_legacy);
+		} else
+#endif
+		{
+			total_len = sizeof(wifi_radio_stat_h_legacy) + chan_stats_size + sizeof(wifi_iface_stat_legacy);
+			memcpy_s(output, (WLC_IOCTL_MAXLEN - (output - outdata)), &legacy_iface, sizeof(wifi_iface_stat_legacy));
+			output += sizeof(wifi_iface_stat_legacy);
+		}
 	}
 
 	if (total_len > WLC_IOCTL_MAXLEN) {
