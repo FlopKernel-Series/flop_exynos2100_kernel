@@ -10,6 +10,7 @@
 #include <linux/printk.h>
 #include <linux/types.h>
 #include <linux/uaccess.h>
+#include <linux/workqueue.h>
 
 #ifndef KSU_HAS_PATH_UMOUNT
 #include <linux/syscalls.h>
@@ -106,7 +107,7 @@ void try_umount(const char *mnt, int flags)
 }
 
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-extern void susfs_run_sus_path_loop(void);
+extern struct work_struct susfs_extra_works;
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 
 static void do_umount_for_current_task()
@@ -177,13 +178,9 @@ skip_umount_task:
     // do susfs setuid when susfs enabled
 
 #ifdef CONFIG_KSU_SUSFS
-    saved = override_creds(ksu_cred);
-
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-    susfs_run_sus_path_loop();
+    schedule_work(&susfs_extra_works);
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-
-    revert_creds(saved);
 
     susfs_set_current_proc_umounted();
 #endif

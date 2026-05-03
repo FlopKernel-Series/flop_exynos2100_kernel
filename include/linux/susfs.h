@@ -258,6 +258,7 @@ void susfs_show_variant(void __user **user_info);
 void susfs_show_version(void __user **user_info);
 
 void susfs_start_sdcard_monitor_fn(void);
+extern struct work_struct susfs_extra_works;
 
 /* susfs_init */
 void susfs_init(void);
