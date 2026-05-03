@@ -118,6 +118,10 @@ struct fsnotify_mark *vfsmount_mark, u32 mask, void *data,    \
 int data_type, susfs_fname_t file_name, u32 cookie)
 #endif
 
+#ifndef FUSE_SUPER_MAGIC
+#define FUSE_SUPER_MAGIC 0x65735546
+#endif
+
 static inline bool susfs_is_current_proc_umounted(void) {
 	return test_ti_thread_flag(&current->thread_info, TIF_PROC_UMOUNTED);
 }
