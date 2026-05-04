@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+ccflags-y += -std=gnu11
+ccflags-y += -Wno-declaration-after-statement
+ccflags-y += -D__CHECK_ENDIAN__
+
+ccflags-$(CONFIG_RTW88_LEDS) += -DCONFIG_RTW88_LEDS=1
+ccflags-$(CONFIG_RTW88_DEBUG) += -DCONFIG_RTW88_DEBUG=1
+ccflags-$(CONFIG_RTW88_DEBUGFS) += -DCONFIG_RTW88_DEBUGFS=1
+
+obj-$(CONFIG_RTW88_CORE) += rtw_core.o
+rtw_core-objs := main.o \
+		   led.o \
+		   mac80211.o \
+		   util.o \
+		   debug.o \
+		   tx.o \
+		   rx.o \
+		   mac.o \
+		   phy.o \
+		   coex.o \
+		   efuse.o \
+		   fw.o \
+		   ps.o \
+		   sec.o \
+		   bf.o \
+		   regd.o \
+		   sar.o
+rtw_core-$(CONFIG_PM) += wow.o
+
+obj-$(CONFIG_RTW88_USB) += rtw_usb.o
+rtw_usb-objs := usb.o
+
+obj-$(CONFIG_RTW88_8821C) += rtw_8821c.o
+rtw_8821c-objs := rtw8821c.o rtw8821c_table.o
+
+obj-$(CONFIG_RTW88_8822B) += rtw_8822b.o
+rtw_8822b-objs := rtw8822b.o rtw8822b_table.o
+
+obj-$(CONFIG_RTW88_8822C) += rtw_8822c.o
+rtw_8822c-objs := rtw8822c.o rtw8822c_table.o
+
+obj-$(CONFIG_RTW88_8821CU) += rtw_8821cu.o
+rtw_8821cu-objs := rtw8821cu.o
+
+obj-$(CONFIG_RTW88_8822BU) += rtw_8822bu.o
+rtw_8822bu-objs := rtw8822bu.o
+
+obj-$(CONFIG_RTW88_8822CU) += rtw_8822cu.o
+rtw_8822cu-objs := rtw8822cu.o

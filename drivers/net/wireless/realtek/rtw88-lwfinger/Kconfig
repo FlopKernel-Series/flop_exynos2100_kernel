@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menuconfig RTW88
+	tristate "Realtek rtw88 backport support"
+	depends on MAC80211
+	help
+	  This enables the lwfinger backport of Realtek rtw88 drivers.
+
+if RTW88
+
+config RTW88_CORE
+	tristate
+	select WANT_DEV_COREDUMP
+
+config RTW88_USB
+	tristate
+	depends on USB
+
+config RTW88_8821C
+	tristate
+
+config RTW88_8822B
+	tristate
+
+config RTW88_8822C
+	tristate
+
+config RTW88_8821CU
+	tristate "Realtek 8821CU USB wireless network adapter"
+	depends on USB
+	select RTW88_CORE
+	select RTW88_USB
+	select RTW88_8821C
+
+config RTW88_8822BU
+	tristate "Realtek 8822BU USB wireless network adapter"
+	depends on USB
+	select RTW88_CORE
+	select RTW88_USB
+	select RTW88_8822B
+
+config RTW88_8822CU
+	tristate "Realtek 8822CU USB wireless network adapter"
+	depends on USB
+	select RTW88_CORE
+	select RTW88_USB
+	select RTW88_8822C
+
+config RTW88_LEDS
+	bool "Realtek rtw88 LED support"
+	depends on RTW88_CORE
+	depends on LEDS_CLASS
+	default y
+
+config RTW88_DEBUG
+	bool "Realtek rtw88 debug support"
+	depends on RTW88_CORE
+	default n
+
+config RTW88_DEBUGFS
+	bool "Realtek rtw88 debugfs support"
+	depends on RTW88_CORE && DEBUG_FS
+	default n
+
+endif
