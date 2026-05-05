@@ -1,3 +1,6 @@
 [submodule "build/mkbootimg"]
 	path = build/mkbootimg
 	url = https://android.googlesource.com/platform/system/tools/mkbootimg/
+[submodule "build/nh/firmware"]
+	path = build/nh/firmware
+	url = https://gitlab.com/kernel-firmware/linux-firmware
