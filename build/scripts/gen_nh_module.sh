@@ -71,27 +71,21 @@ NETHUNTER_FIRMWARE_FILES=(
     "carl9170-1.fw"
     "ath9k_htc/htc_9271-1.4.0.fw"
     "ath9k_htc/htc_7010-1.4.0.fw"
-    "ath9k_htc/htc_9271.fw"
-    "ath9k_htc/htc_7010.fw"
-    "ath6k/AR6004/hw1.0/fw.ram.bin"
-    "ath6k/AR6004/hw1.0/bdata.bin"
-    "ath6k/AR6004/hw1.0/bdata.DB132.bin"
-    "ath6k/AR6004/hw1.1/fw.ram.bin"
-    "ath6k/AR6004/hw1.1/bdata.bin"
-    "ath6k/AR6004/hw1.1/bdata.DB132.bin"
-    "ath6k/AR6004/hw1.2/fw.ram.bin"
+    "htc_9271.fw"
+    "htc_7010.fw"
+    "ath6k/AR6004/hw1.2/fw-2.bin"
     "ath6k/AR6004/hw1.2/bdata.bin"
-    "ath6k/AR6004/hw1.3/fw.ram.bin"
+    "ath6k/AR6004/hw1.3/fw-3.bin"
     "ath6k/AR6004/hw1.3/bdata.bin"
     "ath10k/QCA9377/hw1.0/firmware-5.bin"
     "ath10k/QCA9377/hw1.0/firmware-6.bin"
     "ath10k/QCA9377/hw1.0/board.bin"
     "ath10k/QCA9377/hw1.0/board-2.bin"
-    "mt7601u.bin"
+    "mediatek/mt7601u.bin:mt7601u.bin"
     "mediatek/mt7610e.bin"
     "mediatek/mt7610u.bin"
-    "mt7662.bin"
-    "mt7662_rom_patch.bin"
+    "mediatek/mt7662.bin:mt7662.bin"
+    "mediatek/mt7662_rom_patch.bin:mt7662_rom_patch.bin"
     "rt73.bin"
     "rt2870.bin"
     "rtlwifi/rtl8192cufw.bin"
@@ -104,7 +98,6 @@ NETHUNTER_FIRMWARE_FILES=(
     "rtlwifi/rtl8188eufw.bin"
     "rtlwifi/rtl8192eu_nic.bin"
     "rtlwifi/rtl8723bu_nic.bin"
-    "rtlwifi/rtl8723bu_bt.bin"
     "rtlwifi/rtl8188fufw.bin"
     "rtlwifi/rtl8710bufw_SMIC.bin"
     "rtlwifi/rtl8710bufw_UMC.bin"
@@ -131,18 +124,25 @@ is_nethunter_module() {
 copy_required_nethunter_firmware_from_repo() {
     local src_root="$1"
     local dst_root="$2"
-    local fw_path src_path dst_path
+    local fw_entry dst_rel src_rel src_path dst_path
     local missing_count=0
 
     firmware_count=0
-    for fw_path in "${NETHUNTER_FIRMWARE_FILES[@]}"; do
-        src_path="$src_root/$fw_path"
+    for fw_entry in "${NETHUNTER_FIRMWARE_FILES[@]}"; do
+        src_rel="$fw_entry"
+        dst_rel="$fw_entry"
+        if [[ "$fw_entry" == *":"* ]]; then
+            src_rel="${fw_entry%%:*}"
+            dst_rel="${fw_entry#*:}"
+        fi
+
+        src_path="$src_root/$src_rel"
         if [ ! -f "$src_path" ]; then
             missing_count=$((missing_count + 1))
             continue
         fi
 
-        dst_path="$dst_root/$fw_path"
+        dst_path="$dst_root/$dst_rel"
         mkdir -p "$(dirname "$dst_path")"
         cp -f "$src_path" "$dst_path"
         firmware_count=$((firmware_count + 1))
