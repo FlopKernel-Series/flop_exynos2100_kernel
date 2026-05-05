@@ -482,7 +482,7 @@ config TCP_CONG_BIC
 
 config TCP_CONG_CUBIC
 	tristate "CUBIC TCP"
-	default m
+	default y
 	---help---
 	  This is version 2.0 of BIC-TCP which uses a cubic growth function
 	  among other techniques.
@@ -710,36 +710,9 @@ config TCP_CONG_MCTCPDESYNC
 	  http://ieeexplore.ieee.org/abstract/document/6911722/
 	  https://doi.org/10.1016/j.comcom.2015.07.010
 
-config TCP_CONG_BBRPLUS
-	tristate "BBRPLUS TCP"
-	default y
-	---help---
-
-	BBRplus is an enhanced version of BBR (Bottleneck Bandwidth and RTT).
-	Originally introduced by dog250 & cx9208.
-	Same as BBR, it requires the fq ("Fair Queue") pacing packet scheduler.
-
-config TCP_CONG_BBR2
-	tristate "BBR2 TCP"
-	default y
-	---help---
-
-	BBR2 TCP congestion control is a model-based congestion control
-	algorithm that aims to maximize network utilization, keep queues and
-	retransmit rates low, and to be able to coexist with Reno/CUBIC in
-	common scenarios. It builds an explicit model of the network path.  It
-	tolerates a targeted degree of random packet loss and delay that are
-	unrelated to congestion. It can operate over LAN, WAN, cellular, wifi,
-	or cable modem links, and can use DCTCP-L4S-style ECN signals.  It can
-	coexist with flows that use loss-based congestion control, and can
-	operate with shallow buffers, deep buffers, bufferbloat, policers, or
-	AQM schemes that do not provide a delay signal. It requires pacing,
-	using either TCP internal pacing or the fq ("Fair Queue") pacing packet
-	scheduler.
-
 choice
 	prompt "Default TCP congestion control"
-	default DEFAULT_BBRPLUS
+	default DEFAULT_CUBIC
 	help
 	  Select the TCP congestion control that will be used by default
 	  for all connections.
@@ -789,12 +762,6 @@ choice
 	config DEFAULT_MCTCPDESYNC
 		bool "Mctcpdesync (EXPERIMENTAL)" if TCP_CONG_MCTCPDESYNC=y
 
-	config DEFAULT_BBRPLUS
-			bool "BBRPLUS" if TCP_CONG_BBRPLUS=y
-
-	config DEFAULT_BBR2
-		bool "BBR2" if TCP_CONG_BBR2=y
-
 	config DEFAULT_RENO
 		bool "Reno"
 endchoice
@@ -823,9 +790,7 @@ config DEFAULT_TCP_CONG
 	default "dctcp" if DEFAULT_DCTCP
 	default "cdg" if DEFAULT_CDG
 	default "bbr" if DEFAULT_BBR
-	default "bbr2" if DEFAULT_BBR2
-        default "bbrplus" if DEFAULT_BBRPLUS
-	default "bbrplus"
+	default "cubic"
 
 config TCP_MD5SIG
 	bool "TCP: MD5 Signature Option support (RFC2385)"
