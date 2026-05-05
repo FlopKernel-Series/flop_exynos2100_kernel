@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 CAPTION_BUILD="Build info:
 *Device*: \`${DEVICE} [${CODENAME}]\`
 *Kernel Version*: \`${LINUX_VER}\`
@@ -10,7 +11,8 @@ CAPTION_BUILD="Build info:
 
 tgs() {
     local FILE="$1"
-    local MD5=$(md5sum "$FILE" | cut -d' ' -f1)
+    local MD5
+    MD5=$(md5sum "$FILE" | cut -d' ' -f1)
     local CAPTION_FINAL="${CAPTION_BUILD}*MD5*: \`${MD5}\`"
     curl -fsSL -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
         -F chat_id="${TELEGRAM_CHAT_ID}" \
@@ -20,8 +22,25 @@ tgs() {
         -F caption="${CAPTION_FINAL}" &>/dev/null
 }
 
+tgs_nhmod() {
+    local FILE="$1"
+    local MD5
+    local CAPTION_NH
+
+    MD5=$(md5sum "$FILE" | cut -d' ' -f1)
+    CAPTION_NH=$(printf "Nethunter Extras for %s %s (%s) @ %s\n*MD5*: \`%s\`\n*Build*: \`%s\`" \
+        "$FK_VER" "$FK_TYPE" "$CODENAME" "$DATE" "$MD5" "$(basename "${PACKAGE_PATH:-unknown}")")
+
+    curl -fsSL -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+        -F chat_id="${TELEGRAM_CHAT_ID}" \
+        -F document=@"$FILE" \
+        -F parse_mode="Markdown" \
+        -F disable_web_page_preview="true" \
+        -F caption="${CAPTION_NH}" &>/dev/null
+}
+
 upload() {
-    cd "$KDIR"
+    cd "$KDIR" || return 1
 
     local FILE="${PACKAGE_PATH:-}"
     if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
@@ -36,7 +55,12 @@ upload() {
     fi
 
     if [ "$DO_TG" = "1" ]; then
-        echo -e "\n$(log_info "Uploading to Telegram")\n"
+        log_info "Uploading build to Telegram"
         tgs "$FILE"
+
+        if [ -n "${NH_MODULE_PATH:-}" ] && [ -f "$NH_MODULE_PATH" ]; then
+            log_info "Uploading Nethunter Extras to Telegram"
+            tgs_nhmod "$NH_MODULE_PATH"
+        fi
     fi
 }

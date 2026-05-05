@@ -91,6 +91,7 @@ DO_BASHUP=0
 DO_REGEN=0
 DO_FLTO=0
 DO_QUIET=0
+DO_NHMOD=0
 DO_PERM=0
 DEFCONFIG=$DEFAULT_DEFCONFIG
 
@@ -145,6 +146,10 @@ for arg in "$@"; do
         log_warn "Only errors and warnings will be shown"
         DO_QUIET=1
     fi
+    if [[ "$arg" == *n* ]]; then
+        log_info "NetHunter module package argument passed"
+        DO_NHMOD=1
+    fi
     if [[ "$arg" == *p* ]]; then
         log_warn "Permissive packaging is not implemented in this basic Exynos 2100 build port. Ignoring 'p'."
     fi
@@ -186,6 +191,8 @@ ZIP_PATH="$KDIR/build/Floppy_$FK_VER-$FK_TYPE-$CODENAME-$DATE.zip"
 TAR_PATH_ONEUI="$KDIR/build/FloppyOneUI_$FK_VER-$FK_TYPE-$CODENAME-$DATE.tar"
 TAR_PATH_AOSP="$KDIR/build/FloppyAOSP_$FK_VER-$FK_TYPE-$CODENAME-$DATE.tar"
 PACKAGE_PATH=""
+NH_MODULE_PATH=""
+export NH_MODULE_PATH
 
 echo -e "\n$(log_info "Build info:")
 - Device: $DEVICE ($CODENAME)
@@ -198,6 +205,7 @@ echo -e "\n$(log_info "Build info:")
 - Clean build: $([ "$DO_CLEAN" -eq 1 ] && echo "Yes" || echo "No")
 - Package ZIP: $([ "$DO_ZIP" -eq 1 ] && echo "Yes" || echo "No")
 - Package TAR: $([ "$DO_TAR" -eq 1 ] && echo "Yes" || echo "No")
+- Package NetHunter module: $([ "$DO_NHMOD" -eq 1 ] && echo "Yes" || echo "No")
 "
 
 [ -d "$IMAGES_DIR" ] && rm -rf "$IMAGES_DIR" || true
