@@ -16,13 +16,14 @@ command -v log_warn >/dev/null 2>&1 || log_warn() { echo "WARNING: $*" >&2; }
 command -v log_err  >/dev/null 2>&1 || log_err()  { echo "ERROR: $*" >&2; }
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-    log_err "Usage: $0 <modules_dir> <output_file> [kernel_dir]"
+    log_err "Usage: $0 <modules_dir> <output_file> [kernel_dir] [exclude_list_file]"
     exit 1
 fi
 
 MODULES_DIR="$1"
 OUTPUT_FILE="$2"
 KERNEL_DIR="${3:-.}"
+EXCLUDE_LIST_FILE="${4:-}"
 MODULES_ORDER="$MODULES_DIR/modules.order"
 
 if [ ! -f "$MODULES_ORDER" ]; then
@@ -55,6 +56,37 @@ declare -A LOAD_AFTER=()
 EXCLUDE_MODULES=(
 )
 
+# Optional file with exclusion patterns (one per line, '#' comments allowed)
+if [ -n "$EXCLUDE_LIST_FILE" ]; then
+    if [ -f "$EXCLUDE_LIST_FILE" ]; then
+        while IFS= read -r pattern; do
+            pattern="${pattern%%#*}"
+            pattern="${pattern#"${pattern%%[![:space:]]*}"}"
+            pattern="${pattern%"${pattern##*[![:space:]]}"}"
+            [ -n "$pattern" ] && EXCLUDE_MODULES+=("$pattern")
+        done < "$EXCLUDE_LIST_FILE"
+    else
+        log_warn "Exclude list file not found: $EXCLUDE_LIST_FILE"
+    fi
+fi
+
+is_module_excluded() {
+    local module="$1"
+    local pattern
+
+    for pattern in "${EXCLUDE_MODULES[@]}"; do
+        if [[ "$module" == $pattern ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+if [ "${#EXCLUDE_MODULES[@]}" -gt 0 ]; then
+    log_info "Applying ${#EXCLUDE_MODULES[@]} module exclusion pattern(s)"
+fi
+
 # Run depmod to generate dependency information
 DEPMOD_BASE=$(dirname "$(dirname "$(dirname "$MODULES_DIR")")")
 depmod -b "$DEPMOD_BASE" "$KERNEL_VERSION" 2>/dev/null || {
@@ -70,15 +102,7 @@ done < "$MODULES_ORDER" > "$ALL_MODULES"
 # Remove excluded modules (match against basenames)
 TEMP_MODULES=$(mktemp)
 while IFS= read -r module; do
-    excluded=false
-    for pattern in "${EXCLUDE_MODULES[@]}"; do
-        # Use bash pattern matching
-        if [[ "$module" == $pattern ]]; then
-            excluded=true
-            break
-        fi
-    done
-    if [ "$excluded" = false ]; then
+    if ! is_module_excluded "$module"; then
         echo "$module" >> "$TEMP_MODULES"
     fi
 done < "$ALL_MODULES"
