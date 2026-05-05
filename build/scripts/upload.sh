@@ -59,8 +59,10 @@ upload() {
         tgs "$FILE"
 
         if [ -n "${NH_MODULE_PATH:-}" ] && [ -f "$NH_MODULE_PATH" ]; then
+            echo
             log_info "Uploading Nethunter Extras to Telegram"
             tgs_nhmod "$NH_MODULE_PATH"
         fi
+        echo
     fi
 }

@@ -59,6 +59,7 @@ kernel_modules() {
     rm -rf "$MODULES_DIR/0.0"
 
     if [ "${DO_NHMOD:-0}" = "1" ]; then
+        echo
         log_info "Packaging Nethunter Extras zip..."
         if ! bash "$SCRIPTS_DIR/gen_nh_module.sh" \
             "$kmod_dir" \
@@ -76,4 +77,5 @@ kernel_modules() {
 clean_tmp() {
     log_info "Cleaning after build..."
     rm -rf "$TMPDIR" "$MOD_OUTDIR"
+    echo
 }
