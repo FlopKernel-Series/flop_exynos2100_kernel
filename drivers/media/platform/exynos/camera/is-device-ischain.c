@@ -1778,7 +1778,7 @@ int is_ischain_runtime_suspend(struct device *dev)
 
 	info("FIMC_IS runtime suspend in\n");
 
-	CALL_MEMOP(mem, suspend, mem->default_ctx);
+	CALL_MEMOP(mem, suspend, mem->priv);
 
 #if IS_ENABLED(CONFIG_PCI_EXYNOS)
 	exynos_pcie_l1ss_ctrl(1, PCIE_L1SS_CTRL_CAMERA);
@@ -1980,7 +1980,7 @@ int is_ischain_runtime_resume(struct device *dev)
 		goto p_err;
 	}
 
-	CALL_MEMOP(mem, resume, mem->default_ctx);
+	CALL_MEMOP(mem, resume, mem->priv);
 
 #if IS_ENABLED(CONFIG_PCI_EXYNOS)
 	exynos_pcie_l1ss_ctrl(0, PCIE_L1SS_CTRL_CAMERA);
