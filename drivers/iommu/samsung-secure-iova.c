@@ -6,9 +6,11 @@
  * Author: <hyesoo.yu@samsung.com> for Samsung
  */
 
-#include <linux/slab.h>
+#include <linux/dma-heap.h>
 #include <linux/genalloc.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/slab.h>
 
 #define SECURE_DMA_BASE	0x40000000
 /*
@@ -16,7 +18,7 @@
  * offset from base, so secure device virtual address manager
  * uses the size as 0xC000_0000.
  */
-#define SECURE_DMA_SIZE 0xC0000000
+#define SECURE_DMA_SIZE 0x40000000
 
 static struct gen_pool *secure_iova_pool;
 
@@ -42,7 +44,7 @@ unsigned long secure_iova_alloc(unsigned long size, unsigned int align)
 				       gen_pool_first_fit_align, &alignment);
 
 	if (out_addr == 0)
-		pr_err("failed to allocate secure IOVA address space. %zu/%zu bytes used",
+		pr_err("failed alloc secure iova. %zu/%zu bytes used",
 		       gen_pool_avail(secure_iova_pool),
 		       gen_pool_size(secure_iova_pool));
 
@@ -58,6 +60,8 @@ EXPORT_SYMBOL_GPL(secure_iova_free);
 
 static int __init samsung_secure_iova_init(void)
 {
+	struct device_node *np;
+	phys_addr_t base = SECURE_DMA_BASE, size = SECURE_DMA_SIZE;
 	int ret;
 
 	secure_iova_pool = gen_pool_create(PAGE_SHIFT, -1);
@@ -66,12 +70,54 @@ static int __init samsung_secure_iova_init(void)
 		return -ENOMEM;
 	}
 
-	ret = gen_pool_add(secure_iova_pool, SECURE_DMA_BASE, SECURE_DMA_SIZE, -1);
+	for_each_node_by_name(np, "secure-iova-domain") {
+		struct dma_heap *hpa_heap;
+		int naddr = of_n_addr_cells(np);
+		int nsize = of_n_size_cells(np);
+		const __be32 *prop;
+		int len;
+
+		prop = of_get_property(np, "#address-cells", NULL);
+		if (prop)
+			naddr = be32_to_cpup(prop);
+
+		prop = of_get_property(np, "#size-cells", NULL);
+		if (prop)
+			nsize = be32_to_cpup(prop);
+
+		prop = of_get_property(np, "domain-ranges", &len);
+		if (prop && len > 0) {
+			base = (phys_addr_t)of_read_number(prop, naddr);
+			prop += naddr;
+			size = (phys_addr_t)of_read_number(prop, nsize);
+		} else {
+			pr_err("%s: failed to get domain-ranges attributes\n", __func__);
+			break;
+		}
+
+		hpa_heap = dma_heap_find("system-secure-gpu_buffer-secure");
+		if (hpa_heap) {
+			dma_heap_put(hpa_heap);
+
+			prop = of_get_property(np, "hpa,reserved", &len);
+			if (prop && len > 0) {
+				size -= (phys_addr_t)of_read_number(prop, nsize);
+			} else {
+				base = SECURE_DMA_BASE;
+				size = SECURE_DMA_SIZE;
+				pr_err("%s: failed to get hpa,reserved attributes\n", __func__);
+				break;
+			}
+		}
+	}
+
+	ret = gen_pool_add(secure_iova_pool, base, size, -1);
 	if (ret) {
-		pr_err("failed to set address range of Secure IOVA pool");
+		pr_err("failed to set address range of Secure IOVA pool\n");
 		gen_pool_destroy(secure_iova_pool);
 		return ret;
 	}
+	pr_info("Add secure iova ranges %#lx-%#lx\n", base, size);
 
 	return 0;
 }
