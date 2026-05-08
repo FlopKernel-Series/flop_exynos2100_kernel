@@ -17,9 +17,10 @@
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
-#include <linux/samsung-dma-heap.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+
+#include "heap_private.h"
 
 struct carveout_heap {
 	struct gen_pool *pool;
@@ -35,11 +36,13 @@ static struct dma_buf *carveout_heap_allocate(struct dma_heap *heap, unsigned lo
 	struct dma_buf *dmabuf;
 	struct page *pages;
 	unsigned int alignment = samsung_dma_heap->alignment;
-	unsigned long size;
+	unsigned long size, flags = samsung_dma_heap->flags;
 	phys_addr_t paddr;
 	int protret = 0, ret = -ENOMEM;
 
-	if (dma_heap_flags_video_aligned(samsung_dma_heap->flags))
+	dma_heap_event_begin();
+
+	if (dma_heap_flags_video_aligned(flags))
 		len = dma_heap_add_video_padding(len);
 
 	size = ALIGN(len, alignment);
@@ -57,10 +60,12 @@ static struct dma_buf *carveout_heap_allocate(struct dma_heap *heap, unsigned lo
 	pages = phys_to_page(paddr);
 	sg_set_page(buffer->sg_table.sgl, pages, size, 0);
 
-	heap_page_clean(pages, size);
-	heap_cache_flush(buffer);
+	if (!dma_heap_flags_untouchable(flags)) {
+		heap_page_clean(pages, size);
+		heap_cache_flush(buffer);
+	}
 
-	if (dma_heap_flags_protected(samsung_dma_heap->flags)) {
+	if (dma_heap_flags_protected(flags)) {
 		buffer->priv = samsung_dma_buffer_protect(samsung_dma_heap, size, 1, paddr);
 		if (IS_ERR(buffer->priv)) {
 			ret = PTR_ERR(buffer->priv);
@@ -74,6 +79,8 @@ static struct dma_buf *carveout_heap_allocate(struct dma_heap *heap, unsigned lo
 		goto free_export;
 	}
 
+	dma_heap_event_record(DMA_HEAP_EVENT_ALLOC, dmabuf, begin);
+
 	return dmabuf;
 
 free_export:
@@ -83,6 +90,8 @@ free_prot:
 		gen_pool_free(carveout_heap->pool, paddr, size);
 free_gen:
 	samsung_dma_buffer_free(buffer);
+
+	samsung_allocate_error_report(samsung_dma_heap, len, fd_flags, heap_flags);
 
 	return ERR_PTR(ret);
 }
@@ -102,11 +111,21 @@ static void carveout_heap_release(struct samsung_dma_buffer *buffer)
 	samsung_dma_buffer_free(buffer);
 }
 
+static void carveout_reserved_free(struct reserved_mem *rmem)
+{
+	struct page *first = phys_to_page(rmem->base & PAGE_MASK);
+	struct page *last = phys_to_page(PAGE_ALIGN(rmem->base + rmem->size));
+	struct page *page;
+
+	for (page = first; page != last; page++)
+		free_reserved_page(page);
+}
+
 static const struct dma_heap_ops carveout_heap_ops = {
 	.allocate = carveout_heap_allocate,
 };
 
-static int carveout_heap_probe(struct platform_device *pdev)
+int carveout_heap_probe(struct platform_device *pdev)
 {
 	struct carveout_heap *carveout_heap;
 	struct reserved_mem *rmem;
@@ -135,13 +154,12 @@ static int carveout_heap_probe(struct platform_device *pdev)
 
 	ret = samsung_heap_add(&pdev->dev, carveout_heap, carveout_heap_release,
 			       &carveout_heap_ops);
-	if (ret == -ENODEV)
+	if (ret == -ENODEV) {
+		carveout_reserved_free(rmem);
 		return 0;
+	}
 
-	if (ret)
-		return ret;
-
-	return 0;
+	return ret;
 }
 
 static const struct of_device_id carveout_heap_of_match[] = {

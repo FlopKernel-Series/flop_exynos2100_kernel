@@ -17,9 +17,10 @@
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
-#include <linux/samsung-dma-heap.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+
+#include "heap_private.h"
 
 struct cma_heap {
 	struct cma *cma;
@@ -36,6 +37,8 @@ static struct dma_buf *cma_heap_allocate(struct dma_heap *heap, unsigned long le
 	unsigned int alignment = samsung_dma_heap->alignment;
 	unsigned long size, nr_pages;
 	int protret = 0, ret = -ENOMEM;
+
+	dma_heap_event_begin();
 
 	if (dma_heap_flags_video_aligned(samsung_dma_heap->flags))
 		len = dma_heap_add_video_padding(len);
@@ -72,6 +75,8 @@ static struct dma_buf *cma_heap_allocate(struct dma_heap *heap, unsigned long le
 		goto free_export;
 	}
 
+	dma_heap_event_record(DMA_HEAP_EVENT_ALLOC, dmabuf, begin);
+
 	return dmabuf;
 
 free_export:
@@ -81,6 +86,8 @@ free_prot:
 		cma_release(cma_heap->cma, pages, nr_pages);
 free_cma:
 	samsung_dma_buffer_free(buffer);
+
+	samsung_allocate_error_report(samsung_dma_heap, len, fd_flags, heap_flags);
 
 	return ERR_PTR(ret);
 }
@@ -137,10 +144,7 @@ static int cma_heap_probe(struct platform_device *pdev)
 	if (ret == -ENODEV)
 		return 0;
 
-	if (ret)
-		return ret;
-
-	return 0;
+	return ret;
 }
 
 static const struct of_device_id cma_heap_of_match[] = {

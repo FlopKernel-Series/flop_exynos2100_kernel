@@ -11,27 +11,23 @@
  *	Andrew F. Davis <afd@ti.com>
  */
 
+#include <linux/debugfs.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-direct.h>
 #include <linux/dma-heap.h>
-#include <linux/dma-map-ops.h>
+#include <linux/dma-mapping.h>
 #include <linux/err.h>
 #include <linux/highmem.h>
 #include <linux/mm.h>
 #include <linux/module.h>
-#include <linux/samsung-dma-heap.h>
+#include <linux/ratelimit.h>
 #include <linux/samsung-dma-mapping.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <uapi/linux/dma-buf.h>
 
-struct dma_iovm_map {
-	struct list_head list;
-	struct device *dev;
-	struct sg_table table;
-	unsigned long attrs;
-	unsigned int mapcnt;
-};
+#include "secure_buffer.h"
+#include "heap_private.h"
 
 static struct dma_iovm_map *dma_iova_create(struct dma_buf_attachment *a)
 {
@@ -110,12 +106,24 @@ static struct dma_iovm_map *dma_find_iovm_map(struct dma_buf_attachment *a)
 	attrs = DMA_MAP_ATTRS(a->dma_map_attrs);
 
 	list_for_each_entry(iovm_map, &buffer->attachments, list) {
-		// device virtual mapping doesn't consider direction currently.
-		if ((iommu_get_domain_for_dev(iovm_map->dev) ==
-		    iommu_get_domain_for_dev(a->dev)) &&
-		    (DMA_MAP_ATTRS(iovm_map->attrs) == attrs)) {
-			return iovm_map;
-		}
+		/*
+		 * Condition to re-use iovm_map:
+		 *
+		 * The same iommu domain.
+		 * The same attribute, which is related to dma buffer.
+		 * The same device coherency if cached buffer
+		 */
+		if (iommu_get_domain_for_dev(iovm_map->dev) != iommu_get_domain_for_dev(a->dev))
+			continue;
+
+		if (DMA_MAP_ATTRS(iovm_map->attrs) != attrs)
+			continue;
+
+		if (!dma_heap_flags_uncached(buffer->flags) &&
+		    (dev_is_dma_coherent(iovm_map->dev) != dev_is_dma_coherent(a->dev)))
+			continue;
+
+		return iovm_map;
 	}
 	return NULL;
 }
@@ -142,6 +150,17 @@ static struct dma_iovm_map *dma_put_iovm_map(struct dma_buf_attachment *a)
 	mutex_unlock(&buffer->lock);
 
 	return iovm_map;
+}
+
+static void show_dmabuf_status(struct device *dev)
+{
+	static DEFINE_RATELIMIT_STATE(show_dmabuf_ratelimit, HZ * 10, 1);
+
+	if (!__ratelimit(&show_dmabuf_ratelimit))
+		return;
+
+	show_dmabuf_trace_info();
+	show_dmabuf_dva(dev);
 }
 
 static struct dma_iovm_map *dma_get_iovm_map(struct dma_buf_attachment *a,
@@ -175,7 +194,9 @@ static struct dma_iovm_map *dma_get_iovm_map(struct dma_buf_attachment *a,
 		ret = dma_map_sgtable(iovm_map->dev, &iovm_map->table, direction,
 				      iovm_map->attrs | DMA_ATTR_SKIP_CPU_SYNC);
 		if (ret) {
+			show_dmabuf_status(iovm_map->dev);
 			dma_iova_remove(iovm_map);
+
 			return NULL;
 		}
 	}
@@ -203,12 +224,17 @@ static struct sg_table *samsung_heap_map_dma_buf(struct dma_buf_attachment *a,
 	struct dma_iovm_map *iovm_map;
 	struct samsung_dma_buffer *buffer = a->dmabuf->priv;
 
+	dma_heap_event_begin();
+
 	iovm_map = dma_get_iovm_map(a, direction);
 	if (!iovm_map)
 		return ERR_PTR(-ENOMEM);
+	dmabuf_trace_map(a);
 
 	if (!dma_heap_skip_cache_ops(buffer->flags))
 		dma_sync_sgtable_for_device(iovm_map->dev, &iovm_map->table, direction);
+
+	dma_heap_event_record(DMA_HEAP_EVENT_DMA_MAP, a->dmabuf, begin);
 
 	return &iovm_map->table;
 }
@@ -218,11 +244,17 @@ static void samsung_heap_unmap_dma_buf(struct dma_buf_attachment *a,
 				       enum dma_data_direction direction)
 {
 	struct samsung_dma_buffer *buffer = a->dmabuf->priv;
+	struct dma_iovm_map *iovm_map;
+
+	dma_heap_event_begin();
 
 	if (!dma_heap_skip_cache_ops(buffer->flags))
 		dma_sync_sgtable_for_cpu(a->dev, table, direction);
 
-	dma_put_iovm_map(a);
+	iovm_map = dma_put_iovm_map(a);
+	dmabuf_trace_unmap(a);
+
+	dma_heap_event_record(DMA_HEAP_EVENT_DMA_UNMAP, a->dmabuf, begin);
 }
 
 static int samsung_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
@@ -230,6 +262,8 @@ static int samsung_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 {
 	struct samsung_dma_buffer *buffer = dmabuf->priv;
 	struct dma_iovm_map *iovm_map;
+
+	dma_heap_event_begin();
 
 	if (dma_heap_skip_cache_ops(buffer->flags))
 		return 0;
@@ -243,6 +277,8 @@ static int samsung_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 	}
 	mutex_unlock(&buffer->lock);
 
+	dma_heap_event_record(DMA_HEAP_EVENT_CPU_BEGIN, dmabuf, begin);
+
 	return 0;
 }
 
@@ -251,6 +287,8 @@ static int samsung_heap_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 {
 	struct samsung_dma_buffer *buffer = dmabuf->priv;
 	struct dma_iovm_map *iovm_map;
+
+	dma_heap_event_begin();
 
 	if (dma_heap_skip_cache_ops(buffer->flags))
 		return 0;
@@ -263,6 +301,8 @@ static int samsung_heap_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 		}
 	}
 	mutex_unlock(&buffer->lock);
+
+	dma_heap_event_record(DMA_HEAP_EVENT_CPU_END, dmabuf, begin);
 
 	return 0;
 }
@@ -322,7 +362,11 @@ static int samsung_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 							 enum dma_data_direction direction,
 							 unsigned int offset, unsigned int len)
 {
+	dma_heap_event_begin();
+
 	dma_sync_sg_partial(dmabuf, direction, offset, len, DMA_BUF_SYNC_START);
+
+	dma_heap_event_record(DMA_HEAP_EVENT_CPU_BEGIN_PARTIAL, dmabuf, begin);
 
 	return 0;
 }
@@ -331,10 +375,33 @@ static int samsung_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 						       enum dma_data_direction direction,
 						       unsigned int offset, unsigned int len)
 {
+	dma_heap_event_begin();
+
 	dma_sync_sg_partial(dmabuf, direction, offset, len, DMA_BUF_SYNC_END);
+
+	dma_heap_event_record(DMA_HEAP_EVENT_CPU_END_PARTIAL, dmabuf, begin);
 
 	return 0;
 }
+
+static void samsung_dma_buf_vma_open(struct vm_area_struct *vma)
+{
+	struct dma_buf *dmabuf = vma->vm_file->private_data;
+
+	dmabuf_trace_track_buffer(dmabuf);
+}
+
+static void samsung_dma_buf_vma_close(struct vm_area_struct *vma)
+{
+	struct dma_buf *dmabuf = vma->vm_file->private_data;
+
+	dmabuf_trace_untrack_buffer(dmabuf);
+}
+
+const struct vm_operations_struct samsung_vm_ops = {
+	.open = samsung_dma_buf_vma_open,
+	.close = samsung_dma_buf_vma_close,
+};
 
 static int samsung_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 {
@@ -343,6 +410,8 @@ static int samsung_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 	unsigned long addr = vma->vm_start;
 	struct sg_page_iter piter;
 	int ret;
+
+	dma_heap_event_begin();
 
 	if (dma_heap_flags_protected(buffer->flags)) {
 		perr("mmap() to protected buffer is not allowed");
@@ -361,8 +430,13 @@ static int samsung_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 			return ret;
 		addr += PAGE_SIZE;
 		if (addr >= vma->vm_end)
-			return 0;
+			break;
 	}
+	dmabuf_trace_track_buffer(dmabuf);
+	vma->vm_ops = &samsung_vm_ops;
+
+	dma_heap_event_record(DMA_HEAP_EVENT_MMAP, dmabuf, begin);
+
 	return 0;
 }
 
@@ -381,6 +455,7 @@ static void *samsung_heap_do_vmap(struct samsung_dma_buffer *buffer)
 
 	if (dma_heap_flags_protected(buffer->flags)) {
 		perr("vmap() to protected buffer is not allowed");
+		vfree(pages);
 		return ERR_PTR(-EACCES);
 	}
 
@@ -406,6 +481,8 @@ static void *samsung_heap_vmap(struct dma_buf *dmabuf)
 	struct samsung_dma_buffer *buffer = dmabuf->priv;
 	void *vaddr;
 
+	dma_heap_event_begin();
+
 	mutex_lock(&buffer->lock);
 	if (buffer->vmap_cnt) {
 		buffer->vmap_cnt++;
@@ -419,6 +496,8 @@ static void *samsung_heap_vmap(struct dma_buf *dmabuf)
 
 	buffer->vaddr = vaddr;
 	buffer->vmap_cnt++;
+
+	dma_heap_event_record(DMA_HEAP_EVENT_VMAP, dmabuf, begin);
 out:
 	mutex_unlock(&buffer->lock);
 
@@ -429,21 +508,31 @@ static void samsung_heap_vunmap(struct dma_buf *dmabuf, void *vaddr)
 {
 	struct samsung_dma_buffer *buffer = dmabuf->priv;
 
+	dma_heap_event_begin();
+
 	mutex_lock(&buffer->lock);
 	if (!--buffer->vmap_cnt) {
 		vunmap(buffer->vaddr);
 		buffer->vaddr = NULL;
 	}
 	mutex_unlock(&buffer->lock);
+
+	dma_heap_event_record(DMA_HEAP_EVENT_VUNMAP, dmabuf, begin);
 }
 
 static void samsung_heap_dma_buf_release(struct dma_buf *dmabuf)
 {
 	struct samsung_dma_buffer *buffer = dmabuf->priv;
 
-	dma_iova_release(dmabuf);
+	dma_heap_event_begin();
 
+	dma_iova_release(dmabuf);
+	dmabuf_trace_free(dmabuf);
+
+	atomic_long_sub(dmabuf->size, &buffer->heap->total_bytes);
 	buffer->heap->release(buffer);
+
+	dma_heap_event_record(DMA_HEAP_EVENT_FREE, dmabuf, begin);
 }
 
 static int samsung_heap_dma_buf_get_flags(struct dma_buf *dmabuf, unsigned long *flags)

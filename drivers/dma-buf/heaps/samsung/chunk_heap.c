@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * DMABUF Chunk heap exporter for Samsung
+ * DMABUF CMA heap exporter for Samsung
  *
  * Copyright (C) 2021 Samsung Electronics Co., Ltd.
  * Author: <hyesoo.yu@samsung.com> for Samsung
@@ -17,10 +17,12 @@
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
-#include <linux/samsung-dma-heap.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/sort.h>
+
+#include "secure_buffer.h"
+#include "heap_private.h"
 
 struct chunk_heap {
 	struct cma *cma;
@@ -28,9 +30,9 @@ struct chunk_heap {
 
 static int chunk_pages_compare(const void *p1, const void *p2)
 {
-	if (*((const unsigned long *)p1) > (*((const unsigned long *)p2)))
+	if (*((unsigned long *)p1) > (*((unsigned long *)p2)))
 		return 1;
-	else if (*((const unsigned long *)p1) < (*((const unsigned long *)p2)))
+	else if (*((unsigned long *)p1) < (*((unsigned long *)p2)))
 		return -1;
 	return 0;
 }
@@ -77,6 +79,7 @@ static int chunk_heap_buffer_allocate(struct cma *cma, unsigned int need_count,
 	if (alloc_count < need_count) {
 		for (i = 0; i < alloc_count; i++)
 			cma_release(cma, pages[i], 1 << chunk_order);
+		perrfn("Grapped only %d/%d %d-order pages", alloc_count, need_count, chunk_order);
 		return -ENOMEM;
 	}
 
@@ -89,15 +92,10 @@ static void *chunk_heap_protect(struct samsung_dma_heap *samsung_dma_heap, unsig
 				struct page **pages, unsigned long nr_pages)
 {
 	unsigned long *paddr_array = NULL;
-	unsigned long paddr, i;
+	unsigned long paddr;
 	void *priv;
+	int i;
 
-	/*
-	 * LDFW in secure world interprets paddr differently depending on whether nr_pages == 1.
-	 * If it is 1, then it interprets it as the physical address of physically contiguous
-	 * memory. If it is > 1, then it interprets it as a physical address of an array of
-	 * physical addresses of chunks page like 64KB.
-	 */
 	if (nr_pages == 1) {
 		paddr = page_to_phys(pages[0]);
 	} else {
@@ -134,9 +132,8 @@ static int chunk_heap_unprotect(struct samsung_dma_heap *samsung_dma_heap, void 
 	return ret;
 }
 
-static struct dma_buf *chunk_heap_allocate(struct dma_heap *heap, unsigned long len,
-					   unsigned long fd_flags,
-					   unsigned long heap_flags __maybe_unused)
+struct dma_buf *chunk_heap_allocate(struct dma_heap *heap, unsigned long len,
+				    unsigned long fd_flags, unsigned long heap_flags)
 {
 	struct samsung_dma_heap *samsung_dma_heap = dma_heap_get_drvdata(heap);
 	struct chunk_heap *chunk_heap = samsung_dma_heap->priv;
@@ -144,31 +141,36 @@ static struct dma_buf *chunk_heap_allocate(struct dma_heap *heap, unsigned long 
 	struct scatterlist *sg;
 	struct dma_buf *dmabuf;
 	struct page **pages;
-	unsigned long size, nr_chunks;
+	unsigned long size, nr_pages;
 	unsigned int chunk_order = get_order(samsung_dma_heap->alignment);
 	unsigned int chunk_size = PAGE_SIZE << chunk_order;
 	int ret = -ENOMEM, protret = 0;
 	pgoff_t pg;
 
-	size = ALIGN(len, chunk_size);
-	nr_chunks = size / chunk_size;
+	if (chunk_size < PAGE_SIZE) {
+		perrfn("invalid chunck order: %d", chunk_order);
+		return ERR_PTR(-EINVAL);
+	}
 
-	pages = kvmalloc_array(nr_chunks, sizeof(*pages), GFP_KERNEL);
+	size = ALIGN(len, chunk_size);
+	nr_pages = size / chunk_size;
+
+	pages = kvmalloc_array(nr_pages, sizeof(*pages), GFP_KERNEL);
 	if (!pages)
 		return ERR_PTR(-ENOMEM);
 
-	ret = chunk_heap_buffer_allocate(chunk_heap->cma, nr_chunks, pages, chunk_order);
+	ret = chunk_heap_buffer_allocate(chunk_heap->cma, nr_pages, pages, chunk_order);
 	if (ret)
 		goto err_alloc;
 
-	buffer = samsung_dma_buffer_alloc(samsung_dma_heap, size, nr_chunks);
+	buffer = samsung_dma_buffer_alloc(samsung_dma_heap, size, nr_pages);
 	if (IS_ERR(buffer)) {
 		ret = PTR_ERR(buffer);
 		goto err_buffer;
 	}
 
 	sg = buffer->sg_table.sgl;
-	for (pg = 0; pg < nr_chunks; pg++) {
+	for (pg = 0; pg < nr_pages; pg++) {
 		sg_set_page(sg, pages[pg], chunk_size, 0);
 		sg = sg_next(sg);
 	}
@@ -177,7 +179,7 @@ static struct dma_buf *chunk_heap_allocate(struct dma_heap *heap, unsigned long 
 	heap_cache_flush(buffer);
 
 	if (dma_heap_flags_protected(samsung_dma_heap->flags)) {
-		buffer->priv = chunk_heap_protect(samsung_dma_heap, chunk_size, pages, nr_chunks);
+		buffer->priv = chunk_heap_protect(samsung_dma_heap, chunk_size, pages, nr_pages);
 		if (IS_ERR(buffer->priv)) {
 			ret = PTR_ERR(buffer->priv);
 			goto err_prot;
@@ -198,12 +200,13 @@ err_export:
 err_prot:
 	samsung_dma_buffer_free(buffer);
 err_buffer:
-	if (!protret) {
-		for (pg = 0; pg < nr_chunks; pg++)
-			cma_release(chunk_heap->cma, pages[pg], 1 << chunk_order);
-	}
+	for (pg = 0; !protret && pg < nr_pages; pg++)
+		cma_release(chunk_heap->cma, pages[pg], 1 << chunk_order);
 err_alloc:
 	kvfree(pages);
+
+	samsung_allocate_error_report(samsung_dma_heap, len, fd_flags, heap_flags);
+
 	return ERR_PTR(ret);
 }
 
@@ -213,8 +216,7 @@ static void chunk_heap_release(struct samsung_dma_buffer *buffer)
 	struct chunk_heap *chunk_heap = dma_heap->priv;
 	struct sg_table *table;
 	struct scatterlist *sg;
-	unsigned int i;
-	int ret = 0, chunk_order = get_order(dma_heap->alignment);
+	int i, ret = 0, chunk_order = get_order(dma_heap->alignment);
 
 	table = &buffer->sg_table;
 

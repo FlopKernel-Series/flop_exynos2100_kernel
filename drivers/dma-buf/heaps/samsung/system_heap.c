@@ -18,12 +18,12 @@
 #include <linux/highmem.h>
 #include <linux/mm.h>
 #include <linux/module.h>
-#include <linux/samsung-dma-heap.h>
+#include <linux/of.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
-#include <linux/of.h>
 
+#include "heap_private.h"
 #include "../deferred-free-helper.h"
 #include "../page_pool.h"
 
@@ -62,6 +62,7 @@ static struct page *alloc_largest_available(unsigned long size,
 	return NULL;
 }
 
+#define DMA_HEAP_ALLOC_MAX	(totalram_pages() >> 1)
 static struct dma_buf *system_heap_allocate(struct dma_heap *heap, unsigned long len,
 					    unsigned long fd_flags, unsigned long heap_flags)
 {
@@ -69,17 +70,26 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap, unsigned long
 	struct samsung_dma_buffer *buffer;
 	struct scatterlist *sg;
 	struct dma_buf *dmabuf;
-	struct list_head pages;
+	struct list_head pages, exception_pages;
 	struct page *page, *tmp_page;
 	unsigned long size_remaining;
 	unsigned int max_order = orders[0];
-	int i, ret = -ENOMEM;
+	int i, ret;
+
+	dma_heap_event_begin();
+
+	if (len / PAGE_SIZE > DMA_HEAP_ALLOC_MAX) {
+		perrfn("Requested size %zu is too large, it should be under %ld",
+		       len, DMA_HEAP_ALLOC_MAX << PAGE_SHIFT);
+		return ERR_PTR(-ENOMEM);
+	}
 
 	if (dma_heap_flags_video_aligned(samsung_dma_heap->flags))
 		len = dma_heap_add_video_padding(len);
 	size_remaining = len;
 
 	INIT_LIST_HEAD(&pages);
+	INIT_LIST_HEAD(&exception_pages);
 	i = 0;
 	while (size_remaining > 0) {
 		/*
@@ -93,14 +103,23 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap, unsigned long
 		}
 
 		page = alloc_largest_available(size_remaining, max_order);
-		if (!page)
+		if (!page) {
+			ret = fatal_signal_pending(current) ? -EINTR : -ENOMEM;
+			perrfn("Failed to allocate page (ret %d)", ret);
 			goto free_buffer;
+		}
 
-		list_add_tail(&page->lru, &pages);
-		size_remaining -= page_size(page);
+		if (is_dma_heap_exception_page(page)) {
+			list_add_tail(&page->lru, &exception_pages);
+		} else {
+			list_add_tail(&page->lru, &pages);
+			size_remaining -= page_size(page);
+			i++;
+		}
 		max_order = compound_order(page);
-		i++;
 	}
+	list_for_each_entry_safe(page, tmp_page, &exception_pages, lru)
+		__free_pages(page, compound_order(page));
 
 	buffer = samsung_dma_buffer_alloc(samsung_dma_heap, len, i);
 	if (IS_ERR(buffer)) {
@@ -123,6 +142,8 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap, unsigned long
 		goto free_export;
 	}
 
+	dma_heap_event_record(DMA_HEAP_EVENT_ALLOC, dmabuf, begin);
+
 	return dmabuf;
 
 free_export:
@@ -133,8 +154,13 @@ free_export:
 	}
 	samsung_dma_buffer_free(buffer);
 free_buffer:
+	list_for_each_entry_safe(page, tmp_page, &exception_pages, lru)
+		__free_pages(page, compound_order(page));
+
 	list_for_each_entry_safe(page, tmp_page, &pages, lru)
 		__free_pages(page, compound_order(page));
+
+	samsung_allocate_error_report(samsung_dma_heap, len, fd_flags, heap_flags);
 
 	return ERR_PTR(ret);
 }
@@ -217,13 +243,7 @@ static void system_heap_release(struct samsung_dma_buffer *buffer)
 
 static int system_heap_probe(struct platform_device *pdev)
 {
-	int ret;
-
-	ret = samsung_heap_add(&pdev->dev, NULL, system_heap_release, &system_heap_ops);
-	if (ret)
-		return ret;
-
-	return 0;
+	return samsung_heap_add(&pdev->dev, NULL, system_heap_release, &system_heap_ops);
 }
 
 static const struct of_device_id system_heap_of_match[] = {
