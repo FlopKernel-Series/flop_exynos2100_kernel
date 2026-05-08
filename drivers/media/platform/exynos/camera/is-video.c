@@ -1563,7 +1563,7 @@ int is_queue_buffer_queue(struct is_queue *queue,
 	FIMC_BUG(!video);
 
 	/* image planes */
-	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) && vbuf->num_merged_dbufs) {
+	if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)) && vbuf->num_merged_dbufs) {
 		/* vbuf has been sorted by the order of buffer */
 		memcpy(queue->buf_dva[index], vbuf->dva,
 			sizeof(dma_addr_t) * vbuf->num_merged_dbufs * num_i_planes);
@@ -1709,7 +1709,7 @@ set_info:
 		set_bit(IS_QUEUE_BUFFER_READY, &queue->state);
 
 	if (queue->buf_maxcount == queue->buf_refcount) {
-		if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)
+		if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER))
 				&& vbuf->num_merged_dbufs)
 			mvinfo("%s number of merged buffers: %d\n",
 				vctx, video, queue->name, frame->num_buffers);
@@ -1800,7 +1800,7 @@ int is_queue_buffer_prepare(struct vb2_buffer *vb)
 		);
 
 	/* Unmerged dma_buf_container */
-	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)) {
+	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)) {
 		ret = vbuf->ops->dbufcon_prepare(vbuf, ctx->dev);
 		if (ret) {
 			mverr("failed to prepare dmabuf-container: %d",
@@ -1904,7 +1904,7 @@ int is_queue_buffer_prepare(struct vb2_buffer *vb)
 
 	if (video->type == IS_VIDEO_TYPE_LEADER
 		&& queue->mode == CAMERA_NODE_LOGICAL) {
-		ctx = video->resourcemgr->mem.default_ctx;
+		ctx = video->resourcemgr->mem.priv;
 
 		ret = _is_queue_subbuf_prepare(ctx->dev, vbuf,
 				&frame->shot_ext->node_group, need_vmap);
@@ -2009,7 +2009,7 @@ void is_queue_buffer_finish(struct vb2_buffer *vb)
 	}
 #endif
 
-	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) &&
+	if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)) &&
 			(vbuf->num_merged_dbufs)) {
 		for (i = 0; i < num_i_planes && vbuf->kva[i]; i++)
 			vbuf->ops->dbufcon_kunmap(vbuf, i);
@@ -2158,7 +2158,7 @@ int is_video_probe(struct is_video *video,
 	video->id		= video_number;
 	video->vb2_mem_ops	= mem->vb2_mem_ops;
 	video->is_vb2_buf_ops	= mem->is_vb2_buf_ops;
-	video->alloc_ctx	= mem->default_ctx;
+	video->alloc_ctx	= mem->priv;
 	video->type		= (vfl_dir == VFL_DIR_RX) ? IS_VIDEO_TYPE_CAPTURE : IS_VIDEO_TYPE_LEADER;
 	video->vd.vfl_dir	= vfl_dir;
 	video->vd.v4l2_dev	= v4l2_dev;

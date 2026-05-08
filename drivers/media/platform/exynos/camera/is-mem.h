@@ -23,6 +23,8 @@
 #define ION_EXYNOS_FLAG_PROTECTED		BIT(16)
 #define ION_EXYNOS_FLAG_IOVA_EXTENSION		BIT(20)
 
+#define SECURE_HEAPNAME "secure_camera-secure"
+
 enum is_cache_ops {
 	IS_SYNC_FOR_DEVICE,
 	IS_SYNC_FOR_CPU,
@@ -83,7 +85,7 @@ struct is_vb2_buf {
 	struct dma_buf_attachment	*atch[IS_MAX_PLANES];
 	struct sg_table			*sgt[IS_MAX_PLANES];
 
-#if IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)
+#if IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)
 	ulong				kva[IS_MAX_PLANES];
 	dma_addr_t			dva[IS_MAX_PLANES];
 #else
@@ -163,6 +165,21 @@ struct is_ion_ctx {
 	int			iommu_active_cnt;
 };
 
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#define SECURE_HEAPNAME "secure_camera-secure"
+struct pablo_dmabuf_heap_ctx {
+	struct device	*dev;
+	struct dma_heap	*dh_system;
+	struct dma_heap	*dh_system_uncached;
+	struct dma_heap	*dh_secure_camera;
+#if defined(USE_CAMERA_HEAP)
+	struct dma_heap *dh_camera;
+	struct dma_heap *dh_camera_uncached;
+#endif
+	struct mutex	lock;
+};
+#endif
+
 struct is_mem_stats {
 	/* Counters to check for unbalanced IS vb2 buffer operations */
 	atomic_t cnt_plane_kmap;
@@ -182,14 +199,14 @@ struct is_mem_stats {
 };
 
 struct is_mem {
-	struct is_ion_ctx		*default_ctx;
-	struct is_ion_ctx		*phcontig_ctx;
+	struct device			*dev;
+	struct is_mem_stats		*stats;
 	const struct is_mem_ops		*is_mem_ops;
 	const struct vb2_mem_ops	*vb2_mem_ops;
 	const struct is_vb2_buf_ops	*is_vb2_buf_ops;
-	struct is_mem_stats		*stats;
-	void				*priv;
-	struct is_priv_buf *(*kmalloc)(size_t size, size_t align);
+	//struct is_priv_buf *(*kmalloc)(size_t size, size_t align);
+	struct is_priv_buf *(*contig_alloc)(size_t size);
+	void *priv;
 };
 
 #define CALL_MEMOP(mem, op, args...)			\
