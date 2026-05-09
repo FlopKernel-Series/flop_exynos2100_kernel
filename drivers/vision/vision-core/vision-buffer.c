@@ -14,10 +14,12 @@
 #include <linux/slab.h>
 #include <media/videobuf2-dma-sg.h>
 #include <linux/dma-buf.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,4,0)
-#include <linux/ion.h>
+
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#include <linux/dma-heap.h>
 #else
 #include <linux/ion_exynos.h>
+#include <linux/ion.h>
 #endif
 
 #include "vision-config.h"
@@ -33,7 +35,6 @@ static size_t vision_dma_total_used_size;
 /*****************************************************************************
  *****                         wrapper function                          *****
  *****************************************************************************/
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,4,0)
 static dma_addr_t vision_dma_buf_dva_map(struct vb_buffer *buffer,
 				__attribute__((unused))u32 size)
 {
@@ -56,29 +57,6 @@ static void vision_dma_buf_va_unmap(struct vb_buffer *buffer)
 	dma_buf_kunmap(buffer->dma_buf, 0, buffer->vaddr);
 }
 */
-#else
-static dma_addr_t vision_dma_buf_dva_map(struct vb_buffer *buffer, u32 size)
-{
-	return ion_iovmm_map(buffer->attachment, 0, size,
-						DMA_BIDIRECTIONAL, 0);
-}
-
-static void vision_dma_buf_dva_unmap(struct vb_buffer *buffer)
-{
-	ion_iovmm_unmap(buffer->attachment, buffer->daddr);
-}
-/*
-static void *vision_dma_buf_va_map(struct vb_buffer *buffer)
-{
-	return dma_buf_vmap(buffer->dma_buf);
-}
-
-static void vision_dma_buf_va_unmap(struct vb_buffer *buffer)
-{
-	dma_buf_vunmap(buffer->dma_buf, buffer->vaddr);
-}
-*/
-#endif
 
 struct vision_debug_log {
 	size_t			dsentence_pos;
@@ -269,7 +247,6 @@ p_err:
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_ION_EXYNOS)
 static int __vb_unmap_dmabuf(struct vb_queue *q, struct vb_buffer *buffer)
 {
 	int ret = 0;
@@ -310,35 +287,7 @@ static int __vb_unmap_dmabuf(struct vb_queue *q, struct vb_buffer *buffer)
 p_err:
 	return ret;
 }
-#endif
 
-#if !(IS_ENABLED(CONFIG_ION_EXYNOS))
-static int __vb_unmap_virtptr(struct vb_queue *q, struct vb_buffer *buffer)
-{
-	int ret = 0;
-
-	if (buffer == NULL) {
-		vision_err("vb_buffer(buffer) is NULL\n");
-		ret = -EFAULT;
-		goto p_err;
-	}
-
-	if (buffer->reserved)
-		kfree((void *)buffer->m.userptr);
-
-	buffer->dma_buf = NULL;
-	buffer->attachment = NULL;
-	buffer->sgt = NULL;
-	buffer->daddr = 0;
-	buffer->vaddr = NULL;
-	buffer->reserved = 0;
-
-p_err:
-	return ret;
-}
-#endif
-
-#if IS_ENABLED(CONFIG_ION_EXYNOS)
 static int __vb_map_dmabuf(
 	struct vb_queue *q, struct vb_buffer *buffer, u32 size)
 {
@@ -421,39 +370,6 @@ p_err:
 		__vb_unmap_dmabuf(q, buffer);
 	return ret;
 }
-#endif
-
-#if !(IS_ENABLED(CONFIG_ION_EXYNOS))
-static int __vb_map_virtptr(
-	struct vb_queue *q, struct vb_buffer *buffer, u32 size)
-{
-	int ret = 0;
-	unsigned long tmp_buffer;
-	void *mbuf = NULL;
-
-	mbuf = kmalloc(size, GFP_KERNEL);
-	if (!mbuf) {
-		ret = -ENOMEM;
-		goto p_err;
-	}
-
-	tmp_buffer = (unsigned long)mbuf;
-
-	ret = copy_from_user((void *)tmp_buffer,
-		(void *)buffer->m.userptr, size);
-	if (ret) {
-		vision_err("copy_from_user() is fail(%d)\n", ret);
-		goto p_err;
-	}
-
-	/* back up - userptr */
-	buffer->reserved = buffer->m.userptr;
-	buffer->m.userptr = (unsigned long)tmp_buffer;
-
-p_err:
-	return ret;
-}
-#endif
 
 static int __vb_queue_alloc(struct vb_queue *q,
 	struct vs4l_container_list *c)
@@ -698,7 +614,6 @@ static int __vb_buf_prepare(struct vb_queue *q, struct vb_bundle *bundle)
 		}
 
 		switch (container->memory) {
-#if IS_ENABLED(CONFIG_ION_EXYNOS)
 		case VS4L_MEMORY_DMABUF:
 			for (j = 0; j < k; ++j) {
 				buffer = &container->buffers[j];
@@ -717,28 +632,6 @@ static int __vb_buf_prepare(struct vb_queue *q, struct vb_bundle *bundle)
 				vision_info("prepare dmabuf (%d) - clist : %d container : %d, fd : %d\n", __LINE__, i, j, buffer->m.fd);
 			}
 			break;
-#else
-		case VS4L_MEMORY_VIRTPTR:
-			for (j = 0; j < k; ++j) {
-				buffer = &container->buffers[j];
-
-				if (format->colorspace == VS4L_DF_IMAGE_NPU) {
-					ret = __vb_map_virtptr(
-					q, buffer, format->size[0]);
-				} else {
-					ret = __vb_map_virtptr(
-					q, buffer, format->size[format->plane]);
-				}
-
-				if (ret) {
-					vision_err("__vb_map_virtptr is fail(%d)\n",
-						ret);
-					goto p_err;
-				}
-				vision_info("prepare virtptr (%d) - clist : %d container : %d, fd : %d\n", __LINE__, i, j, buffer->m.fd);
-			}
-			break;
-#endif
 		default:
 			vision_err("unsupported container memory type\n");
 			ret = -EINVAL;
@@ -793,7 +686,6 @@ static int __vb_buf_unprepare(struct vb_queue *q, struct vb_bundle *bundle)
 		}
 
 		switch (container->memory) {
-#if IS_ENABLED(CONFIG_ION_EXYNOS)
 		case VS4L_MEMORY_DMABUF:
 			for (j = 0; j < k; ++j) {
 				buffer = &container->buffers[j];
@@ -806,20 +698,6 @@ static int __vb_buf_unprepare(struct vb_queue *q, struct vb_bundle *bundle)
 				vision_info("unprepare dmabuf (%d) - clist : %d container : %d, fd : %d\n", __LINE__, i, j, buffer->m.fd);
 			}
 			break;
-#else
-		case VS4L_MEMORY_VIRTPTR:
-			for (j = 0; j < k; ++j) {
-				buffer = &container->buffers[j];
-				ret = __vb_unmap_virtptr(q, buffer);
-				if (ret) {
-					vision_err("__vb_unmap_virtptr is fail(%d)\n",
-						ret);
-					goto p_err;
-				}
-				vision_info("unprepare virtptr (%d)- clist : %d container : %d, fd : %d\n", __LINE__, i, j, buffer->m.fd);
-			}
-			break;
-#endif
 		default:
 			vision_err("unsupported container memory type\n");
 			ret = -EINVAL;
@@ -1211,9 +1089,7 @@ int vb_queue_qbuf(struct vb_queue *q, struct vs4l_container_list *c)
 	struct vb_container *container;
 	u32 direction;
 	u32 i;
-#if IS_ENABLED(CONFIG_ION_EXYNOS)
 	u32 j, k, size;
-#endif
 
 	if (q->direction != c->direction) {
 		vision_err("qbuf: invalid buffer direction\n");
@@ -1279,7 +1155,6 @@ int vb_queue_qbuf(struct vb_queue *q, struct vs4l_container_list *c)
 	for (i = 0; i < bundle->clist.count; ++i) {
 		container = &bundle->clist.containers[i];
 		BUG_ON(!container->format);
-#if IS_ENABLED(CONFIG_ION_EXYNOS)
 		if (container->memory != VS4L_MEMORY_VIRTPTR) {
 			k = container->count;
 			if (container->format->colorspace == VS4L_DF_IMAGE_NPU)
@@ -1291,7 +1166,6 @@ int vb_queue_qbuf(struct vb_queue *q, struct vs4l_container_list *c)
 				dma_buf_end_cpu_access(container->buffers[j].dma_buf, direction);
 			}
 		}
-#endif
 	}
 
 	/*
@@ -1485,9 +1359,7 @@ void vb_queue_done(struct vb_queue *q, struct vb_bundle *bundle)
 	unsigned long flag;
 	u32 direction;
 	u32 i;
-#if IS_ENABLED(CONFIG_ION_EXYNOS)
 	u32 j, k, size;
-#endif
 
 	BUG_ON(!q);
 	BUG_ON(!bundle);
@@ -1502,7 +1374,6 @@ void vb_queue_done(struct vb_queue *q, struct vb_bundle *bundle)
 	for (i = 0; i < bundle->clist.count; ++i) {
 		container = &bundle->clist.containers[i];
 		BUG_ON(!container->format);
-#if IS_ENABLED(CONFIG_ION_EXYNOS)
 		if (container->memory != VS4L_MEMORY_VIRTPTR) {
 			k = container->count;
 			if (container->format->colorspace == VS4L_DF_IMAGE_NPU)
@@ -1517,7 +1388,6 @@ void vb_queue_done(struct vb_queue *q, struct vb_bundle *bundle)
 					dma_buf_begin_cpu_access(container->buffers[j].dma_buf, direction);
 			}
 		}
-#endif
 	}
 
 	spin_lock_irqsave(&q->done_lock, flag);

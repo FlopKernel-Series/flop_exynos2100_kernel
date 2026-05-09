@@ -19,8 +19,6 @@
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/highmem.h>
-#include <linux/ion.h>
-#include <uapi/linux/ion.h>
 #include <linux/scatterlist.h>
 #include <linux/dma-direct.h>
 #include <linux/dma-buf.h>
@@ -30,9 +28,12 @@
 #include <linux/soc/samsung/exynos-soc.h>
 #include <linux/of_reserved_mem.h>
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 19, 128)
-#include <linux/exynos_iovmm.h>
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#include <linux/dma-heap.h>
+#else
 #include <linux/ion_exynos.h>
+#include <linux/ion.h>
+#include <uapi/linux/ion.h>
 #endif
 
 #include "npu-log.h"
@@ -60,6 +61,23 @@
  *****                         wrapper function                          *****
  *****************************************************************************/
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+static struct dma_buf *npu_memory_ion_alloc(size_t size, unsigned int flag)
+{
+	struct dma_buf *dma_buf = NULL;
+	struct dma_heap *dma_heap;
+
+	dma_heap = dma_heap_find("system-uncached");
+	if (dma_heap) {
+		dma_buf = dma_heap_buffer_alloc(dma_heap, size, 0, flag);
+		dma_heap_put(dma_heap);
+	} else {
+		npu_info("dma_heap is not exist\n");
+	}
+
+	return dma_buf;
+}
+#else
 static unsigned int __npu_memory_get_query_from_ion(const char *heapname)
 {
 	struct ion_heap_data data[ION_NUM_MAX_HEAPS];
@@ -79,7 +97,7 @@ static unsigned int __npu_memory_get_query_from_ion(const char *heapname)
 	return 1 << data[i].heap_id;
 }
 
-static struct dma_buf *npu_memory_ion_alloc(size_t size, unsigned long flag)
+static struct dma_buf *npu_memory_ion_alloc(size_t size, unsigned int flag)
 {
 	unsigned int heapmask = __npu_memory_get_query_from_ion("vendor_system_heap");
 
@@ -88,7 +106,7 @@ static struct dma_buf *npu_memory_ion_alloc(size_t size, unsigned long flag)
 
 	return ion_alloc(size, heapmask, flag);
 }
-
+#endif
 static dma_addr_t npu_memory_dma_buf_dva_map(struct npu_memory_buffer *buffer)
 {
 	return sg_dma_address(buffer->sgt->sgl);
@@ -222,7 +240,7 @@ int npu_memory_alloc_from_heap(struct platform_device *pdev,
 	struct sg_table *sgt;
 	phys_addr_t phys_addr;
 	void *vaddr;
-	int flag;
+	unsigned int flag;
 
 	size_t size;
 	size_t map_size;
