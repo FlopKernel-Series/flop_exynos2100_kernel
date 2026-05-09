@@ -1201,7 +1201,7 @@ static int abox_dbg_power_notifier(struct notifier_block *nb,
 	bool en = !!action;
 
 	if (en) {
-		cancel_delayed_work_sync(&abox_dbg_free_work);
+		cancel_delayed_work(&abox_dbg_free_work);
 		schedule_work(&abox_dbg_alloc_work);
 	} else {
 		schedule_delayed_work(&abox_dbg_free_work, TIMEOUT);
