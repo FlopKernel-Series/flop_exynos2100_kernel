@@ -1087,6 +1087,9 @@ static int dsim_alloc_fcmd_memory(u32 id)
 {
 	struct dsim_device *dsim = get_dsim_drvdata(id);
 	dma_addr_t map_dma;
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	struct dma_heap *dma_heap;
+#endif
 	unsigned int ret;
 	u32 size = FCMD_DATA_MAX_SIZE;
 
@@ -1098,18 +1101,29 @@ static int dsim_alloc_fcmd_memory(u32 id)
 
 	dev_info(dsim->dev, "want %u bytes\n", size);
 
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	dma_heap = dma_heap_find("system-uncached");
+	if (dma_heap) {
+		dsim->fcmd_buf = dma_heap_buffer_alloc(dma_heap, (size_t)size, 0, 0);
+		dma_heap_put(dma_heap);
+	} else {
+		pr_err("dma_heap_find() failed\n");
+		goto err_share_dma_buf;
+	}
+
+	if (IS_ERR(dsim->fcmd_buf)) {
+		dev_err(dsim->dev, "ion_alloc() failed\n");
+		goto err_share_dma_buf;
+	}
+#else
 	dsim->fcmd_buf = ion_alloc((size_t)size, ION_HEAP_SYSTEM, 0);
 	if (IS_ERR(dsim->fcmd_buf)) {
 		dev_err(dsim->dev, "ion_alloc() failed\n");
 		goto err_share_dma_buf;
 	}
+#endif
 
 	dsim->fcmd_buf_vaddr = dma_buf_vmap(dsim->fcmd_buf);
-	if (IS_ERR_OR_NULL(dsim->fcmd_buf_vaddr)) {
-		dev_err(dsim->dev, "dma_buf_vmap() failed\n");
-		goto err_map;
-	}
-
 	ret = dsim_map_ion_handle(dsim->dev, &dsim->fcmd_buf_data, dsim->fcmd_buf);
 	if (!ret)
 		goto err_map;
@@ -2926,6 +2940,7 @@ static int __init fb_handover_setup(struct reserved_mem *rmem)
 }
 RESERVEDMEM_OF_DECLARE(fb_handover, "exynos,fb_handover", fb_handover_setup);
 
+MODULE_SOFTDEP("pre: samsung_dma_heap");
 MODULE_AUTHOR("Yeongran Shin <yr613.shin@samsung.com>");
 MODULE_DESCRIPTION("Samusung EXYNOS DSIM driver");
 MODULE_LICENSE("GPL");

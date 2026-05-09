@@ -22,7 +22,11 @@
 #include <soc/samsung/exynos_pm_qos.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#include <linux/dma-heap.h>
+#else
 #include <linux/ion.h>
+#endif
 #include <linux/dma-buf.h>
 #if IS_ENABLED(CONFIG_EXYNOS_BTS) || IS_ENABLED(CONFIG_EXYNOS_BTS_MODULE)
 #include <soc/samsung/bts.h>
