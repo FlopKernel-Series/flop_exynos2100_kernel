@@ -336,6 +336,9 @@ struct sc_int_frame {
 	struct sg_table			*sgt[3];
 	struct dma_buf			*dma_buf[3];
 	struct dma_buf_attachment	*attachment[3];
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	struct dma_heap 		*dma_heap;
+#endif
 };
 
 /*
