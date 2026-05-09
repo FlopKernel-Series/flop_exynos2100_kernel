@@ -26,7 +26,6 @@
 #include <linux/sched/clock.h>
 #include <sound/hwdep.h>
 #include <linux/miscdevice.h>
-#include <linux/ion.h>
 #include <linux/dma-buf.h>
 
 #include <sound/soc.h>
