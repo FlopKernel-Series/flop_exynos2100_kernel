@@ -1487,6 +1487,7 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 {
 	struct device		*dev = dwc->dev;
 	u8			lpm_nyet_threshold;
+	bool			lpm_nyet_threshold_from_dt;
 	u8			tx_de_emphasis;
 	u8			hird_threshold;
 	u8			rx_thr_num_pkt_prd = 0;
@@ -1521,8 +1522,16 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 
 	dwc->has_lpm_erratum = device_property_read_bool(dev,
 				"snps,has-lpm-erratum");
-	device_property_read_u8(dev, "snps,lpm-nyet-threshold",
+	lpm_nyet_threshold_from_dt = !device_property_read_u8(dev,
+				"snps,lpm-nyet-threshold",
 				&lpm_nyet_threshold);
+	if (of_machine_is_compatible("samsung,exynos2100")) {
+		if (!dwc->has_lpm_erratum)
+			dwc->has_lpm_erratum = true;
+		if (!lpm_nyet_threshold_from_dt)
+			lpm_nyet_threshold = 0x0;
+		dev_info(dev, "using Exynos2100 USB2 LPM erratum quirk\n");
+	}
 	dwc->is_utmi_l1_suspend = device_property_read_bool(dev,
 				"snps,is-utmi-l1-suspend");
 	device_property_read_u8(dev, "snps,hird-threshold",
