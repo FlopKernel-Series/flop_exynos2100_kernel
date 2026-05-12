@@ -1,3 +1,48 @@
+prepare_ak3() {
+    AK3_MANAGED=0
+
+    if [ "$DO_ZIP" != "1" ]; then
+        export AK3_MANAGED
+        return
+    fi
+
+    if [ -d "$AK3_DIR/.git" ]; then
+        export AK3_MANAGED
+        return
+    fi
+
+    if [ -e "$AK3_DIR" ]; then
+        log_warn "AnyKernel3 directory exists at $AK3_DIR but is not a git checkout, skipping ZIP packaging"
+        DO_ZIP=0
+        export AK3_MANAGED
+        return
+    fi
+
+    mkdir -p "$(dirname "$AK3_DIR")"
+
+    ak3_clone_ok=0
+    for ak3_try in 1 2 3 4 5; do
+        if git clone -q -b "$AK3_BRANCH" --depth=1 "$AK3_URL" "$AK3_DIR"; then
+            ak3_clone_ok=1
+            AK3_MANAGED=1
+            break
+        fi
+
+        rm -rf "$AK3_DIR"
+        if [ "$ak3_try" -lt 5 ]; then
+            log_warn "AnyKernel3 clone failed (attempt $ak3_try/5), retrying in 1 second..."
+            sleep 1
+        fi
+    done
+
+    if [ "$ak3_clone_ok" != "1" ]; then
+        log_warn "Failed to fetch AnyKernel3 after 5 attempts, ZIP packaging will be skipped"
+        DO_ZIP=0
+    fi
+
+    export AK3_MANAGED
+}
+
 packing() {
     if [ "$DO_ZIP" = "1" ]; then
         echo -e "\n$(log_info "Building AnyKernel ZIP...")"

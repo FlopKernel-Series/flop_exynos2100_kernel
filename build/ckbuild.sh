@@ -258,6 +258,7 @@ fi
 # apply_kpm_patch
 kernel_modules
 build_images
+prepare_ak3
 packing
 echo -e "\n$(log_info "Completed in $((SECONDS / 60)) minute(s) and $((SECONDS % 60)) second(s) !")\n"
 clean_tmp
