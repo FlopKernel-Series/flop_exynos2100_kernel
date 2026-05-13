@@ -460,11 +460,27 @@ static int parse_dt(struct sb_pt *pt, struct device *parent)
 	np = of_find_node_by_name(NULL, PT_MODULE_NAME);
 	if (!np) {
 		pt_log("failed to find root node\n");
+#if defined(CONFIG_SOC_EXYNOS2100)
+		pt_log("using fallbacks for Exynos 2100 family\n");
+#else
 		return -ENODEV;
+#endif
 	}
 
 	pt->is_enabled = true;
 
+#if defined(CONFIG_SOC_EXYNOS2100)
+	if (!np) {
+		pt->start_delay = 5000;
+		pt->init_delay = 5000;
+		pt->adj_delay = 500;
+		pt->adj_max_cnt = 3;
+		pt->min_cap = 200;
+		pt->fixed_sc_cap = 900;
+		pt->max_icl = 3000;
+		pt->vfloat = 4400;
+	} else {
+#endif
 	sb_of_parse_u32(np, pt, start_delay, 5000);
 	sb_of_parse_u32(np, pt, init_delay, 5000);
 	sb_of_parse_u32(np, pt, adj_delay, 500);
@@ -473,6 +489,10 @@ static int parse_dt(struct sb_pt *pt, struct device *parent)
 	sb_of_parse_u32(np, pt, fixed_sc_cap, 900);
 	sb_of_parse_u32(np, pt, max_icl, 3000);
 	sb_of_parse_u32(np, pt, vfloat, 4400);
+
+#if defined(CONFIG_SOC_EXYNOS2100)
+	}
+#endif
 
 	np = of_find_node_by_name(NULL, "battery");
 	if (np) {
