@@ -399,6 +399,15 @@ static void input_handle_event(struct input_dev *dev,
 		ksu_handle_input_handle_event(&type, &code, &value);
 #endif
 
+#ifdef CONFIG_KSU_SUSFS
+#if defined(CONFIG_KSU_SUKI) && defined(CONFIG_KSU_SUSFS)
+	if (static_branch_unlikely(&ksu_input_hook_key_false))
+#else
+	if (unlikely(ksu_input_hook))
+#endif
+		ksu_handle_input_handle_event(&type, &code, &value);
+#endif
+
 	if (disposition != INPUT_IGNORE_EVENT && type != EV_SYN)
 		add_input_randomness(type, code, value);
 
