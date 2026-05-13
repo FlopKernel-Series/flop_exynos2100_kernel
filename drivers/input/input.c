@@ -376,12 +376,7 @@ static int input_get_disposition(struct input_dev *dev,
 }
 
 #ifdef CONFIG_KSU_MANUAL_HOOK
-#if defined(CONFIG_KSU_SUKI) && defined(CONFIG_KSU_SUSFS)
-#include <linux/jump_label.h>
-extern struct static_key_false ksu_input_hook_key_false;
-#else
 extern bool ksu_input_hook __read_mostly;
-#endif
 extern int ksu_handle_input_handle_event(unsigned int *type,
 					 unsigned int *code, int *value);
 #endif
@@ -391,20 +386,12 @@ static void input_handle_event(struct input_dev *dev,
 {
 	int disposition = input_get_disposition(dev, type, code, &value);
 #ifdef CONFIG_KSU_MANUAL_HOOK
-#if defined(CONFIG_KSU_SUKI) && defined(CONFIG_KSU_SUSFS)
-	if (static_branch_unlikely(&ksu_input_hook_key_false))
-#else
 	if (unlikely(ksu_input_hook))
-#endif
 		ksu_handle_input_handle_event(&type, &code, &value);
 #endif
 
 #ifdef CONFIG_KSU_SUSFS
-#if defined(CONFIG_KSU_SUKI) && defined(CONFIG_KSU_SUSFS)
-	if (static_branch_unlikely(&ksu_input_hook_key_false))
-#else
 	if (unlikely(ksu_input_hook))
-#endif
 		ksu_handle_input_handle_event(&type, &code, &value);
 #endif
 
