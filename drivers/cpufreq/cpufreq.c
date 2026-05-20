@@ -468,6 +468,7 @@ EXPORT_SYMBOL_GPL(cpufreq_freq_transition_end);
 static int cpufreq_fast_switch_count;
 static DEFINE_MUTEX(cpufreq_fast_switch_lock);
 
+#if 0 // fast_switch coexists with transition notifiers
 static void cpufreq_list_transition_notifiers(void)
 {
 	struct notifier_block *nb;
@@ -481,6 +482,7 @@ static void cpufreq_list_transition_notifiers(void)
 
 	mutex_unlock(&cpufreq_transition_notifier_list.mutex);
 }
+#endif
 
 /**
  * cpufreq_enable_fast_switch - Enable fast frequency switching for policy.
@@ -500,16 +502,7 @@ void cpufreq_enable_fast_switch(struct cpufreq_policy *policy)
 	if (!policy->fast_switch_possible)
 		return;
 
-	mutex_lock(&cpufreq_fast_switch_lock);
-	if (cpufreq_fast_switch_count >= 0) {
-		cpufreq_fast_switch_count++;
-		policy->fast_switch_enabled = true;
-	} else {
-		pr_warn("CPU%u: Fast frequency switching not enabled\n",
-			policy->cpu);
-		cpufreq_list_transition_notifiers();
-	}
-	mutex_unlock(&cpufreq_fast_switch_lock);
+	policy->fast_switch_enabled = true;
 }
 EXPORT_SYMBOL_GPL(cpufreq_enable_fast_switch);
 
@@ -519,13 +512,7 @@ EXPORT_SYMBOL_GPL(cpufreq_enable_fast_switch);
  */
 void cpufreq_disable_fast_switch(struct cpufreq_policy *policy)
 {
-	mutex_lock(&cpufreq_fast_switch_lock);
-	if (policy->fast_switch_enabled) {
-		policy->fast_switch_enabled = false;
-		if (!WARN_ON(cpufreq_fast_switch_count <= 0))
-			cpufreq_fast_switch_count--;
-	}
-	mutex_unlock(&cpufreq_fast_switch_lock);
+	policy->fast_switch_enabled = false;
 }
 EXPORT_SYMBOL_GPL(cpufreq_disable_fast_switch);
 

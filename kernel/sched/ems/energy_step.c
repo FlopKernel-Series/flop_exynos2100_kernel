@@ -758,6 +758,10 @@ static int esgov_kthread_create(struct esgov_policy *esg_policy)
 	struct device_node *dn;
 	int ret;
 
+	/* kthread only required for slow path */
+	if (policy->fast_switch_enabled)
+		return 0;
+
 	kthread_init_work(&esg_policy->work, esgov_work);
 	kthread_init_worker(&esg_policy->worker);
 	thread = kthread_create(kthread_worker_fn, &esg_policy->worker,
@@ -809,6 +813,8 @@ static int esgov_init(struct cpufreq_policy *policy)
 
 	if (policy->governor_data)
 		return -EBUSY;
+
+	cpufreq_enable_fast_switch(policy);
 
 	esg_policy = per_cpu(esgov_policy, policy->cpu);
 	if (per_cpu(esgov_policy, policy->cpu)) {
@@ -864,6 +870,8 @@ static void esgov_exit(struct cpufreq_policy *policy)
 	esg_policy->enabled = false;;
 	policy->governor_data = NULL;
 	up_write(&esg_policy->rwsem);
+
+	cpufreq_disable_fast_switch(policy);
 }
 
 static unsigned int get_next_freq(struct esgov_policy *esg_policy,
@@ -1262,14 +1270,22 @@ esgov_update(struct update_util_data *hook, u64 time, unsigned int flags)
 				time, target_freq, rapid_scale))
 		goto out;
 
-	if (!esg_policy->work_in_progress) {
-		esg_policy->last_caller = smp_processor_id();
+	esg_policy->last_caller = smp_processor_id();
+	esg_policy->util = target_util;
+	esg_policy->target_freq = target_freq;
+	esg_policy->last_freq_update_time = time;
+	trace_esg_req_freq(esg_policy->policy->cpu,
+		esg_policy->util, esg_policy->target_freq, rapid_scale);
+
+	if (esg_policy->policy->fast_switch_enabled) {
+		unsigned int actual;
+
+		actual = cpufreq_driver_fast_switch(esg_policy->policy,
+						   target_freq);
+		if (actual)
+			esg_policy->policy->cur = actual;
+	} else if (!esg_policy->work_in_progress) {
 		esg_policy->work_in_progress = true;
-		esg_policy->util = target_util;
-		esg_policy->target_freq = target_freq;
-		esg_policy->last_freq_update_time = time;
-		trace_esg_req_freq(esg_policy->policy->cpu,
-			esg_policy->util, esg_policy->target_freq, rapid_scale);
 		irq_work_queue(&esg_policy->irq_work);
 	}
 out:
@@ -1320,7 +1336,9 @@ static void esgov_stop(struct cpufreq_policy *policy)
 		cpufreq_remove_update_util_hook(cpu);
 
 	synchronize_rcu();
-	irq_work_sync(&esg_policy->irq_work);
+
+	if (!policy->fast_switch_enabled)
+		irq_work_sync(&esg_policy->irq_work);
 
 	esg_policy->running = 0;
 }
@@ -1331,26 +1349,40 @@ static void esgov_limits(struct cpufreq_policy *policy)
 	unsigned long max = arch_scale_cpu_capacity(policy->cpu);
 	unsigned int target_util, target_freq;
 
-	mutex_lock(&esg_policy->work_lock);
-	cpufreq_policy_apply_limits(policy);
 	esg_update_freq_range(policy);
 	slack_update_min(policy);
 
-	/* Get target util of the cluster of this cpu */
-	target_util = esgov_get_target_util(esg_policy, 0, max);
+	if (!policy->fast_switch_enabled) {
+		mutex_lock(&esg_policy->work_lock);
+		cpufreq_policy_apply_limits(policy);
 
-	/* get target freq for new target util */
-	target_freq = get_next_freq(esg_policy, target_util, max);
+		/* Get target util of the cluster of this cpu */
+		target_util = esgov_get_target_util(esg_policy, 0, max);
 
-	/*
-	 * After freq limits change, CPUFreq policy->cur can be different
-	 * with ESG's target freq. In that case, explicitly change current freq
-	 * to ESG's target freq
-	 */
-	if (policy->cur != target_freq)
-		__cpufreq_driver_target(policy, target_freq, CPUFREQ_RELATION_L);
+		/* get target freq for new target util */
+		target_freq = get_next_freq(esg_policy, target_util, max);
 
-	mutex_unlock(&esg_policy->work_lock);
+		/*
+		 * After freq limits change, CPUFreq policy->cur can be
+		 * different with ESG's target freq. In that case, explicitly
+		 * change current freq to ESG's target freq
+		 */
+		if (policy->cur != target_freq)
+			__cpufreq_driver_target(policy, target_freq,
+						CPUFREQ_RELATION_L);
+
+		mutex_unlock(&esg_policy->work_lock);
+	} else {
+		unsigned int actual;
+
+		raw_spin_lock(&esg_policy->update_lock);
+		target_util = esgov_get_target_util(esg_policy, 0, max);
+		target_freq = get_next_freq(esg_policy, target_util, max);
+		actual = cpufreq_driver_fast_switch(policy, target_freq);
+		if (actual)
+			policy->cur = actual;
+		raw_spin_unlock(&esg_policy->update_lock);
+	}
 }
 
 struct cpufreq_governor energy_step_gov = {
