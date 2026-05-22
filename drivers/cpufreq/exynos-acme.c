@@ -434,8 +434,8 @@ static int exynos_cpufreq_target(struct cpufreq_policy *policy,
 	freq = (unsigned long)target_freq;
 	freq = exynos_fc_limit_freq(domain, freq);
 
-	if (policy->cpu >= 4 &&
-	    (target_freq >= 2080000 || domain->old >= 2080000))
+	if (domain->alt_call_freq &&
+	    (freq >= domain->alt_call_freq || domain->old >= domain->alt_call_freq))
 		exynos_alt_call_chain();
 
 	return DM_CALL(domain->dm_type, &freq);
@@ -475,8 +475,8 @@ static void acme_fast_switch_work(struct kthread_work *work)
 		domain->fast_switch_pending = false;
 		raw_spin_unlock_irqrestore(&domain->fast_switch_update_lock, flags);
 
-		if (cpumask_first(&domain->cpus) >= 4 &&
-		    (freq >= 2080000 || domain->old >= 2080000))
+		if (domain->alt_call_freq &&
+		    (freq >= domain->alt_call_freq || domain->old >= domain->alt_call_freq))
 			exynos_alt_call_chain();
 
 		DM_CALL(domain->dm_type, &freq);
@@ -1651,6 +1651,9 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	 */
 	if (of_property_read_bool(dn, "need-awake"))
 		domain->need_awake = true;
+
+	if (of_property_read_u32(dn, "alt-call-freq", &val) == 0)
+		domain->alt_call_freq = val;
 
 	domain->boot_freq = cal_dfs_get_boot_freq(domain->cal_id);
 	domain->resume_freq = cal_dfs_get_resume_freq(domain->cal_id);
