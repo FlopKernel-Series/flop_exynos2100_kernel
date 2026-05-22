@@ -221,7 +221,7 @@ obj-y += kq/nad/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += muic/common/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += optics/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += input/input_boost/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
-obj-y += input/sec_input/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+
 obj-y += kq/balancer/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += fingerprint/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += usb/typec/manager/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
@@ -239,16 +239,16 @@ obj-y += sensorhub/brcm/bbdpl/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += nfc/snvm/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += battery/wireless/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += usb/typec/maxim/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
-obj-y += input/sec_input/synaptics/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+
 obj-y += battery/common/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += sensors_lego/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 
 # o1s
 obj-y += battery/charger/pca9468_charger/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
-obj-y += input/sec_input/slsi/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+
 
 # p3s
-obj-y += input/wacom/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+
 obj-y += regulator/s2dos05/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += sensors/vl53l5/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += uwb/uwb_logger/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
