@@ -10,6 +10,8 @@
 
 #include <soc/samsung/exynos-dm.h>
 #include <linux/fs.h>
+#include <linux/irq_work.h>
+#include <linux/kthread.h>
 #include <linux/miscdevice.h>
 
 struct exynos_cpufreq_dm {
@@ -86,6 +88,15 @@ struct exynos_cpufreq_domain {
 
 	/* list head of DVFS Manager constraints */
 	struct list_head		dm_list;
+
+	/* fast_switch deferred DM update */
+	struct irq_work			fast_switch_irq_work;
+	struct kthread_worker		fast_switch_worker;
+	struct kthread_work		fast_switch_work;
+	raw_spinlock_t			fast_switch_update_lock;
+	unsigned int			cached_fast_switch_freq;
+	bool				fast_switch_in_progress;
+	bool				fast_switch_pending;
 
 	bool				need_awake;
 
