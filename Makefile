@@ -950,6 +950,7 @@ endif
 ifdef CONFIG_LTO_CLANG
 ifdef CONFIG_THINLTO
 CC_FLAGS_LTO_CLANG := -flto=thin -funified-lto -fno-split-lto-unit
+KBUILD_LDFLAGS	+= --thinlto-cache-dir=.thinlto-cache
 
 # LLVM tunings
 LD_FLAGS_LTO_CLANG += -mllvm -import-hot-multiplier=2
