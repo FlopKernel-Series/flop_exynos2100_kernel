@@ -24,6 +24,7 @@ bool is_lkm_mode();
 
 bool is_manager();
 bool is_late_load_mode();
+bool is_pr_build();
 
 void get_full_version(char* buff);
 
@@ -55,6 +56,11 @@ bool set_sulog_enabled(bool enabled);
 // Kernel umount
 bool set_kernel_umount_enabled(bool enabled);
 bool is_kernel_umount_enabled();
+
+// SELinux hide
+int set_selinux_hide_enabled(bool enabled);
+
+bool is_selinux_hide_enabled();
 
 bool get_managers_list(struct ksu_get_managers_cmd **out_cmd);
 bool get_allow_list(struct ksu_new_get_allow_list_cmd *);

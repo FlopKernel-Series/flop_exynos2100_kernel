@@ -90,6 +90,10 @@
     <string name="settings_auto_jailbreak_summary">Automatically use Magica to escalate privileges when Permissive SELinux is detected at boot. Requires granting autostart permission to this app.</string>
     <string name="settings_adb_root" translatable="false">ADB Root</string>
     <string name="settings_adb_root_summary">Run adbd daemon with root privileges</string>
+    <string name="settings_selinux_hide">Hide SELinux modification</string>
+    <string name="settings_selinux_hide_summary">Prevent applications from detecting SELinux modifications</string>
+    <string name="settings_selinux_hide_reboot_required">Reboot to take effect</string>
+    <string name="settings_selinux_hide_failed">Error: %d</string>
     <string name="reboot_to_apply">Reboot to take effect</string>
     <string name="module_magisk_conflict">Modules are unavailable due to a conflict with Magisk!</string>
     <string name="home_learn_kernelsu">Learn KernelSU</string>
@@ -154,6 +158,8 @@
     <string name="settings_check_update">Update notifications</string>
     <string name="settings_check_update_summary">Auto-check for module and manager updates</string>
     <string name="grant_root_failed">Failed to grant root!</string>
+    <string name="home_pr_build_warning">This is a PR debug build. Do NOT use it in production!</string>
+    <string name="home_pr_kernel_warning">The kernel was built with PR signature support. This is not a production kernel!</string>
     <string name="action">Action</string>
     <string name="close">Close</string>
     <string name="direct_install">Direct install (Recommended)</string>
@@ -193,6 +199,14 @@
     <string name="restore_allowlist">Restore Allowlist</string>
     <string name="settings_custom_background">Custom App Background</string>
     <string name="settings_custom_background_summary">Select an image as background</string>
+    <string name="settings_config_enable_blur">Enable Blur</string>
+    <string name="settings_config_enable_blur_summary">Enable blur process for this app</string>
+    <string name="settings_exp_draw_background_to_blur">Draw Custom background to blur</string>
+    <string name="settings_exp_draw_background_to_blur_description">Experiment feature, process with your own risk</string>
+    <string name="settings_config_use_custom_background_seed_color">Pick color from custom background</string>
+    <string name="settings_config_use_custom_background_seed_color_summary">Extract dynamic color seed color from custom background</string>
+    <string name="settings_custom_enable_high_contrast">High Contrast Mode</string>
+    <string name="settings_custom_enable_high_contrast_summary">Render shadow around with text</string>
     <string name="settings_card_alpha">Card transparency</string>
     <string name="home_android_version">Android version</string>
     <string name="home_device_model">Device model</string>
@@ -313,6 +327,19 @@
     <string name="selinux_change_failed">SELinux Status change failed</string>
     <string name="advanced_settings">Advanced Settings</string>
     <string name="appearance_settings">Customize the toolbar</string>
+    <string name="predictive_back_settings">Predictive Back</string>
+    <string name="predictive_back_animation">Predictive Back Animation</string>
+    <string name="predictive_back_animation_desc">Select the animation effect for predictive back</string>
+    <string name="predictive_back_exit_direction">Exit Direction</string>
+    <string name="predictive_back_exit_direction_desc">Select the exit direction for predictive back</string>
+    <string name="predictive_back_animation_none">None</string>
+    <string name="predictive_back_animation_aosp">AOSP</string>
+    <string name="predictive_back_animation_scale">Scale</string>
+    <string name="predictive_back_animation_ksu_classic">KernelSU Classic</string>
+    <string name="predictive_back_animation_miuix" translatable="false">Miuix</string>
+    <string name="predictive_back_exit_direction_follow_gesture">Follow Gesture</string>
+    <string name="predictive_back_exit_direction_always_right">Always Right</string>
+    <string name="predictive_back_exit_direction_always_left">Always Left</string>
     <string name="back">Comeback</string>
     <string name="background_set_success">Background set successfully</string>
     <string name="background_removed">Removed custom backgrounds</string>

@@ -12,7 +12,7 @@
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
 
-#ifndef KSU_HAS_PATH_UMOUNT
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0) && !defined(KSU_HAS_PATH_UMOUNT)
 #include <linux/syscalls.h>
 #endif
 
@@ -176,7 +176,6 @@ int ksu_handle_umount(uid_t old_uid, uid_t new_uid)
 
 skip_umount_task:
     // do susfs setuid when susfs enabled
-
 #ifdef CONFIG_KSU_SUSFS
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
     schedule_work(&susfs_extra_works);

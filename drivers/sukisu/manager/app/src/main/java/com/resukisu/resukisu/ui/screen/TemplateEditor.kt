@@ -49,11 +49,11 @@ import com.resukisu.resukisu.Natives
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ui.component.profile.rootProfileConfig
 import com.resukisu.resukisu.ui.component.settings.AppBackButton
+import com.resukisu.resukisu.ui.component.settings.SegmentedColumn
 import com.resukisu.resukisu.ui.component.settings.SettingsTextFieldWidget
-import com.resukisu.resukisu.ui.component.settings.SplicedColumnGroup
 import com.resukisu.resukisu.ui.navigation.LocalNavigator
-import com.resukisu.resukisu.ui.theme.haze
-import com.resukisu.resukisu.ui.theme.hazeSource
+import com.resukisu.resukisu.ui.theme.blurEffect
+import com.resukisu.resukisu.ui.theme.blurSource
 import com.resukisu.resukisu.ui.util.deleteAppProfileTemplate
 import com.resukisu.resukisu.ui.util.getAppProfileTemplate
 import com.resukisu.resukisu.ui.util.setAppProfileTemplate
@@ -138,9 +138,9 @@ fun TemplateEditorScreen(
                     // disable click and ripple if readOnly
                     readOnly
                 }
-                .hazeSource()
+                .blurSource()
         ) {
-            SplicedColumnGroup {
+            SegmentedColumn {
                 if (isCreation) {
                     item {
                         var errorHint by remember {
@@ -276,8 +276,7 @@ private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior
 ) {
     LargeFlexibleTopAppBar(
-        modifier = Modifier.haze(
-            scrollBehavior.state.collapsedFraction
+        modifier = Modifier.blurEffect(
         ),
         title = {
             Text(

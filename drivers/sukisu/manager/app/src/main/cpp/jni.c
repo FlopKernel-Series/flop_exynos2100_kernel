@@ -48,6 +48,10 @@ NativeBridgeNP(isManager, jboolean) {
 	return is_manager();
 }
 
+NativeBridgeNP(isPrBuild, jboolean) {
+	return is_pr_build();
+}
+
 NativeBridgeNP(isLateLoadMode, jboolean) {
 	return is_late_load_mode();
 }
@@ -313,6 +317,14 @@ NativeBridgeNP(isKernelUmountEnabled, jboolean) {
 
 NativeBridge(setKernelUmountEnabled, jboolean, jboolean enabled) {
     return set_kernel_umount_enabled(enabled);
+}
+
+NativeBridgeNP(isSelinuxHideEnabled, jboolean) {
+    return is_selinux_hide_enabled();
+}
+
+NativeBridge(setSelinuxHideEnabled, jint, jboolean enabled) {
+    return set_selinux_hide_enabled(enabled);
 }
 
 NativeBridge(getUserName, jstring, jint uid) {
