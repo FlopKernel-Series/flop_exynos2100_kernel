@@ -233,7 +233,7 @@ static int exynos_cpufreq_init(struct cpufreq_policy *policy)
 	policy->cur = get_freq(domain);
 	policy->cpuinfo.transition_latency = TRANSITION_LATENCY;
 	policy->dvfs_possible_from_any_cpu = true;
-	policy->fast_switch_possible = true;
+	policy->fast_switch_possible = list_empty(&domain->dm_list);
 	cpumask_copy(policy->cpus, &domain->cpus);
 
 	pr_info("Initialize cpufreq policy%d\n", policy->cpu);
