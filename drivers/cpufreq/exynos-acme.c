@@ -22,7 +22,6 @@
 #include <linux/kobject.h>
 #include <soc/samsung/cpu_cooling.h>
 #include <linux/suspend.h>
-#include <uapi/linux/sched/types.h>
 #include <linux/platform_device.h>
 #include <linux/sec_pm_cpufreq.h>
 #include <linux/binfmts.h>
@@ -117,20 +116,16 @@ static unsigned int exynos_fc_limit_freq(struct exynos_cpufreq_domain *domain,
 
 static void enable_domain(struct exynos_cpufreq_domain *domain)
 {
-	unsigned long flags;
-
-	raw_spin_lock_irqsave(&domain->lock, flags);
+	raw_spin_lock(&domain->lock);
 	domain->enabled = true;
-	raw_spin_unlock_irqrestore(&domain->lock, flags);
+	raw_spin_unlock(&domain->lock);
 }
 
 static void disable_domain(struct exynos_cpufreq_domain *domain)
 {
-	unsigned long flags;
-
-	raw_spin_lock_irqsave(&domain->lock, flags);
+	raw_spin_lock(&domain->lock);
 	domain->enabled = false;
-	raw_spin_unlock_irqrestore(&domain->lock, flags);
+	raw_spin_unlock(&domain->lock);
 }
 
 static void update_dm_min_max(struct exynos_cpufreq_domain *domain)
@@ -189,10 +184,16 @@ static int set_freq(struct exynos_cpufreq_domain *domain,
 	dbg_snapshot_printk("ID %d: %d -> %d (%d)\n",
 		domain->id, domain->old, target_freq, DSS_FLAG_IN);
 
+	if (domain->need_awake)
+		disable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
+
 	err = cal_dfs_set_rate(domain->cal_id, target_freq);
 	if (err < 0)
 		pr_err("failed to scale frequency of domain%d (%d -> %d)\n",
 			domain->id, domain->old, target_freq);
+
+	if (domain->need_awake)
+		enable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
 
 	dbg_snapshot_printk("ID %d: %d -> %d (%d)\n",
 		domain->id, domain->old, target_freq, DSS_FLAG_OUT);
@@ -350,17 +351,13 @@ static int __exynos_cpufreq_target(struct cpufreq_policy *policy,
 	struct exynos_cpufreq_domain *domain = find_domain(policy->cpu);
 	struct cpufreq_freqs freqs;
 	unsigned int old_freq;
-	unsigned long flags;
 	bool changed = false;
 	int ret = 0;
 
 	if (!domain)
 		return -EINVAL;
 
-	if (domain->need_awake && !fast_switch)
-		disable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
-
-	raw_spin_lock_irqsave(&domain->lock, flags);
+	raw_spin_lock(&domain->lock);
 
 	if (!domain->enabled) {
 		ret = -EINVAL;
@@ -396,10 +393,7 @@ static int __exynos_cpufreq_target(struct cpufreq_policy *policy,
 	arch_set_freq_scale(&domain->cpus, target_freq, policy->cpuinfo.max_freq);
 
 out:
-	raw_spin_unlock_irqrestore(&domain->lock, flags);
-
-	if (domain->need_awake && !fast_switch)
-		enable_power_mode(cpumask_any(&domain->cpus), POWERMODE_TYPE_CLUSTER);
+	raw_spin_unlock(&domain->lock);
 	if (!fast_switch && changed) {
 		mutex_lock(&domain->target_lock);
 		freqs = (typeof(freqs)){
@@ -444,87 +438,16 @@ out:
 	return ret;
 }
 
-static void acme_fast_switch_irq_work(struct irq_work *irq_work)
-{
-	struct exynos_cpufreq_domain *domain;
-
-	domain = container_of(irq_work,
-			      struct exynos_cpufreq_domain,
-			      fast_switch_irq_work);
-	if (unlikely(!domain))
-		return;
-
-	kthread_queue_work(&domain->fast_switch_worker,
-			   &domain->fast_switch_work);
-}
-
-static void acme_fast_switch_work(struct kthread_work *work)
-{
-	struct exynos_cpufreq_domain *domain;
-	unsigned long flags;
-	unsigned long freq;
-
-	domain = container_of(work, struct exynos_cpufreq_domain,
-			      fast_switch_work);
-	if (unlikely(!domain))
-		return;
-
-	raw_spin_lock_irqsave(&domain->fast_switch_update_lock, flags);
-	while (true) {
-		freq = (unsigned long)domain->cached_fast_switch_freq;
-		domain->fast_switch_pending = false;
-		raw_spin_unlock_irqrestore(&domain->fast_switch_update_lock, flags);
-
-		if (cpumask_first(&domain->cpus) >= 4 &&
-		    (freq >= 2080000 || domain->old >= 2080000))
-			exynos_alt_call_chain();
-
-		DM_CALL(domain->dm_type, &freq);
-
-		raw_spin_lock_irqsave(&domain->fast_switch_update_lock, flags);
-		if (!domain->fast_switch_pending) {
-			domain->fast_switch_in_progress = false;
-			break;
-		}
-	}
-	raw_spin_unlock_irqrestore(&domain->fast_switch_update_lock, flags);
-}
-
 static unsigned int exynos_cpufreq_fast_switch(struct cpufreq_policy *policy,
 					       unsigned int target_freq)
 {
 	struct exynos_cpufreq_domain *domain = find_domain(policy->cpu);
-	unsigned long flags;
-	unsigned long freq;
-	int ret = 0;
+	int ret = __exynos_cpufreq_target(policy, target_freq, CPUFREQ_RELATION_L, true);
 
-	if (!domain)
+	if (ret || !domain)
 		return 0;
 
-	if (list_empty(&domain->dm_list)) {
-		ret = __exynos_cpufreq_target(policy, target_freq,
-					      CPUFREQ_RELATION_L, true);
-		if (ret)
-			return 0;
-
-		return READ_ONCE(domain->old);
-	}
-
-	freq = exynos_fc_limit_freq(domain, target_freq);
-	freq = min_t(unsigned long, freq, domain->clipped_freq);
-
-	raw_spin_lock_irqsave(&domain->fast_switch_update_lock, flags);
-	domain->cached_fast_switch_freq = freq;
-	if (!domain->fast_switch_in_progress) {
-		domain->fast_switch_in_progress = true;
-		irq_work_queue(&domain->fast_switch_irq_work);
-	} else {
-		domain->fast_switch_pending = true;
-	}
-	ret = freq;
-	raw_spin_unlock_irqrestore(&domain->fast_switch_update_lock, flags);
-
-	return ret;
+	return READ_ONCE(domain->old);
 }
 
 static unsigned int exynos_cpufreq_get(unsigned int cpu)
@@ -1678,31 +1601,6 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	 */
 	if (list_empty(&domain->dm_list))
 		domain->need_awake = false;
-
-	/* Initialize fast_switch deferred DM update */
-	if (!list_empty(&domain->dm_list)) {
-		struct task_struct *thread;
-		struct sched_param param = {
-			.sched_priority = MAX_USER_RT_PRIO / 2
-		};
-
-		init_irq_work(&domain->fast_switch_irq_work,
-			      acme_fast_switch_irq_work);
-		kthread_init_work(&domain->fast_switch_work,
-				  acme_fast_switch_work);
-		kthread_init_worker(&domain->fast_switch_worker);
-		raw_spin_lock_init(&domain->fast_switch_update_lock);
-
-		thread = kthread_create(kthread_worker_fn,
-					&domain->fast_switch_worker,
-					"fast_switch_pos:%d",
-					cpumask_first(&domain->cpus));
-		if (!IS_ERR(thread)) {
-			sched_setscheduler_nocheck(thread, SCHED_FIFO,
-						  &param);
-			wake_up_process(thread);
-		}
-	}
 
 	dev_pm_opp_of_register_em(&domain->cpus);
 
