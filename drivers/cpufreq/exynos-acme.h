@@ -70,7 +70,6 @@ struct exynos_cpufreq_domain {
 	unsigned int			min_freq_qos;
 	unsigned int			boot_freq;
 	unsigned int			resume_freq;
-	unsigned int			alt_call_freq;
 	unsigned int			old;
 	unsigned int			clipped_freq;
 	unsigned int			clamp_freq;
