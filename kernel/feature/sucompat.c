@@ -44,18 +44,36 @@
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"
 
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+DEFINE_STATIC_KEY_TRUE(ksu_su_compat_enabled);
+#else
 bool ksu_su_compat_enabled __read_mostly = true;
+#endif
 
 static int su_compat_feature_get(u64 *value)
 {
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+    if (static_key_enabled(&ksu_su_compat_enabled))
+        *value = 1;
+    else
+        *value = 0;
+#else
     *value = ksu_su_compat_enabled ? 1 : 0;
+#endif
     return 0;
 }
 
 static int su_compat_feature_set(u64 value)
 {
     bool enable = value != 0;
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+    if (enable)
+        static_branch_enable(&ksu_su_compat_enabled);
+    else
+        static_branch_disable(&ksu_su_compat_enabled);
+#else
     ksu_su_compat_enabled = enable;
+#endif
     pr_info("su_compat: set to %d\n", enable);
     return 0;
 }
@@ -187,9 +205,17 @@ static inline int do_ksu_handle_execveat_sucompat(int *fd, const char *filename,
     struct path kpath;
     bool is_allowed = ksu_is_allow_uid_for_current(ksu_get_uid_t(current_uid()));
 
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+    // Yep, maybe someusers love turn off sucompat <- idk how they managed to keep using it
+    // But for mostly users, sucompat is enabled, so unlikely here
+    if (!static_branch_unlikely(&ksu_su_compat_enabled)) {
+        return 0;
+    }
+#else
     if (!ksu_su_compat_enabled) {
         return 0;
     }
+#endif
 
     if (!is_allowed)
         return 0;
@@ -307,9 +333,17 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 {
     char path[sizeof(su_path) + 1] = { 0 };
 
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+    // Yep, maybe someusers love turn off sucompat <- idk how they managed to keep using it
+    // But for mostly users, sucompat is enabled, so unlikely here
+    if (!static_branch_unlikely(&ksu_su_compat_enabled)) {
+        return 0;
+    }
+#else
     if (!ksu_su_compat_enabled) {
         return 0;
     }
+#endif
 
     if (!ksu_is_allow_uid_for_current(ksu_get_uid_t(current_uid())))
         return 0;
@@ -327,9 +361,17 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0) && defined(CONFIG_KSU_SUSFS)
 int ksu_handle_stat(int *dfd, struct filename **filename, int *flags)
 {
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+    // Yep, maybe someusers love turn off sucompat <- idk how they managed to keep using it
+    // But for mostly users, sucompat is enabled, so unlikely here
+    if (!static_branch_unlikely(&ksu_su_compat_enabled)) {
+        return 0;
+    }
+#else
     if (!ksu_su_compat_enabled) {
         return 0;
     }
+#endif
 
     if (!ksu_is_allow_uid_for_current(ksu_get_uid_t(current_uid())))
         return 0;
@@ -351,9 +393,17 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 {
     char path[sizeof(su_path) + 1] = { 0 };
 
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+    // Yep, maybe someusers love turn off sucompat <- idk how they managed to keep using it
+    // But for mostly users, sucompat is enabled, so unlikely here
+    if (!static_branch_unlikely(&ksu_su_compat_enabled)) {
+        return 0;
+    }
+#else
     if (!ksu_su_compat_enabled) {
         return 0;
     }
+#endif
 
     if (unlikely(!filename_user)) {
         return 0;

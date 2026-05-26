@@ -285,14 +285,35 @@ static inline u64 ksu_ktime_get_ns(void)
 
 extern void ksu_run_in_init_if_possible(void (*callback)(void *), void *data);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(KSU_COMPAT_IS_HISI_LEGACY) ||                             \
-    defined(KSU_COMPAT_IS_HISI_LEGACY_HM2)
+#if defined(CONFIG_KEYS) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(KSU_COMPAT_IS_HISI_LEGACY) ||    \
+                             defined(KSU_COMPAT_IS_HISI_LEGACY_HM2))
 #define KSU_COMPAT_REQUIRE_SESSION_KEYRING
-extern int ksu_key_permission(key_ref_t key_ref, const struct cred *cred, unsigned perm);
+extern void setup_ksu_cred_session_keyring(void);
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0) || defined(KSU_HAS_MODERN_STATIC_KEY_INTERFACE)
 #define KSU_COMPAT_USE_STATIC_KEY
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
+__weak long copy_from_kernel_nofault(void *dst, const void *src, size_t size)
+{
+    // https://elixir.bootlin.com/linux/v5.2.21/source/mm/maccess.c#L27
+    long ret;
+    mm_segment_t old_fs = get_fs();
+
+    set_fs(KERNEL_DS);
+    pagefault_disable();
+    ret = __copy_from_user_inatomic(dst, (__force const void __user *)src, size);
+    pagefault_enable();
+    set_fs(old_fs);
+
+    return ret ? -EFAULT : 0;
+}
+#endif
+
+#ifndef __nocfi
+#define __nocfi
 #endif
 
 #endif

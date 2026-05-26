@@ -40,8 +40,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -87,15 +85,15 @@ import com.resukisu.resukisu.ui.component.GithubMarkdown
 import com.resukisu.resukisu.ui.component.SwipeableSnackbarHost
 import com.resukisu.resukisu.ui.component.rememberConfirmDialog
 import com.resukisu.resukisu.ui.component.settings.AppBackButton
+import com.resukisu.resukisu.ui.component.settings.SegmentedColumn
 import com.resukisu.resukisu.ui.component.settings.SettingsBaseWidget
-import com.resukisu.resukisu.ui.component.settings.SplicedColumnGroup
 import com.resukisu.resukisu.ui.navigation.LocalNavigator
 import com.resukisu.resukisu.ui.navigation.Navigator
 import com.resukisu.resukisu.ui.navigation.Route
 import com.resukisu.resukisu.ui.theme.CardConfig
 import com.resukisu.resukisu.ui.theme.ThemeConfig
-import com.resukisu.resukisu.ui.theme.haze
-import com.resukisu.resukisu.ui.theme.hazeSource
+import com.resukisu.resukisu.ui.theme.blurEffect
+import com.resukisu.resukisu.ui.theme.blurSource
 import com.resukisu.resukisu.ui.util.LocalPermissionRequestInterface
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
 import com.resukisu.resukisu.ui.util.module.ReleaseAssetInfo
@@ -130,8 +128,7 @@ fun OnlineModuleDetailScreen(module: ModuleRepoViewModel.RepoModule) {
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier.haze(
-                    scrollBehavior.state.collapsedFraction
+                modifier = Modifier.blurEffect(
                 )
             ) {
                 LargeFlexibleTopAppBar(
@@ -158,11 +155,15 @@ fun OnlineModuleDetailScreen(module: ModuleRepoViewModel.RepoModule) {
                     },
                     colors = TopAppBarDefaults.topAppBarColors().copy(
                         containerColor =
-                            if (ThemeConfig.backgroundImageLoaded) Color.Transparent
-                            else MaterialTheme.colorScheme.surfaceContainer,
+                            if (ThemeConfig.isEnableBlur)
+                                Color.Transparent
+                            else
+                                MaterialTheme.colorScheme.surfaceContainer.copy(CardConfig.cardAlpha),
                         scrolledContainerColor =
-                            if (ThemeConfig.backgroundImageLoaded) Color.Transparent
-                            else MaterialTheme.colorScheme.surfaceContainer
+                            if (ThemeConfig.isEnableBlur)
+                                Color.Transparent
+                            else
+                                MaterialTheme.colorScheme.surfaceContainer.copy(CardConfig.cardAlpha)
                     ),
                     windowInsets = TopAppBarDefaults.windowInsets.add(WindowInsets(left = 12.dp)),
                 )
@@ -170,8 +171,10 @@ fun OnlineModuleDetailScreen(module: ModuleRepoViewModel.RepoModule) {
                 PrimaryTabRow(
                     selectedTabIndex = pagerState.currentPage,
                     containerColor =
-                        if (ThemeConfig.backgroundImageLoaded) Color.Transparent
-                        else MaterialTheme.colorScheme.surfaceContainer,
+                        if (ThemeConfig.isEnableBlur)
+                            Color.Transparent
+                        else
+                            MaterialTheme.colorScheme.surfaceContainer.copy(CardConfig.cardAlpha),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     tabTitles.forEachIndexed { index, title ->
@@ -208,7 +211,7 @@ fun OnlineModuleDetailScreen(module: ModuleRepoViewModel.RepoModule) {
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .hazeSource()
+                .blurSource()
         ) {
 
             HorizontalPager(
@@ -248,7 +251,7 @@ fun InfoTab(
             Spacer(Modifier.height(topPadding))
         }
         item {
-            SplicedColumnGroup(
+            SegmentedColumn(
                 title = stringResource(R.string.author)
             ) {
                 module.authorList.forEach { author ->
@@ -272,7 +275,7 @@ fun InfoTab(
         }
 
         item {
-            SplicedColumnGroup(
+            SegmentedColumn(
                 title = stringResource(R.string.source_code)
             ) {
                 item {
@@ -391,17 +394,14 @@ fun ReleaseCard(
         stringResource(R.string.confirm_install_module_title, module.moduleName)
     val confirmDialog = rememberConfirmDialog()
 
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 12.dp, end = 12.dp, top = 12.dp),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors().copy(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-                alpha = CardConfig.cardAlpha
-            )
-        )
+        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(
+            alpha = CardConfig.cardAlpha
+        ),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -444,7 +444,7 @@ fun ReleaseCard(
                     bottom = 5.dp
                 )
             )
-            if (release.assets.isEmpty()) return@Card
+            if (release.assets.isEmpty()) return@Surface
 
             Column {
                 release.assets.forEach { assetInfo ->
@@ -471,7 +471,6 @@ fun ReleaseCard(
                     SettingsBaseWidget(
                         modifier = Modifier.clip(RoundedCornerShape(12.dp)),
                         title = assetInfo.name,
-                        noVerticalPadding = true,
                         onClick = {
                             onClick()
                         },

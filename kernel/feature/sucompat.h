@@ -2,8 +2,13 @@
 #define __KSU_H_SUCOMPAT
 #include <asm/ptrace.h>
 #include <linux/types.h>
+#include "compat/kernel_compat.h"
 
+#ifdef KSU_COMPAT_USE_STATIC_KEY
+extern struct static_key_true ksu_su_compat_enabled;
+#else
 extern bool ksu_su_compat_enabled;
+#endif
 
 void ksu_sucompat_init(void);
 void ksu_sucompat_exit(void);

@@ -6,6 +6,7 @@ kernelsu-objs += feature/sucompat.o
 kernelsu-objs += feature/kernel_umount.o
 kernelsu-objs += feature/sulog.o
 kernelsu-objs += feature/adb_root.o
+kernelsu-objs += feature/selinux_hide.o
 kernelsu-objs += hook/setuid_hook.o
 
 ifndef CONFIG_KSU_DISABLE_MANAGER
@@ -82,6 +83,9 @@ KSU_VERSION := $(shell expr 30000 + $(KSU_LOCAL_VERSION) + 700)
 
 KSU_TAG_NAME    := $(shell cd $(KSU_SRC); $(GIT_BIN) describe --abbrev=0 --tags 2>/dev/null || echo "v4.1.0")
 KSU_COMMIT_SHA  := $(shell cd $(KSU_SRC); $(GIT_BIN) rev-parse --short=8 HEAD 2>/dev/null || echo "unknown")
+ifneq ($(shell cd $(KSU_SRC); $(GIT_BIN) diff-index --quiet HEAD; echo $$?),0)
+KSU_COMMIT_SHA  := $(KSU_COMMIT_SHA)-dirty
+endif
 KSU_BRANCH_NAME := $(shell cd $(KSU_SRC); $(GIT_BIN) branch --show-current 2>/dev/null || echo "unknown")
 
 # call subst to process placeholders
@@ -116,6 +120,25 @@ endif
 $(info -- KERNEL_VERSION: $(KERNEL_VERSION))
 $(info -- KERNEL_TYPE: $(KERNEL_TYPE))
 
+ifeq ($(CONFIG_ARM64),y)
+  kernelsu-objs += hook/arm64/patch_memory.o
+else ifeq ($(CONFIG_X86_64),y)
+  kernelsu-objs += hook/x86_64/patch_memory.o
+else ifeq ($(CONFIG_ARM),y)
+  kernelsu-objs += hook/arm32/patch_memory.o
+else
+  ifeq ($(CONFIG_KSU),y)
+    $(info -- Unsupported arch)
+    $(error $(REPO_NAME) only support arm64-v8a, armeabi-v7a, x86-64)
+  endif
+endif
+
+kernelsu-objs += infra/symbol_resolver.o
+
+ifeq ($(KERNEL_TYPE), GKI 2.0)
+  kernelsu-objs += hook/lsm_hook_magic.o
+endif
+
 ifdef CONFIG_KSU_TRACEPOINT_HOOK
   $(info -- $(REPO_NAME): using Tracepoint Syscall Redirect Hook)
 
@@ -123,16 +146,12 @@ ifdef CONFIG_KSU_TRACEPOINT_HOOK
     kernelsu-objs += manager/pkg_observer.o
   endif
 
-  kernelsu-objs += infra/symbol_resolver.o
-  kernelsu-objs += hook/lsm_hook_magic.o
   kernelsu-objs += hook/syscall_hook_manager.o
   kernelsu-objs += hook/syscall_event_bridge.o
   kernelsu-objs += hook/tp_marker.o
   ifeq ($(CONFIG_ARM64),y)
-    kernelsu-objs += hook/arm64/patch_memory.o
     kernelsu-objs += hook/arm64/syscall_hook.o
   else ifeq ($(CONFIG_X86_64),y)
-    kernelsu-objs += hook/x86_64/patch_memory.o
     kernelsu-objs += hook/x86_64/syscall_hook.o
   else
     ifeq ($(CONFIG_KSU), y)
@@ -158,6 +177,7 @@ else ifdef CONFIG_KSU_MANUAL_HOOK
 else ifdef CONFIG_KSU_SUSFS
   $(info -- $(REPO_NAME): using SuSFS Inline hook)
   include $(KSU_SRC)/tools/inline_hook_check.mk
+  include $(KSU_SRC)/tools/susfs_compat.mk
   ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
     $(eval SUSFS_VERSION=$(shell cat $(srctree)/include/linux/susfs.h | grep -E '^#define SUSFS_VERSION' | cut -d' ' -f3 | sed 's/"//g'))
     $(info )
@@ -185,17 +205,14 @@ ifndef CONFIG_KSU_TRACEPOINT_HOOK
   # For old kernel, pkg observer maybe let system freeze
   # https://github.com/ReSukiSU/ReSukiSU/issues/82#issuecomment-4015396974
   #
-  # 4.2- we let user manual hook security.c to call ksu_handle_rename
-  # 4.2-6.7 we use lsm_hooks to call ksu_handle_rename
+  # 6.7- we use lsm_hooks to call ksu_handle_rename
   # 6.8+ we use pkg_observer to track_throne
-  ifeq ($(shell test \( $(VERSION) -gt 4 -o \( $(VERSION) -eq 4 -a $(PATCHLEVEL) -ge 2 \) \) && echo y),y)
-      ifeq ($(shell test \( $(VERSION) -lt 6 -o \( $(VERSION) -eq 6 -a $(PATCHLEVEL) -lt 8 \) \) && echo y),y)
-          kernelsu-objs += hook/lsm_hooks.o
-      else
-        ifndef CONFIG_KSU_DISABLE_MANAGER
-          kernelsu-objs += manager/pkg_observer.o
-        endif
-      endif
+  ifeq ($(shell test \( $(VERSION) -lt 6 -o \( $(VERSION) -eq 6 -a $(PATCHLEVEL) -lt 8 \) \) && echo y),y)
+      kernelsu-objs += hook/lsm_hooks.o
+  else
+    ifndef CONFIG_KSU_DISABLE_MANAGER
+      kernelsu-objs += manager/pkg_observer.o
+    endif
   endif
 endif
 
@@ -210,6 +227,16 @@ endif
 ifdef KSU_EXPECTED_HASH
 ccflags-y += -DEXPECTED_HASH=\"$(KSU_EXPECTED_HASH)\"
 $(info -- Custom KernelSU Manager signature hash: $(KSU_EXPECTED_HASH))
+endif
+
+ifdef KSU_EXPECTED_PR_BUILD_SIZE
+  ifndef KSU_EXPECTED_PR_BUILD_HASH
+    $(error KSU_EXPECTED_PR_BUILD_HASH must be set when KSU_EXPECTED_PR_BUILD_SIZE is set)
+  endif
+  ccflags-y += -DEXPECTED_PR_BUILD_SIZE=$(KSU_EXPECTED_PR_BUILD_SIZE)
+  ccflags-y += -DEXPECTED_PR_BUILD_HASH=\"$(KSU_EXPECTED_PR_BUILD_HASH)\"
+  $(info -- KernelSU Manager Pull Request signature size: $(KSU_EXPECTED_PR_BUILD_SIZE))
+  $(info -- KernelSU Manager Pull Request signature hash: $(KSU_EXPECTED_PR_BUILD_HASH))
 endif
 
 ifdef KSU_MANAGER_PACKAGE

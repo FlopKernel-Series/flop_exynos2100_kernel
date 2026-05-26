@@ -1,3 +1,4 @@
+#include "feature/selinux_hide.h"
 #include <linux/err.h>
 #include <linux/fs.h>
 #include <linux/namei.h>
@@ -31,7 +32,7 @@ void on_post_fs_data(void)
 
     // scan manager
     pr_info("post-fs-data triggered, scanning manager...");
-    track_throne(false, false, false);
+    track_throne(0);
 }
 
 #if defined(CONFIG_EXT4_FS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || defined(KSU_HAS_MODERN_EXT4))
@@ -80,5 +81,6 @@ void on_boot_completed(void)
 {
     ksu_boot_completed = true;
     pr_info("on_boot_completed!\n");
-    track_throne(true, false, false);
+    track_throne(TRACK_THRONE_PRUNE_ONLY);
+    ksu_selinux_hide_drop_backup_if_unused();
 }
