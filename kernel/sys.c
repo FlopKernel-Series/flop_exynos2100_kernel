@@ -1311,6 +1311,9 @@ static int fk_feature_get_state(u32 feature_id, u64 *value, bool *supported)
 	case FK_FEATURE_USB_SL_DISABLE:
 		*value = is_usb_sl_disabled();
 		break;
+	case FK_FEATURE_INIT_DEBUG:
+		*value = is_init_debug_enabled();
+		break;
 	default:
 		*supported = false;
 		break;
@@ -1384,6 +1387,14 @@ static int fk_feature_get_info_by_index(u32 index,
 		strscpy(info->name, "usb_sl_disable", sizeof(info->name));
 		return 0;
 	}
+	index--;
+	if (index == 0) {
+		info->feature_id = FK_FEATURE_INIT_DEBUG;
+		info->flags = PR_FK_FEATURE_SUPPORTED;
+		info->value = is_init_debug_enabled();
+		strscpy(info->name, "init_debug", sizeof(info->name));
+		return 0;
+	}
 
 	return -ENOENT;
 }
@@ -1418,6 +1429,9 @@ static int fk_feature_get_info_by_id(u32 feature_id,
 		break;
 	case FK_FEATURE_USB_SL_DISABLE:
 		strscpy(info->name, "usb_sl_disable", sizeof(info->name));
+		break;
+	case FK_FEATURE_INIT_DEBUG:
+		strscpy(info->name, "init_debug", sizeof(info->name));
 		break;
 	default:
 		return 0;

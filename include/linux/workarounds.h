@@ -6,6 +6,7 @@
 
 int is_bpf_spoof_enabled(void);
 const char *get_bpf_spoof_version(void);
+bool is_init_debug_enabled(void);
 
 #if defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 static inline bool is_aosp_mode(void)

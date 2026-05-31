@@ -200,6 +200,8 @@ static int selinux_mode = FK_SELINUX_MODE_DEFAULT;
 static char selinux_mode_default_arg[] = "selinux_mode=0";
 static bool init_protection = true;
 static char init_protection_default_arg[] = "init_protection=1";
+static bool init_debug;
+static char init_debug_default_arg[] = "init_debug=0";
 
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 static bool aosp_mode;
@@ -386,6 +388,31 @@ bool init_protection_enabled(void)
 	return init_protection;
 }
 EXPORT_SYMBOL_GPL(init_protection_enabled);
+
+static int __init set_init_debug(char *val)
+{
+	int tmp = init_debug;
+
+	if (get_option(&val, &tmp))
+		init_debug = !!tmp;
+
+	return 0;
+}
+__setup("init_debug=", set_init_debug);
+
+static void __init apply_init_debug_default(void)
+{
+	char *val;
+
+	val = strchr(init_debug_default_arg, '=');
+	if (val)
+		set_init_debug(val + 1);
+}
+
+bool is_init_debug_enabled(void)
+{
+	return init_debug;
+}
 
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
 const char *envp_init[MAX_INIT_ENVS+2] = { "HOME=/", "TERM=linux", NULL, };
@@ -1101,6 +1128,7 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_mass_storage_hack_default();
 	apply_selinux_mode_default();
 	apply_init_protection_default();
+	apply_init_debug_default();
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 	apply_aosp_mode_default();
 	apply_usb_sl_disable_default();
@@ -1136,6 +1164,8 @@ asmlinkage __visible void __init start_kernel(void)
 	pr_info("Workaround: InitProtection %s\n",
 		init_protection_enabled() ? "Enabled" : "Disabled");
 
+	pr_info("Workaround: InitDebugInjector %s\n",
+		is_init_debug_enabled() ? "Enabled" : "Disabled");
 
 	/*
 	 * These use large bootmem allocations and must precede
