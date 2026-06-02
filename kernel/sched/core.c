@@ -2320,12 +2320,14 @@ out:
 static inline
 int select_task_rq(struct task_struct *p, int cpu, int sd_flags, int wake_flags)
 {
+	int new_cpu = -1;
+
 	lockdep_assert_held(&p->pi_lock);
 
 	if (sched_feat(EMS)) {
-		int target_cpu = exynos_select_task_rq(p, cpu, sd_flags, wake_flags);
-		if (target_cpu >= 0)
-			return target_cpu;
+		trace_android_rvh_select_task_rq_fair(p, cpu, sd_flags, wake_flags, &new_cpu);
+		if (new_cpu >= 0)
+			return new_cpu;
 	}
 
 	if (p->nr_cpus_allowed > 1)
@@ -3891,14 +3893,12 @@ void scheduler_tick(void)
 
 	perf_event_task_tick();
 
-	ems_tick(rq);
+	trace_android_vh_scheduler_tick(rq);
 
 #ifdef CONFIG_SMP
 	rq->idle_balance = idle_cpu(cpu);
 	trigger_load_balance(rq);
 #endif
-
-	trace_android_vh_scheduler_tick(rq);
 }
 
 #ifdef CONFIG_NO_HZ_FULL

@@ -7498,9 +7498,6 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 	if (!can_migrate)
 		return 0;
 
-	if (!ems_can_migrate_task(p, env->dst_cpu))
-		return 0;
-
 	/*
 	 * We do not migrate tasks that are:
 	 * 1) throttled_lb_pair, or
@@ -10091,7 +10088,7 @@ static int sched_balance_newidle(struct rq *this_rq, struct rq_flags *rf)
 	u64 curr_cost = 0;
 	int done = 0;
 
-	lb_newidle_balance(this_rq, rf, &pulled_task, &done);
+	trace_android_rvh_sched_newidle_balance(this_rq, rf, &pulled_task, &done);
 	if (done)
 		return pulled_task;
 
