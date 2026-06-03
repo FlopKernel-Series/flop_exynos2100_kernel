@@ -30,6 +30,7 @@
 #include <linux/uaccess.h>
 #include <linux/kobject.h>
 #include <linux/ctype.h>
+#include <linux/export.h>
 
 /* selinuxfs pseudo filesystem for exporting the security policy API.
    Based on the proc code and the fs/nfsd/nfsctl.c code. */
@@ -270,12 +271,13 @@ static int sel_mmap_handle_status(struct file *filp,
 			       size, vma->vm_page_prot);
 }
 
-static const struct file_operations sel_handle_status_ops = {
+const struct file_operations sel_handle_status_ops = {
 	.open		= sel_open_handle_status,
 	.read		= sel_read_handle_status,
 	.mmap		= sel_mmap_handle_status,
 	.llseek		= generic_file_llseek,
 };
+EXPORT_SYMBOL_GPL(sel_handle_status_ops);
 
 #ifdef CONFIG_SECURITY_SELINUX_DISABLE
 static ssize_t sel_write_disable(struct file *file, const char __user *buf,
@@ -782,7 +784,7 @@ static ssize_t sel_write_relabel(struct file *file, char *buf, size_t size);
 static ssize_t sel_write_user(struct file *file, char *buf, size_t size);
 static ssize_t sel_write_member(struct file *file, char *buf, size_t size);
 
-static ssize_t (*const write_op[])(struct file *, char *, size_t) = {
+ssize_t (*const write_op[])(struct file *, char *, size_t) = {
 	[SEL_ACCESS] = sel_write_access,
 	[SEL_CREATE] = sel_write_create,
 	[SEL_RELABEL] = sel_write_relabel,
@@ -790,6 +792,7 @@ static ssize_t (*const write_op[])(struct file *, char *, size_t) = {
 	[SEL_MEMBER] = sel_write_member,
 	[SEL_CONTEXT] = sel_write_context,
 };
+EXPORT_SYMBOL_GPL(write_op);
 
 static ssize_t selinux_transaction_write(struct file *file, const char __user *buf, size_t size, loff_t *pos)
 {
