@@ -28,6 +28,9 @@ static void ems_hook_select_task_rq_fair(void *data,
 
 	cpu = ems_select_task_rq_fair(p, prev_cpu, sd_flag, wake_flags);
 
+	if (cpu >= 0 && !is_dst_allowed(p, cpu))
+		cpu = -1;
+
 	*new_cpu = cpu;
 	TASK_AVD1_1(p) = cpu;
 }
