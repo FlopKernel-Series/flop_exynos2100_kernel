@@ -2488,6 +2488,7 @@ const struct sched_class dl_sched_class = {
 
 	.update_curr		= update_curr_dl,
 };
+EXPORT_SYMBOL_GPL(dl_sched_class);
 
 int sched_dl_global_validate(void)
 {

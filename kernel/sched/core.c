@@ -148,6 +148,7 @@ struct rq *task_rq_lock(struct task_struct *p, struct rq_flags *rf)
 			cpu_relax();
 	}
 }
+EXPORT_SYMBOL_GPL(task_rq_lock);
 
 /*
  * RQ-clock updating methods:
@@ -1502,11 +1503,10 @@ static inline void enqueue_task(struct rq *rq, struct task_struct *p, int flags)
 		psi_enqueue(p, flags & ENQUEUE_WAKEUP);
 	}
 
-	update_cpu_active_ratio(rq, p, EMS_PART_ENQUEUE);
 	uclamp_rq_inc(rq, p);
 	p->sched_class->enqueue_task(rq, p, flags);
 
-	trace_android_rvh_enqueue_task(rq, p);
+	trace_android_rvh_enqueue_task(rq, p, flags);
 }
 
 static inline void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
@@ -1519,11 +1519,10 @@ static inline void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
 		psi_dequeue(p, flags & DEQUEUE_SLEEP);
 	}
 
-	update_cpu_active_ratio(rq, p, EMS_PART_DEQUEUE);
 	uclamp_rq_dec(rq, p);
 	p->sched_class->dequeue_task(rq, p, flags);
 
-	trace_android_rvh_dequeue_task(rq, p);
+	trace_android_rvh_dequeue_task(rq, p, flags);
 }
 
 void activate_task(struct rq *rq, struct task_struct *p, int flags)
@@ -1538,6 +1537,7 @@ void activate_task(struct rq *rq, struct task_struct *p, int flags)
 
 	p->on_rq = TASK_ON_RQ_QUEUED;
 }
+EXPORT_SYMBOL_GPL(activate_task);
 
 void deactivate_task(struct rq *rq, struct task_struct *p, int flags)
 {
@@ -1548,6 +1548,7 @@ void deactivate_task(struct rq *rq, struct task_struct *p, int flags)
 
 	dequeue_task(rq, p, flags);
 }
+EXPORT_SYMBOL_GPL(deactivate_task);
 
 /*
  * __normal_prio - return the priority that is based on the static prio
@@ -1652,6 +1653,7 @@ void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 	if (task_on_rq_queued(rq->curr) && test_tsk_need_resched(rq->curr))
 		rq_clock_skip_update(rq);
 }
+EXPORT_SYMBOL_GPL(check_preempt_curr);
 
 #ifdef CONFIG_SMP
 
@@ -1969,6 +1971,7 @@ void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 
 	__set_task_cpu(p, new_cpu);
 }
+EXPORT_SYMBOL_GPL(set_task_cpu);
 
 static void __migrate_swap_task(struct task_struct *p, int cpu)
 {
@@ -3245,7 +3248,7 @@ void wake_up_new_task(struct task_struct *p)
 	update_rq_clock(rq);
 	post_init_entity_util_avg(p);
 
-	update_cpu_active_ratio(rq, p, EMS_PART_WAKEUP_NEW);
+	trace_android_rvh_wake_up_new_task(p);
 
 	activate_task(rq, p, ENQUEUE_NOCLOCK);
 	trace_sched_wakeup_new(p);
@@ -4948,6 +4951,7 @@ int available_idle_cpu(int cpu)
 
 	return 1;
 }
+EXPORT_SYMBOL_GPL(available_idle_cpu);
 
 /**
  * idle_task - return the idle task for a given CPU.
@@ -7447,30 +7451,6 @@ static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
 	return css ? container_of(css, struct task_group, css) : NULL;
 }
 
-#define EMS_SUPPORT_GROUP_COUNT		4
-extern char *stune_group_name[];
-int cpuctl_task_group_idx(struct task_struct *p)
-{
-	int idx = 0;
-	struct cgroup_subsys_state *css;
-	int i;
-	const char *name;
-
-	rcu_read_lock();
-	css = task_css(p, cpu_cgrp_id);
-	name = css->cgroup->kn->name;
-	rcu_read_unlock();
-
-	for (i = 0; i < EMS_SUPPORT_GROUP_COUNT; i++) {
-		if (name && !strcmp(name, stune_group_name[i])) {
-			idx = i;
-			break;
-		}
-	}
-
-	return idx;
-}
-
 static struct cgroup_subsys_state *
 cpu_cgroup_css_alloc(struct cgroup_subsys_state *parent_css)
 {
@@ -7574,7 +7554,7 @@ static int cpu_cgroup_can_attach(struct cgroup_taskset *tset)
 	}
 
 	if (!ret)
-		freqboost_can_attach(tset);
+		trace_android_rvh_cpu_cgroup_can_attach(tset, &ret);
 
 	return ret;
 }

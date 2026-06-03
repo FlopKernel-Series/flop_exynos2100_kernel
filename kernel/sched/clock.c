@@ -465,6 +465,7 @@ u64 sched_clock_cpu(int cpu)
 
 	return sched_clock();
 }
+EXPORT_SYMBOL_GPL(sched_clock_cpu);
 
 #endif /* CONFIG_HAVE_UNSTABLE_SCHED_CLOCK */
 

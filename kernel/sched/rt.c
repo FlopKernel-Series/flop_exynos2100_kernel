@@ -1385,7 +1385,7 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 {
 	struct sched_rt_entity *rt_se = &p->rt;
 
-	freqboost_enqueue_task(p, cpu_of(rq), flags);
+	trace_android_rvh_enqueue_task_rt(rq, p, flags);
 
 	if (flags & ENQUEUE_WAKEUP)
 		rt_se->timeout = 0;
@@ -1396,14 +1396,15 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 		enqueue_pushable_task(rq, p);
 }
 
-static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
+static void
+dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 {
 	struct sched_rt_entity *rt_se = &p->rt;
 
-	freqboost_dequeue_task(p, cpu_of(rq), flags);
+	trace_android_rvh_dequeue_task_rt(rq, p, flags);
 
-	update_curr_rt(rq);
 	dequeue_rt_entity(rt_se, flags);
+
 
 	dequeue_pushable_task(rq, p);
 }
@@ -1735,6 +1736,7 @@ static struct task_struct *pick_highest_pushable_task(struct rq *rq, int cpu)
 }
 
 DEFINE_PER_CPU(cpumask_var_t, local_cpu_mask);
+EXPORT_PER_CPU_SYMBOL_GPL(local_cpu_mask);
 
 static int find_lowest_rq(struct task_struct *task)
 {
@@ -1748,10 +1750,6 @@ static int find_lowest_rq(struct task_struct *task)
 	trace_android_rvh_find_lowest_rq(task, lowest_mask, &lowest_cpu);
 	if (lowest_cpu >= 0)
 		return lowest_cpu;
-
-#ifdef CONFIG_SCHED_USE_FLUID_RT
-	return frt_find_lowest_rq(task);
-#endif
 
 	/* Make sure the mask is initialized first */
 	if (unlikely(!lowest_mask))
@@ -2536,6 +2534,7 @@ const struct sched_class rt_sched_class = {
 	.uclamp_enabled		= 1,
 #endif
 };
+EXPORT_SYMBOL_GPL(rt_sched_class);
 
 #ifdef CONFIG_RT_GROUP_SCHED
 /*

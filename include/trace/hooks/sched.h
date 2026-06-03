@@ -12,6 +12,7 @@
  */
 struct task_struct;
 struct sched_entity;
+struct cgroup_taskset;
 DECLARE_RESTRICTED_HOOK(android_rvh_select_task_rq_fair,
 	TP_PROTO(struct task_struct *p, int prev_cpu, int sd_flag, int wake_flags, int *new_cpu),
 	TP_ARGS(p, prev_cpu, sd_flag, wake_flags, new_cpu), 1);
@@ -30,12 +31,12 @@ DECLARE_HOOK(android_vh_scheduler_tick,
 	TP_ARGS(rq));
 
 DECLARE_RESTRICTED_HOOK(android_rvh_enqueue_task,
-	TP_PROTO(struct rq *rq, struct task_struct *p),
-	TP_ARGS(rq, p), 1);
+	TP_PROTO(struct rq *rq, struct task_struct *p, int flags),
+	TP_ARGS(rq, p, flags), 1);
 
 DECLARE_RESTRICTED_HOOK(android_rvh_dequeue_task,
-	TP_PROTO(struct rq *rq, struct task_struct *p),
-	TP_ARGS(rq, p), 1);
+	TP_PROTO(struct rq *rq, struct task_struct *p, int flags),
+	TP_ARGS(rq, p, flags), 1);
 
 DECLARE_RESTRICTED_HOOK(android_rvh_can_migrate_task,
 	TP_PROTO(struct task_struct *p, int dst_cpu, int *can_migrate),
@@ -138,6 +139,38 @@ DECLARE_RESTRICTED_HOOK(android_rvh_check_preempt_wakeup,
 DECLARE_RESTRICTED_HOOK(android_rvh_update_misfit_status,
 	TP_PROTO(struct task_struct *p, struct rq *rq, bool *need_update),
 	TP_ARGS(p, rq, need_update), 1);
+
+DECLARE_RESTRICTED_HOOK(android_rvh_wake_up_new_task,
+	TP_PROTO(struct task_struct *p),
+	TP_ARGS(p), 1);
+
+DECLARE_RESTRICTED_HOOK(android_rvh_cpu_cgroup_can_attach,
+	TP_PROTO(struct cgroup_taskset *tset, int *retval),
+	TP_ARGS(tset, retval), 1);
+
+DECLARE_RESTRICTED_HOOK(android_rvh_enqueue_task_fair,
+	TP_PROTO(struct rq *rq, struct task_struct *p, int flags),
+	TP_ARGS(rq, p, flags), 1);
+
+DECLARE_RESTRICTED_HOOK(android_rvh_dequeue_task_fair,
+	TP_PROTO(struct rq *rq, struct task_struct *p, int flags),
+	TP_ARGS(rq, p, flags), 1);
+
+DECLARE_RESTRICTED_HOOK(android_rvh_enqueue_task_rt,
+	TP_PROTO(struct rq *rq, struct task_struct *p, int flags),
+	TP_ARGS(rq, p, flags), 1);
+
+DECLARE_RESTRICTED_HOOK(android_rvh_dequeue_task_rt,
+	TP_PROTO(struct rq *rq, struct task_struct *p, int flags),
+	TP_ARGS(rq, p, flags), 1);
+
+DECLARE_RESTRICTED_HOOK(android_rvh_sysbusy_on_somac,
+	TP_PROTO(int *done),
+	TP_ARGS(done), 1);
+
+DECLARE_RESTRICTED_HOOK(android_rvh_ecs_cpu_available,
+	TP_PROTO(int cpu, struct task_struct *p, int *available),
+	TP_ARGS(cpu, p, available), 1);
 
 /* macro versions of hooks are no longer required */
 

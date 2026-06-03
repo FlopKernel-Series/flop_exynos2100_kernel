@@ -99,6 +99,7 @@ int cpupri_find(struct cpupri *cp, struct task_struct *p,
 {
 	return cpupri_find_fitness(cp, p, lowest_mask, NULL);
 }
+EXPORT_SYMBOL_GPL(cpupri_find);
 
 /**
  * cpupri_find_fitness - find the best (lowest-pri) CPU in the system

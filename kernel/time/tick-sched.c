@@ -1092,6 +1092,7 @@ ktime_t tick_nohz_get_next_hrtimer(void)
 {
 	return __this_cpu_read(tick_cpu_device.evtdev)->next_event;
 }
+EXPORT_SYMBOL_GPL(tick_nohz_get_next_hrtimer);
 
 /**
  * tick_nohz_get_sleep_length - return the expected length of the current sleep
@@ -1136,6 +1137,7 @@ ktime_t tick_nohz_get_next_event(int cpu)
 {
 	return per_cpu(tick_cpu_device, cpu).evtdev->next_event;
 }
+EXPORT_SYMBOL_GPL(tick_nohz_get_next_event);
 
 /**
  * tick_nohz_get_idle_calls_cpu - return the current idle calls counter value

@@ -485,3 +485,4 @@ const struct sched_class idle_sched_class = {
 	.switched_to		= switched_to_idle,
 	.update_curr		= update_curr_idle,
 };
+EXPORT_SYMBOL_GPL(idle_sched_class);

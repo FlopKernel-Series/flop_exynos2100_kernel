@@ -617,6 +617,7 @@ struct sched_entity *__pick_first_entity(struct cfs_rq *cfs_rq)
 
 	return rb_entry(left, struct sched_entity, run_node);
 }
+EXPORT_SYMBOL_GPL(__pick_first_entity);
 
 struct sched_entity *__pick_next_entity(struct sched_entity *se)
 {
@@ -627,6 +628,7 @@ struct sched_entity *__pick_next_entity(struct sched_entity *se)
 
 	return rb_entry(next, struct sched_entity, run_node);
 }
+EXPORT_SYMBOL_GPL(__pick_next_entity);
 
 #ifdef CONFIG_SCHED_DEBUG
 struct sched_entity *__pick_last_entity(struct cfs_rq *cfs_rq)
@@ -3666,6 +3668,7 @@ void sync_entity_load_avg(struct sched_entity *se)
 	last_update_time = cfs_rq_last_update_time(cfs_rq);
 	__update_load_avg_blocked_se(last_update_time, se);
 }
+EXPORT_SYMBOL_GPL(sync_entity_load_avg);
 
 /*
  * Task first catches up with cfs_rq, and then subtract
@@ -5345,8 +5348,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	 */
 	util_est_enqueue(&rq->cfs, p);
 
-	freqboost_enqueue_task(p, cpu_of(rq), flags);
-	prio_pinning_enqueue_task(p, cpu_of(rq));
+	trace_android_rvh_enqueue_task_fair(rq, p, flags);
 
 	/*
 	 * If in_iowait is set, the code below may not trigger any cpufreq
@@ -5449,8 +5451,7 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	int task_sleep = flags & DEQUEUE_SLEEP;
 	int idle_h_nr_running = task_has_idle_policy(p);
 
-	freqboost_dequeue_task(p, cpu_of(rq), flags);
-	prio_pinning_dequeue_task(p, cpu_of(rq));
+	trace_android_rvh_dequeue_task_fair(rq, p, flags);
 
 	for_each_sched_entity(se) {
 		cfs_rq = cfs_rq_of(se);
@@ -8169,6 +8170,7 @@ void update_group_capacity(struct sched_domain *sd, int cpu)
 	sdg->sgc->min_capacity = min_capacity;
 	sdg->sgc->max_capacity = max_capacity;
 }
+EXPORT_SYMBOL_GPL(update_group_capacity);
 
 /*
  * Check whether the capacity of the rq has been noticeably reduced by side
@@ -9068,7 +9070,10 @@ static int should_we_balance(struct lb_env *env)
 	struct sched_group *sg = env->sd->groups;
 	int cpu, balance_cpu = -1;
 
-	if (sysbusy_on_somac())
+	int done = 0;
+
+	trace_android_rvh_sysbusy_on_somac(&done);
+	if (done)
 		return 0;
 
 	/*
@@ -9118,6 +9123,7 @@ static int load_balance(int this_cpu, struct rq *this_rq,
 	struct rq *busiest;
 	struct rq_flags rf;
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(load_balance_mask);
+	int available = 1;
 
 	struct lb_env env = {
 		.sd		= sd,
@@ -9136,7 +9142,8 @@ static int load_balance(int this_cpu, struct rq *this_rq,
 	schedstat_inc(sd->lb_count[idle]);
 
 redo:
-	if (!ecs_cpu_available(env.dst_cpu, NULL)) {
+	trace_android_rvh_ecs_cpu_available(env.dst_cpu, NULL, &available);
+	if (!available) {
 		*continue_balancing = 0;
 		goto out_balanced;
 	}
@@ -9660,6 +9667,7 @@ static inline int find_new_ilb(void)
 static void kick_ilb(unsigned int flags)
 {
 	int ilb_cpu;
+	int available = 1;
 
 	/*
 	 * Increase nohz.next_balance only when if full ilb is triggered but
@@ -9673,7 +9681,8 @@ static void kick_ilb(unsigned int flags)
 	if (ilb_cpu >= nr_cpu_ids)
 		return;
 
-	if (!ecs_cpu_available(ilb_cpu, NULL))
+	trace_android_rvh_ecs_cpu_available(ilb_cpu, NULL, &available);
+	if (!available)
 		return;
 
 	flags = atomic_fetch_or(flags, nohz_flags(ilb_cpu));
@@ -10812,6 +10821,7 @@ const struct sched_class fair_sched_class = {
 	.uclamp_enabled		= 1,
 #endif
 };
+EXPORT_SYMBOL_GPL(fair_sched_class);
 
 #ifdef CONFIG_SCHED_DEBUG
 void print_cfs_stats(struct seq_file *m, int cpu)
@@ -10942,3 +10952,4 @@ const struct cpumask *sched_trace_rd_span(struct root_domain *rd)
 #endif
 }
 EXPORT_SYMBOL_GPL(sched_trace_rd_span);
+
