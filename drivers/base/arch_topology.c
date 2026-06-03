@@ -25,6 +25,7 @@
 DEFINE_PER_CPU(unsigned long, freq_scale) = SCHED_CAPACITY_SCALE;
 DEFINE_PER_CPU(unsigned long, max_cpu_freq);
 DEFINE_PER_CPU(unsigned long, max_freq_scale) = SCHED_CAPACITY_SCALE;
+EXPORT_PER_CPU_SYMBOL_GPL(freq_scale);
 
 void arch_set_freq_scale(struct cpumask *cpus, unsigned long cur_freq,
 			 unsigned long max_freq)
@@ -70,6 +71,7 @@ void topology_set_cpu_scale(unsigned int cpu, unsigned long capacity)
 {
 	per_cpu(cpu_scale, cpu) = capacity;
 }
+EXPORT_SYMBOL_GPL(topology_set_cpu_scale);
 
 static ssize_t cpu_capacity_show(struct device *dev,
 				 struct device_attribute *attr,
@@ -89,6 +91,7 @@ void topology_update(void)
 {
 	schedule_work(&update_topology_flags_work);
 }
+EXPORT_SYMBOL_GPL(topology_update);
 
 static int register_cpu_capacity_sysctl(void)
 {
@@ -481,6 +484,7 @@ const struct cpumask *cpu_coregroup_mask(int cpu)
 
 	return core_mask;
 }
+EXPORT_SYMBOL_GPL(cpu_coregroup_mask);
 
 void update_siblings_masks(unsigned int cpuid)
 {
