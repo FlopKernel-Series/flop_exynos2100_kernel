@@ -1011,8 +1011,6 @@ static void process_init_reply(struct fuse_conn *fc, struct fuse_args *args,
 	}
 	kfree(ia);
 
-	ST_LOG("<%s> dev = %u:%u  fuse Initialized",
-			__func__, MAJOR(fc->dev), MINOR(fc->dev));
 	fuse_set_initialized(fc);
 	wake_up_all(&fc->blocked_waitq);
 }
@@ -1052,9 +1050,6 @@ void fuse_send_init(struct fuse_conn *fc)
 	ia->args.nocreds = true;
 	ia->args.end = process_init_reply;
 
-	ST_LOG("<%s> dev = %u:%u  fuse send Initrequest",
-		__func__, MAJOR(fc->dev), MINOR(fc->dev));
-
 	if (fuse_simple_background(fc, &ia->args, GFP_KERNEL) != 0)
 		process_init_reply(fc, &ia->args, -ENOTCONN);
 }
@@ -1093,16 +1088,14 @@ static int fuse_bdi_init(struct fuse_conn *fc, struct super_block *sb)
 		bdi_put(sb->s_bdi);
 		sb->s_bdi = &noop_backing_dev_info;
 	}
-	/* @fs.sec -- 9b4d962cc783453fc63e4302012c8e28e11e31a5 -- */
-	err = sec_super_setup_bdi_name(sb, "%u:%u%s", MAJOR(fc->dev),
+	err = super_setup_bdi_name(sb, "%u:%u%s", MAJOR(fc->dev),
 				   MINOR(fc->dev), suffix);
 	if (err)
 		return err;
 
 	sb->s_bdi->ra_pages = VM_READAHEAD_PAGES;
 	/* fuse does it's own writeback accounting */
-	sb->s_bdi->capabilities = BDI_CAP_NO_ACCT_WB | BDI_CAP_STRICTLIMIT |
-				  BDI_CAP_SEC_DEBUG;
+	sb->s_bdi->capabilities = BDI_CAP_NO_ACCT_WB | BDI_CAP_STRICTLIMIT;
 
 	/*
 	 * For a single fuse filesystem use max 1% of dirty +
