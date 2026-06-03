@@ -35,7 +35,7 @@ static struct notifier_block cpu_pm_notifier = {
 	.notifier_call = cpu_pm_notify_callback,
 };
 
-static int idle_init(void)
+int ems_idle_init(void)
 {
 	int ret;
 
@@ -47,4 +47,10 @@ static int idle_init(void)
 
 	return 0;
 }
-core_initcall(idle_init)
+
+void ems_idle_exit(void)
+{
+	cpu_pm_unregister_notifier(&cpu_pm_notifier);
+	if (cpu_net_base)
+		iounmap(cpu_net_base);
+}

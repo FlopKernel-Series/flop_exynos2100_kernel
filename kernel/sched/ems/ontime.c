@@ -392,6 +392,7 @@ void ontime_migration(void)
 	stop_one_cpu_nowait(rq->cpu, ontime_migration_cpu_stop, env,
 			&per_cpu(ontime_migration_work, rq->cpu));
 }
+EXPORT_SYMBOL_GPL(ontime_migration);
 
 int ontime_can_migrate_task(struct task_struct *p, int dst_cpu)
 {

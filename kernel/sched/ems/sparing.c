@@ -273,6 +273,7 @@ const struct cpumask *ecs_cpus_allowed(struct task_struct *p)
 
 	return &ecs.cpus;
 }
+EXPORT_SYMBOL_GPL(ecs_cpus_allowed);
 
 /******************************************************************************
  *                             core sparing governor                          *

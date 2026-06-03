@@ -412,6 +412,7 @@ int ems_select_task_rq_fair(struct task_struct *p, int prev_cpu,
 
 	return target_cpu;
 }
+EXPORT_SYMBOL_GPL(ems_select_task_rq_fair);
 
 int ems_can_migrate_task(struct task_struct *p, int dst_cpu)
 {
@@ -439,6 +440,7 @@ int ems_can_migrate_task(struct task_struct *p, int dst_cpu)
 
 	return 1;
 }
+EXPORT_SYMBOL_GPL(ems_can_migrate_task);
 
 static bool lb_busiest_queue_pre_condition(struct rq *rq, bool check_overutil)
 {
@@ -867,6 +869,7 @@ out:
 
 	trace_lb_newidle_balance(dst_cpu, src_cpu, *pulled_task, short_idle);
 }
+EXPORT_SYMBOL_GPL(lb_newidle_balance);
 
 #ifdef CONFIG_SCHED_CASS
 static void cass_prep_env_sysbusy(struct tp_env *env)
@@ -986,6 +989,7 @@ int exynos_select_task_rq(struct task_struct *p, int prev_cpu,
 	return cpu;
 #endif /* CONFIG_SCHED_CASS */
 }
+EXPORT_SYMBOL_GPL(exynos_select_task_rq);
 
 void ems_tick(struct rq *rq)
 {
@@ -1001,6 +1005,7 @@ void ems_tick(struct rq *rq)
 	ontime_migration();
 	ecs_update();
 }
+EXPORT_SYMBOL_GPL(ems_tick);
 
 struct kobject *ems_kobj;
 
@@ -1145,6 +1150,7 @@ static int ems_init(void)
 	if (ret)
 		pr_warn("%s: failed to create sysfs\n", __func__);
 
+	ems_idle_init();
 	hook_init();
 	energy_table_init();
 	part_init();
@@ -1167,4 +1173,17 @@ static int ems_init(void)
 
 	return platform_driver_register(&ems_driver);
 }
-core_initcall(ems_init);
+
+static void __exit ems_exit(void)
+{
+	hook_exit();
+	ems_idle_exit();
+	platform_driver_unregister(&ems_driver);
+}
+
+module_init(ems_init);
+module_exit(ems_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Samsung Electronics");
+MODULE_DESCRIPTION("Exynos Mobile Scheduler");

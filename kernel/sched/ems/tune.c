@@ -27,6 +27,31 @@ char *stune_group_name[] = {
 	"background",
 	"top-app",
 };
+EXPORT_SYMBOL_GPL(stune_group_name);
+
+#define EMS_SUPPORT_GROUP_COUNT		4
+int cpuctl_task_group_idx(struct task_struct *p)
+{
+	int idx = 0;
+	struct cgroup_subsys_state *css;
+	int i;
+	const char *name;
+
+	rcu_read_lock();
+	css = task_css(p, cpu_cgrp_id);
+	name = css->cgroup->kn->name;
+	rcu_read_unlock();
+
+	for (i = 0; i < EMS_SUPPORT_GROUP_COUNT; i++) {
+		if (name && !strcmp(name, stune_group_name[i])) {
+			idx = i;
+			break;
+		}
+	}
+
+	return idx;
+}
+EXPORT_SYMBOL_GPL(cpuctl_task_group_idx);
 
 static bool emstune_initialized = false;
 
@@ -147,11 +172,13 @@ int emstune_register_mode_update_notifier(struct notifier_block *nb)
 {
 	return raw_notifier_chain_register(&emstune_mode_chain, nb);
 }
+EXPORT_SYMBOL_GPL(emstune_register_mode_update_notifier);
 
 int emstune_unregister_mode_update_notifier(struct notifier_block *nb)
 {
 	return raw_notifier_chain_unregister(&emstune_mode_chain, nb);
 }
+EXPORT_SYMBOL_GPL(emstune_unregister_mode_update_notifier);
 
 #define default_set cur_mode->sets[0]
 #define update_cur_set_field(_member)					\
@@ -394,6 +421,7 @@ unsigned long emstune_freq_boost(int cpu, unsigned long util)
 
 	return boosted_util;
 }
+EXPORT_SYMBOL_GPL(emstune_freq_boost);
 
 /* Update maximum values of boost groups of this cpu */
 void emstune_cpu_update(int cpu, u64 now)
@@ -426,6 +454,7 @@ void emstune_cpu_update(int cpu, u64 now)
 	 */
 	per_cpu(freq_boost_max, cpu) = boost_max;
 }
+EXPORT_SYMBOL_GPL(emstune_cpu_update);
 
 static int
 parse_freq_boost(struct device_node *dn, struct emstune_set *set)
@@ -762,11 +791,13 @@ const struct cpumask *emstune_cpus_allowed(struct task_struct *p)
 
 	return &cpus_allowed->mask[st_idx];
 }
+EXPORT_SYMBOL_GPL(emstune_cpus_allowed);
 
 bool emstune_can_migrate_task(struct task_struct *p, int dst_cpu)
 {
 	return cpumask_test_cpu(dst_cpu, emstune_cpus_allowed(p));
 }
+EXPORT_SYMBOL_GPL(emstune_can_migrate_task);
 
 static int
 parse_cpus_allowed(struct device_node *dn, struct emstune_set *set)
@@ -851,6 +882,7 @@ void prio_pinning_enqueue_task(struct task_struct *p, int cpu)
 
 	cpumask_set_cpu(cpu, &prio_pinning_assigned_mask);
 }
+EXPORT_SYMBOL_GPL(prio_pinning_enqueue_task);
 
 void prio_pinning_dequeue_task(struct task_struct *p, int cpu)
 {
@@ -859,6 +891,7 @@ void prio_pinning_dequeue_task(struct task_struct *p, int cpu)
 
 	cpumask_clear_cpu(cpu, &prio_pinning_assigned_mask);
 }
+EXPORT_SYMBOL_GPL(prio_pinning_dequeue_task);
 
 int prio_pinning_schedule(struct tp_env *env, int prev_cpu)
 {

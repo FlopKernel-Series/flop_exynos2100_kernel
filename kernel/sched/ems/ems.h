@@ -28,6 +28,9 @@ extern struct kobject *ems_drv_kobj;
 
 #define IMPORT_PRIO	116
 
+#define ems_last_waked(p)	((p)->android_vendor_data1[0])
+#define TASK_AVD1_1(p)		((p)->android_vendor_data1[1])
+
 /* structure for task placement environment */
 struct tp_env {
 	struct task_struct *p;
@@ -96,6 +99,11 @@ extern int default_get_next_cap(int dst_cpu, struct task_struct *p);
 
 /* hook */
 extern int hook_init(void);
+extern void hook_exit(void);
+
+/* idle */
+extern int ems_idle_init(void);
+extern void ems_idle_exit(void);
 
 /* energy model */
 extern int energy_table_init(void);
@@ -153,6 +161,7 @@ extern int freqboost_wakeup_boost_pending(int cpu);
 /* frt */
 extern int frt_init(void);
 extern void frt_update_available_cpus(struct rq *rq);
+extern int frt_find_lowest_rq(struct task_struct *task);
 
 /* core sparing */
 struct ecs_stage {

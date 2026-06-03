@@ -378,6 +378,7 @@ void update_cpu_active_ratio(struct rq *rq, struct task_struct *p, int type)
 		break;
 	}
 }
+EXPORT_SYMBOL_GPL(update_cpu_active_ratio);
 
 void set_part_period_start(struct rq *rq)
 {

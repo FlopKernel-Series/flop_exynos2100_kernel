@@ -11,6 +11,9 @@
  * GNU General Public License for more details.
  */
 
+#ifndef _LINUX_EMS_H
+#define _LINUX_EMS_H
+
 #include <linux/kobject.h>
 #include <linux/sched.h>
 #include <linux/sched/idle.h>
@@ -47,7 +50,7 @@ struct part {
         int     active_ratio_recent;
 };
 
-#ifdef CONFIG_SCHED_EMS
+#if IS_ENABLED(CONFIG_SCHED_EMS)
 /*
  * core
  */
@@ -171,7 +174,7 @@ struct emstune_mode_request {
 
 #define BOOST_LEVEL	(0xB0057)
 
-#if defined(CONFIG_SCHED_EMS)
+#if IS_ENABLED(CONFIG_SCHED_EMS)
 extern void emstune_cpu_update(int cpu, u64 now);
 extern unsigned long emstune_freq_boost(int cpu, unsigned long util);
 
@@ -234,4 +237,6 @@ static inline void emstune_mode_change(int next_mode_idx) { }
 static inline int ecs_request_register(char *name, const struct cpumask *mask) { return 0; }
 static inline int ecs_request_unregister(char *name) { return 0; }
 static inline int ecs_request(char *name, const struct cpumask *mask) { return 0; }
-#endif
+#endif /* IS_ENABLED(CONFIG_SCHED_EMS) */
+
+#endif /* _LINUX_EMS_H */
