@@ -1089,10 +1089,13 @@ static struct platform_driver ems_driver = {
 	.probe		= ems_probe,
 };
 
+bool ems_boot_completed = false;
 struct delayed_work ems_init_dwork;
 static void ems_delayed_init(struct work_struct *work)
 {
 	sysbusy_init();
+	ems_boot_completed = true;
+	ecs_sync_prime_hotplug();
 }
 
 static void pe_list_init(void)

@@ -11,6 +11,7 @@
 #include <linux/cpu.h>
 #include <linux/device.h>
 #include <linux/workqueue.h>
+#include <linux/moduleparam.h>
 
 #include <trace/events/ems.h>
 #include <trace/events/ems_debug.h>
@@ -39,6 +40,12 @@ static struct {
 	.online = true,
 };
 
+// For easily disabling this feature
+static bool ecs_prime_hotplug_enabled = true;
+module_param_named(ecs_prime_hotplug, ecs_prime_hotplug_enabled, bool, 0644);
+MODULE_PARM_DESC(ecs_prime_hotplug,
+		"Enable prime core hotplug in ECS");
+
 #define MAX_ECS_STAGE	VENDOR_NR_CPUS
 
 static struct {
@@ -61,6 +68,9 @@ static void ecs_prime_hotplug_workfn(struct work_struct *work)
 	int cpu = ecs_prime_hp.cpu;
 	bool want_online = READ_ONCE(ecs_prime_hp.online);
 	int ret;
+
+	if (!ecs_prime_hotplug_enabled)
+		return;
 
 	if (cpu <= 0)
 		return;
@@ -97,9 +107,15 @@ out_unlock:
 	unlock_device_hotplug();
 }
 
-static void ecs_sync_prime_hotplug(void)
+void ecs_sync_prime_hotplug(void)
 {
 	bool want_online;
+
+	if (!ecs_prime_hotplug_enabled)
+		return;
+
+	if (!ems_boot_completed)
+		return;
 
 	if (ecs_prime_hp.cpu <= 0)
 		return;
@@ -730,6 +746,8 @@ int ecs_init(void)
 	ecs.cur_stage = &default_stage;
 	ecs.stage_list = &default_stage_list;
 	ecs_prime_hp.cpu = cpumask_last(cpu_possible_mask);
+	if (!ecs_prime_hotplug_enabled)
+		ecs_prime_hp.cpu = -1;
 	INIT_WORK(&ecs_prime_hp.work, ecs_prime_hotplug_workfn);
 
 	dn = of_find_node_by_path("/ems/ecs");

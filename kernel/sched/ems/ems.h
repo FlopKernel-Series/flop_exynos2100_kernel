@@ -175,8 +175,10 @@ struct ecs_stage {
 	struct cpumask		monitor_cpus;
 };
 
+extern bool ems_boot_completed;
 extern int ecs_init(void);
 extern void ecs_update(void);
+extern void ecs_sync_prime_hotplug(void);
 
 /* EMSTune */
 enum stune_group {
