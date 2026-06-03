@@ -1238,7 +1238,7 @@ config NET_NS
 endif # NAMESPACES
 
 config SCHED_EMS
-	bool "Exynos Mobile Scheduler"
+	tristate "Exynos Mobile Scheduler"
 	depends on SMP
 	help
 	  This option supports Exynos mobile scheduler. It is designed to
