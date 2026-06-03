@@ -1403,6 +1403,7 @@ dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 
 	trace_android_rvh_dequeue_task_rt(rq, p, flags);
 
+	update_curr_rt(rq);
 	dequeue_rt_entity(rt_se, flags);
 
 
