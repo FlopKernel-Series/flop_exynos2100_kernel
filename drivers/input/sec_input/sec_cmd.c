@@ -956,13 +956,24 @@ static ssize_t support_feature_show(struct device *dev,
 static ssize_t enabled_show(struct device *dev, struct device_attribute *attr,
 					char *buf)
 {
-	struct sec_cmd_data *sec = dev_get_drvdata(dev);
-	struct sec_ts_plat_data *plat_data = sec->dev->platform_data;
+	struct sec_ts_plat_data *plat_data;
+	struct sec_cmd_data *sec;
+	struct device *sec_dev;
 
-	if (!plat_data->enable_sysinput_enabled)
+	if (dev->parent && dev->parent->platform_data) {
+		plat_data = dev->parent->platform_data;
+		sec = plat_data->sec_cmd;
+		sec_dev = plat_data->dev;
+	} else {
+		sec = dev_get_drvdata(dev);
+		plat_data = sec && sec->dev ? sec->dev->platform_data : NULL;
+		sec_dev = sec ? sec->dev : NULL;
+	}
+
+	if (!plat_data || !sec || !plat_data->enable_sysinput_enabled)
 		return -EINVAL;
 
-	input_info(true, sec->dev, "%s: enabled %d\n", __func__, atomic_read(&plat_data->enabled));
+	input_info(true, sec_dev, "%s: enabled %d\n", __func__, atomic_read(&plat_data->enabled));
 
 	return snprintf(buf, SEC_CMD_BUF_SIZE, "%d", atomic_read(&plat_data->enabled));
 }
@@ -979,12 +990,20 @@ EXPORT_SYMBOL_KUNIT(sec_cmd_enabled_show);
 static ssize_t enabled_store(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count)
 {
-	struct sec_cmd_data *sec = dev_get_drvdata(dev);
-	struct sec_ts_plat_data *plat_data = sec->dev->platform_data;
+	struct sec_ts_plat_data *plat_data;
+	struct sec_cmd_data *sec;
 	int buff[2];
 	int ret;
 
-	if (!plat_data->enable_sysinput_enabled)
+	if (dev->parent && dev->parent->platform_data) {
+		plat_data = dev->parent->platform_data;
+		sec = plat_data->sec_cmd;
+	} else {
+		sec = dev_get_drvdata(dev);
+		plat_data = sec && sec->dev ? sec->dev->platform_data : NULL;
+	}
+
+	if (!plat_data || !sec || !plat_data->enable_sysinput_enabled)
 		return -EINVAL;
 
 	ret = sscanf(buf, "%d,%d", &buff[0], &buff[1]);
@@ -1100,6 +1119,8 @@ static int sec_cmd_enabled_sysfs_create(struct device *dev)
 {
 	struct kernfs_node *enabled_sd = NULL;
 	int retval = 0;
+	struct sec_cmd_data *sec = dev_get_drvdata(dev);
+	struct sec_ts_plat_data *plat_data = sec && sec->dev ? sec->dev->platform_data : NULL;
 
 	enabled_sd = sysfs_get_dirent(dev->kobj.sd, "enabled");
 	if (IS_ERR_OR_NULL(enabled_sd)) {
@@ -1110,6 +1131,21 @@ static int sec_cmd_enabled_sysfs_create(struct device *dev)
 		}
 	} else {
 		input_dbg(true, dev, "%s: 'enabled' is already exist\n", __func__);
+	}
+
+	if (plat_data && plat_data->input_dev) {
+		struct device *input_dev_device = &plat_data->input_dev->dev;
+		struct kernfs_node *input_enabled_sd = sysfs_get_dirent(input_dev_device->kobj.sd, "enabled");
+		int ret;
+		if (IS_ERR_OR_NULL(input_enabled_sd)) {
+			input_info(true, input_dev_device, "%s: make 'enabled' node on input dev\n", __func__);
+			ret = sysfs_create_group(&input_dev_device->kobj, &sec_fac_enabled_attr_group);
+			if (ret < 0) {
+				input_err(true, input_dev_device, "%s: Failed to create input dev enabled sysfs: %d\n", __func__, ret);
+			}
+		} else {
+			input_dbg(true, input_dev_device, "%s: 'enabled' is already exist on input dev\n", __func__);
+		}
 	}
 
 	return retval;
@@ -1203,8 +1239,12 @@ int sec_cmd_init(struct sec_cmd_data *data, struct device *dev, struct sec_cmd *
 	if (!data->cmd_result)
 		goto err_alloc_cmd_result;
 
-	if (!IS_ERR_OR_NULL(dev))
+	if (!IS_ERR_OR_NULL(dev)) {
+		struct sec_ts_plat_data *plat_data = dev->platform_data;
 		data->dev = dev;
+		if (plat_data)
+			plat_data->sec_cmd = data;
+	}
 
 #ifdef USE_SEC_CMD_QUEUE
 	if (kfifo_alloc(&data->cmd_queue,
@@ -1347,6 +1387,15 @@ void sec_cmd_exit(struct sec_cmd_data *data, int devt)
 	if (!IS_ERR_OR_NULL(data->vendor_attr_group))
 		sysfs_remove_group(&data->fac_dev->kobj, data->vendor_attr_group);
 	sysfs_remove_group(&data->fac_dev->kobj, &sec_fac_attr_group);
+	sysfs_remove_group(&data->fac_dev->kobj, &sec_fac_enabled_attr_group);
+
+	if (data->dev) {
+		struct sec_ts_plat_data *plat_data = data->dev->platform_data;
+		if (plat_data && plat_data->input_dev) {
+			sysfs_remove_group(&plat_data->input_dev->dev.kobj, &sec_fac_enabled_attr_group);
+		}
+	}
+
 	dev_set_drvdata(data->fac_dev, NULL);
 #if IS_ENABLED(CONFIG_DRV_SAMSUNG)
 	sec_device_destroy(data->fac_dev->devt);

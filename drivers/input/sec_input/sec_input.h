@@ -712,6 +712,7 @@ struct sec_ts_plat_data {
 	struct device *dev;
 
 	struct input_dev *input_dev;
+	struct sec_cmd_data *sec_cmd;
 	struct input_dev *input_dev_pad;
 	struct input_dev *input_dev_proximity;
 
