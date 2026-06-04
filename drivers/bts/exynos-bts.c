@@ -43,11 +43,10 @@ static void __bts_calc_bw(unsigned int *mif_freq_out, unsigned int *int_freq_out
 	unsigned int i = 0;
 	unsigned int total_read = 0;
 	unsigned int total_write = 0;
-	unsigned int mif_util = 65;
+	struct bts_bw_params *bw_params = &btsdev->bw_params;
 
 	btsdev->peak_bw = 0;
 	btsdev->total_bw = 0;
-
 	for (i = 0; i < btsdev->num_bts; i++) {
 		if (btsdev->peak_bw < btsdev->bts_bw[i].peak)
 			btsdev->peak_bw = btsdev->bts_bw[i].peak;
@@ -56,21 +55,33 @@ static void __bts_calc_bw(unsigned int *mif_freq_out, unsigned int *int_freq_out
 		total_write += btsdev->bts_bw[i].write;
 	}
 
-	btsdev->total_bw = total_read + total_write;
-	if (btsdev->peak_bw < (total_read / NUM_CHANNEL))
-		btsdev->peak_bw = (total_read / NUM_CHANNEL);
-	if (btsdev->peak_bw < (total_write / NUM_CHANNEL))
-		btsdev->peak_bw = (total_write / NUM_CHANNEL);
+	if (bw_params->num_channel) {
+		if (btsdev->peak_bw < (total_read / bw_params->num_channel))
+			btsdev->peak_bw = (total_read / bw_params->num_channel);
+		if (btsdev->peak_bw < (total_write / bw_params->num_channel))
+			btsdev->peak_bw = (total_write / bw_params->num_channel);
+	}
 
-	if (btsdev->total_bw < 6489600)
-		mif_util = 40;
-	else if (btsdev->total_bw < 8923200)
-		mif_util = 45;
-	else if (btsdev->total_bw < 11897600)
-		mif_util = 55;
+	if (bw_params->mif_bus_width && bw_params->mif_util) {
+		*mif_freq_out = (btsdev->total_bw * 100) / bw_params->mif_bus_width / bw_params->mif_util;
+	} else if (bw_params->mif_bus_width) {
+		unsigned int mif_util = 65;
+		if (btsdev->total_bw < 6489600)
+			mif_util = 40;
+		else if (btsdev->total_bw < 8923200)
+			mif_util = 45;
+		else if (btsdev->total_bw < 11897600)
+			mif_util = 55;
 
-	*mif_freq_out = (btsdev->total_bw * 100) / MIF_BUS_WIDTH / mif_util;
-	*int_freq_out = (btsdev->peak_bw * 100) / BUS_WIDTH / INT_UTIL;
+		*mif_freq_out = (btsdev->total_bw * 100) / bw_params->mif_bus_width / mif_util;
+	} else {
+		*mif_freq_out = 0;
+	}
+
+	if (bw_params->bus_width && bw_params->int_util)
+		*int_freq_out = (btsdev->peak_bw * 100) / bw_params->bus_width / bw_params->int_util;
+	else
+		*int_freq_out = 0;
 
 	BTSDBG_LOG(btsdev->dev, "BW: T:%.8u R:%.8u W:%.8u P:%.8u MIF:%.8u INT:%.8u\n",
 			btsdev->total_bw, total_read, total_write, btsdev->peak_bw, *mif_freq_out, *int_freq_out);
@@ -102,13 +113,14 @@ static void bts_set(unsigned int scen, unsigned int index)
 	int ret = 0;
 
 	if (info[index].ops->set_bts != NULL) {
-		if (info[index].pd_on) {
+		if (info[index].pd_on && info[index].status) {
 			/* Check scenario set exists */
 			if (info[index].stat[scen].stat_on) {
 				ret = info[index].ops->set_bts(info[index].va_base, &(info[index].stat[scen]));
 			} else{
 				ret = info[index].ops->set_bts(info[index].va_base, &(info[index].stat[ID_DEFAULT]));
 			}
+
 		}
 		if (ret)
 			dev_err(btsdev->dev, "%s failed! (scenario=%u) (index=%u)\n",
@@ -120,6 +132,9 @@ void bts_pd_sync(unsigned int cal_id, int on)
 {
 	struct bts_info *info = btsdev->bts_list;
 	unsigned int i;
+
+	if (info == NULL)
+		return;
 
 	spin_lock(&btsdev->lock);
 
@@ -535,6 +550,10 @@ static ssize_t exynos_bts_qos_write(struct file *file, const char __user *user_b
 	}
 
 	stat = info[index].stat;
+	if (stat == NULL) {
+		pr_err("%s: stat is NULL\n", __func__);
+		return -ENOMEM;
+	}
 
 	spin_lock(&btsdev->lock);
 
@@ -633,6 +652,10 @@ static ssize_t exynos_bts_mo_write(struct file *file, const char __user *user_bu
 	}
 
 	stat = info[index].stat;
+	if (stat == NULL) {
+		pr_err("%s: stat is NULL\n", __func__);
+		return -ENOMEM;
+	}
 
 	spin_lock(&btsdev->lock);
 
@@ -725,6 +748,10 @@ static ssize_t exynos_bts_urgent_write(struct file *file, const char __user *use
 	}
 
 	stat = info[index].stat;
+	if (stat == NULL) {
+		pr_err("%s: stat is NULL\n", __func__);
+		return -ENOMEM;
+	}
 
 	spin_lock(&btsdev->lock);
 
@@ -829,6 +856,10 @@ static ssize_t exynos_bts_blocking_write(struct file *file, const char __user *u
 	}
 
 	stat = info[index].stat;
+	if (stat == NULL) {
+		pr_err("%s: stat is NULL\n", __func__);
+		return -ENOMEM;
+	}
 
 	spin_lock(&btsdev->lock);
 
@@ -901,6 +932,187 @@ static ssize_t exynos_bts_log_write(struct file *file, const char __user *user_b
 	return buf_size;
 }
 
+static int exynos_bts_drex_open_show(struct seq_file *buf, void *d)
+{
+	struct bts_info *info = btsdev->bts_list;
+	struct bts_stat stat;
+	int ret, i = 0, idx;
+	struct drex_stat drex;
+	struct drex_pf_stat drex_pf;
+	stat.drex = &drex;
+	stat.drex_pf = &drex_pf;
+	for (i = 0; i < btsdev->num_bts; i++) {
+		if (info[i].ops->get_bts == NULL || info[i].type != DREX_BTS)
+			continue;
+
+		spin_lock(&btsdev->lock);
+
+		if (info[i].pd_on) {
+			if (info[i].stat[ID_DEFAULT].drex_on) {
+				stat.drex_on = 1;
+				stat.drex_pf_on = 0;
+				memset(stat.drex, 0, sizeof(struct drex_stat));
+				ret = info[i].ops->get_bts(info[i].va_base, &stat);
+				if (ret) {
+					pr_err("%s: failed get bts drex\n", __func__);
+					goto err_get_bts;
+				}
+				seq_printf(buf, "[%d] %s:\n \t(offset: %u) write_config_0\t0x%.8X\n",
+					i, info[i].name, offsetof(struct drex_stat, write_flush_config_0),
+					drex.write_flush_config_0);
+				seq_printf(buf, "\t(offset: %u) write_config_1\t0x%.8X\n",
+					offsetof(struct drex_stat, write_flush_config_1), drex.brb_cutoff_con);
+				seq_printf(buf, "\tdrex_timeout 0~15\n");
+				for (idx = 0; idx < MAX_QOS + 1; idx++)
+					seq_printf(buf, "\t\t(offset: %u) 0x%.8X\n",
+						offsetof(struct drex_stat, drex_timeout[idx]),
+						drex.drex_timeout[idx]);
+				seq_printf(buf, "\n\tvc_timer_th 0~7\n");
+				for (idx = 0; idx < VC_TIMER_TH_NR; idx++)
+					seq_printf(buf, "\t\t(offset: %u) 0x%.8X\n",
+						offsetof(struct drex_stat, vc_timer_th[idx]),
+						drex.vc_timer_th[idx]);
+				seq_printf(buf, "\n\t(offset: %u) cutoff_con\t0x%.8X\n",
+					offsetof(struct drex_stat, cutoff_con), drex.cutoff_con);
+				seq_printf(buf, "\t(offset: %u) brb_cutoff_con\t0x%.8X\n",
+					offsetof(struct drex_stat, brb_cutoff_con), drex.brb_cutoff_con);
+				seq_printf(buf, "\t(offset: %u) wdbuf_cutoff_con\t0x%.8X\n\n",
+					offsetof(struct drex_stat, wdbuf_cutoff_con), drex.wdbuf_cutoff_con);
+			}
+
+			if (info[i].stat[ID_DEFAULT].drex_pf_on) {
+				stat.drex_on = 0;
+				stat.drex_pf_on = 1;
+				memset(stat.drex_pf, 0, sizeof(struct drex_pf_stat));
+				ret = info[i].ops->get_bts(info[i].va_base, &stat);
+				if (ret) {
+					pr_err("%s: failed get bts drex_pf\n", __func__);
+					goto err_get_bts;
+				}
+				seq_printf(buf, "[%d] %s:\n", i, info[i].name);
+				seq_printf(buf, "\t(offset: %u) pf_token_control\t0x%.8X\n",
+					offsetof(struct drex_pf_stat, pf_token_control), drex_pf.pf_token_control);
+				seq_printf(buf, "\t(offset: %u) pf_token_threshold0\t0x%.8X\n",
+					offsetof(struct drex_pf_stat, pf_token_threshold0), drex_pf.pf_token_threshold0);
+				seq_printf(buf, "\t(offset: %u) pf_rreq_thrt_con\t0x%.8X\n",
+					offsetof(struct drex_pf_stat, pf_rreq_thrt_con),  drex_pf.pf_rreq_thrt_con);
+				seq_printf(buf, "\t(offset: %u) pf_rreq_thrt_mo_p2 \t0x%.8X\n",
+					offsetof(struct drex_pf_stat, pf_rreq_thrt_mo_p2), drex_pf.pf_rreq_thrt_mo_p2);
+				seq_printf(buf, "\tpf_qos_timer 0~7\n");
+				for (idx = 0; idx < PF_TIMER_NR; idx++)
+					seq_printf(buf, "\t\t(offset: %u) 0x%.8X\n ", offsetof(struct drex_pf_stat, pf_qos_timer[idx]),
+						drex_pf.pf_qos_timer[idx]);
+				seq_printf(buf, "\n");
+			}
+		} else {
+			seq_printf(buf, "[%d] %s:   \tLocal power off!\n",
+			i, info[i].name);
+		}
+
+
+err_get_bts:
+		spin_unlock(&btsdev->lock);
+	}
+
+        seq_printf(buf, "We need 5 inputs. <SCEN DREX_TYPE IP OFFSET VALUE>\n\n");
+
+	return 0;
+}
+
+static int exynos_bts_drex_open(struct inode *inode, struct file *file)
+{
+        return single_open(file, exynos_bts_drex_open_show, inode->i_private);
+}
+
+static ssize_t exynos_bts_drex_write(struct file *file, const char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	char buf[64];
+	ssize_t buf_size;
+
+	struct bts_info *info = btsdev->bts_list;
+	struct bts_stat *stat;
+	int ret, scen, index, type;
+	unsigned int offset, value;
+	char *base;
+
+	buf_size = simple_write_to_buffer(buf, sizeof(buf) - 1, ppos, user_buf, count);
+	if (buf_size < 0)
+		return buf_size;
+
+	buf[buf_size] = '\0';
+
+	ret = sscanf(buf, "%d %d %d %u %x\n",
+			&scen, &type, &index, &offset, &value);
+
+	if (ret != 5) {
+	        pr_err("%s: sscanf failed. We need 5 inputs."\
+	                        "<SCEN DREX_TYPE IP OFFSET VALUE> count=(%d)\n",
+	                        __func__, ret);
+	        return -EINVAL;
+	}
+
+	if (index >= btsdev->num_bts) {
+	        pr_err("%s: IP index should be in range of (0 ~ %d). input=(%d)\n",
+	        	__func__, btsdev->num_bts - 1, index);
+	        return -EINVAL;
+	}
+
+	if (scen >= btsdev->num_scen) {
+	        pr_err("%s: SCEN index should be in range of (0 ~ %d). input=(%d)\n",
+	                        __func__, btsdev->num_scen - 1, scen);
+	        return -EINVAL;
+	}
+
+	if (&info[index] == NULL && &info[index].stat[scen] == NULL) {
+		pr_err("%s: info is NULL\n", __func__);
+		return -ENOMEM;
+	}
+
+	if(type == 0) { //drex
+		if(offset >= sizeof(struct drex_stat))
+			return -EINVAL;
+		if(info[index].stat[scen].drex_on == 0)
+			return -EINVAL;
+		base = (char *)info[index].stat[scen].drex;
+	} else if (type == 1) { //drex_pf
+		if(offset >= sizeof(struct drex_pf_stat))
+			return -EINVAL;
+		if(info[index].stat[scen].drex_pf_on == 0)
+			return -EINVAL;
+		base = (char *)info[index].stat[scen].drex_pf;
+	} else {
+		pr_err("%s: DREX type should be in rage of (0 ~ 1). input=(%d)\n",
+				__func__, type);
+		return -EINVAL;
+	}
+	stat = info[index].stat;
+
+	spin_lock(&btsdev->lock);
+
+	*(unsigned int *)(base + offset) = value;
+
+	if (info[index].ops->set_bts != NULL) {
+	        if (scen != btsdev->top_scen)
+	                goto out;
+
+	        if (info[index].pd_on) {
+	                if (info[index].ops->set_bts(info[index].va_base,
+	                                        &stat[scen]))
+	                        pr_warn("%s: set_drex_timeout failed. input=(%d) err=(%d)\n",
+	                        	__func__, index, ret);
+	        }
+	} else {
+		pr_err("%s: Invalid index. [%d] is %s\n", __func__, index, info[index].name);
+	}
+
+out:
+	spin_unlock(&btsdev->lock);
+
+	return buf_size;
+}
+
+
 static const struct file_operations debug_bts_hwstatus_fops = {
 	.open		= exynos_bts_hwstatus_open,
 	.read		= seq_read,
@@ -956,6 +1168,15 @@ static const struct file_operations debug_bts_log_fops = {
 	.release	= single_release,
 };
 
+static const struct file_operations debug_bts_drex_fops = {
+        .open           = exynos_bts_drex_open,
+        .read           = seq_read,
+	.write		= exynos_bts_drex_write,
+        .llseek         = seq_lseek,
+        .release        = single_release,
+};
+
+
 int exynos_bts_debugfs_init(void)
 {
 	struct dentry *den;
@@ -978,6 +1199,8 @@ int exynos_bts_debugfs_init(void)
 				&debug_bts_blocking_fops);
 	debugfs_create_file("log", 0440, den, NULL,
 				&debug_bts_log_fops);
+	debugfs_create_file("drex", 0440, den, NULL,
+				&debug_bts_drex_fops);
 
 	return 0;
 }
@@ -1034,7 +1257,7 @@ static int bts_initialize(struct bts_device *data)
 
 static int bts_parse_setting(struct device_node *np, struct bts_stat *stat)
 {
-	int tmp = 0;
+	int tmp = 0, ret = 0;
 
 	of_property_read_u32(np, "stat_on", &tmp);
 	spin_lock(&btsdev->lock);
@@ -1085,9 +1308,44 @@ static int bts_parse_setting(struct device_node *np, struct bts_stat *stat)
 		/* Parsing vc-cfg */
 		if (of_property_read_u32(np, "vc-cfg", &(stat->vc_cfg)))
 			stat->vc_cfg = 0;
+		tmp = 0;
+		of_property_read_u32(np, "drex_on", &tmp);
+		stat->drex_on = tmp ? true: false;
+		if(stat->drex_on) {
+			stat->drex = devm_kzalloc(btsdev->dev, sizeof(struct drex_stat), GFP_KERNEL);
+			if(stat->drex == NULL)
+				goto err;
+			ret |= of_property_read_u32(np, "write_flush_config_0", &(stat->drex->write_flush_config_0));
+			ret |= of_property_read_u32(np, "write_flush_config_1", &(stat->drex->write_flush_config_1));
+			ret |= of_property_read_u32_array(np, "drex_timeout", stat->drex->drex_timeout, MAX_QOS + 1);
+			ret |= of_property_read_u32_array(np, "vc_timer_th", stat->drex->vc_timer_th, VC_TIMER_TH_NR);
+			ret |= of_property_read_u32(np, "cutoff_con", &(stat->drex->cutoff_con));
+			ret |= of_property_read_u32(np, "brb_cutoff_con", &(stat->drex->brb_cutoff_con));
+			ret |= of_property_read_u32(np, "wdbuf_cutoff_con", &(stat->drex->wdbuf_cutoff_con));
+			if(ret)
+				goto err;
+		}
+		tmp = 0;
+		of_property_read_u32(np, "drex_pf_on", &tmp);
+		stat->drex_pf_on = tmp ? true: false;
+		if(stat->drex_pf_on) {
+			stat->drex_pf = devm_kzalloc(btsdev->dev, sizeof(struct drex_pf_stat), GFP_KERNEL);
+			if(stat->drex_pf == NULL)
+				goto err;
+			ret |= of_property_read_u32(np, "pf_token_control", &(stat->drex_pf->pf_token_control));
+			ret |= of_property_read_u32(np, "pf_token_threshold0", &(stat->drex_pf->pf_token_threshold0));
+			ret |= of_property_read_u32(np, "pf_rreq_thrt_con", &(stat->drex_pf->pf_rreq_thrt_con));
+			ret |= of_property_read_u32(np, "pf_rreq_thrt_mo_p2", &(stat->drex_pf->pf_rreq_thrt_mo_p2));
+			ret |= of_property_read_u32_array(np, "pf_qos_timer", stat->drex_pf->pf_qos_timer, PF_TIMER_NR);
+			if(ret)
+				goto err;
+		}
 	}
 
 	return 0;
+err:
+	dev_err(btsdev->dev, "%s failed", __func__);
+	return ret;
 }
 
 static int bts_parse_data(struct device_node *np, struct bts_device *data)
@@ -1101,6 +1359,13 @@ static int bts_parse_data(struct device_node *np, struct bts_device *data)
 	int ret = 0;
 
 	if (of_have_populated_dt()) {
+		if(of_property_read_u32_array(np, "bw_params", (u32 *)&data->bw_params,
+								sizeof(struct bts_bw_params)/sizeof(int))) {
+			BTSDBG_LOG(data->dev, "Unable to parse bandwidth params\n");
+			ret = -EINVAL;
+			goto err;
+		}
+
 		data->num_scen = of_property_count_strings(np, "list-scen");
 		if (data->num_scen <= 0) {
 			BTSDBG_LOG(data->dev, "There should be at least one scenario\n");
@@ -1223,6 +1488,8 @@ static int bts_parse_data(struct device_node *np, struct bts_device *data)
 
 		data->bts_list = info;
 		data->scen_list = scen;
+
+		exynos_cal_pd_bts_sync = bts_pd_sync;
 	} else {
 		dev_err(data->dev, "Invalid device tree node!\n");
 	}
