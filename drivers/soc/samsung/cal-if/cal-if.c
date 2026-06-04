@@ -33,6 +33,9 @@
 int (*exynos_cal_pd_bcm_sync)(unsigned int id, bool on);
 EXPORT_SYMBOL(exynos_cal_pd_bcm_sync);
 
+void (*exynos_cal_pd_bts_sync)(unsigned int id, int on);
+EXPORT_SYMBOL(exynos_cal_pd_bts_sync);
+
 static DEFINE_SPINLOCK(pmucal_cpu_lock);
 
 unsigned int cal_clk_is_enabled(unsigned int id)
@@ -209,18 +212,18 @@ int cal_pd_control(unsigned int id, int on)
 
 	if (on) {
 		ret = pmucal_local_enable(index);
-#ifdef CONFIG_EXYNOS9820_BTS
-		if (index == 0x7)
-			bts_pd_sync(id, on);
+#if defined(CONFIG_EXYNOS_BTS) || defined(CONFIG_EXYNOS_BTS_MODULE)
+		if (exynos_cal_pd_bts_sync && cal_pd_status(id))
+			exynos_cal_pd_bts_sync(id, on);
 #endif
 #if defined(CONFIG_EXYNOS_BCM_DBG) || defined(CONFIG_EXYNOS_BCM_DBG_MODULE)
 		if (exynos_cal_pd_bcm_sync && cal_pd_status(id))
 			exynos_cal_pd_bcm_sync(id, true);
 #endif
 	} else {
-#ifdef CONFIG_EXYNOS9820_BTS
-		if (index == 0x7)
-			bts_pd_sync(id, on);
+#if defined(CONFIG_EXYNOS_BTS) || defined(CONFIG_EXYNOS_BTS_MODULE)
+		if (exynos_cal_pd_bts_sync && cal_pd_status(id))
+			exynos_cal_pd_bts_sync(id, on);
 #endif
 #if defined(CONFIG_EXYNOS_BCM_DBG) || defined(CONFIG_EXYNOS_BCM_DBG_MODULE)
 		if (exynos_cal_pd_bcm_sync && cal_pd_status(id))

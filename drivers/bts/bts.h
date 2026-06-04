@@ -24,22 +24,36 @@
 #include <soc/samsung/bts.h>
 #include <linux/rtmutex.h>
 
-#define NUM_CHANNEL	4
-#define MIF_BUS_WIDTH	16
-#define BUS_WIDTH	32
-#define MIF_BUS_WIDTH  16
-#define MIF_UTIL	65
-#define INT_UTIL	70
-
 #define DEFAULT_QOS	0x4
 #define MAX_QOS		0xF
 #define SCIMAX_QOS	0x3
 #define MAX_MO		0xFFFF
 #define MAX_QUTH	0xFF
 
+#define VC_TIMER_TH_NR	8
+#define PF_TIMER_NR	8
+
 struct bts_scen;
 struct bts_stat;
 struct bts_info;
+struct bts_bw_params;
+
+/**
+ * struct bts_bw_parmas - BTS parameters for bandwidth calculation
+ * @num_channel:	The number of memory interface channel
+ * @mif_bus_width:	Bus width of memory interface
+ * @bus_width:		Bus width of internal bus
+ * @mif_util:		Target utilization of memory interface
+ * @int_util:		Target utilization of internal bus
+ *
+ */
+struct bts_bw_params {
+	int	num_channel;
+	int	mif_bus_width;
+	int	bus_width;
+	int	mif_util;
+	int	int_util;
+};
 
 /**
  * struct bts - Device BTS structure
@@ -81,6 +95,7 @@ struct bts_device {
 	struct list_head	scen_node;
 
 	struct bts_bw		*bts_bw;
+	struct bts_bw_params	bw_params;
 	unsigned int		peak_bw;
 	unsigned int		total_bw;
 };
@@ -174,8 +189,29 @@ struct bts_stat {
 	unsigned int		qmax1_limit_w;
 	unsigned int		vc_cfg;
 	void __iomem		*qos_va_base;
+	bool			drex_on;
+	struct drex_stat	*drex;
+	bool			drex_pf_on;
+	struct drex_pf_stat	*drex_pf;
 };
 
+struct drex_stat {
+	unsigned int            write_flush_config_0;
+	unsigned int            write_flush_config_1;
+	unsigned int            drex_timeout[MAX_QOS + 1];
+	unsigned int            vc_timer_th[VC_TIMER_TH_NR];
+	unsigned int            cutoff_con;
+	unsigned int            brb_cutoff_con;
+	unsigned int            wdbuf_cutoff_con;
+};
+
+struct drex_pf_stat {
+	unsigned int		pf_token_control;
+	unsigned int		pf_token_threshold0;
+	unsigned int            pf_rreq_thrt_con;
+	unsigned int            pf_rreq_thrt_mo_p2;
+	unsigned int            pf_qos_timer[PF_TIMER_NR];
+};
 
 /**
  * struct bts_info - BTS information
