@@ -26,6 +26,7 @@
 #if defined(CONFIG_KSU_SUSFS) || defined(CONFIG_KSU_MANUAL_HOOK)
 #include <linux/ksu_hook_compat.h>
 #endif
+#include <linux/workarounds.h>
 #include "input-compat.h"
 #include "input-poller.h"
 
@@ -1929,8 +1930,12 @@ struct input_dev *input_allocate_device(void)
 		INIT_LIST_HEAD(&dev->h_list);
 		INIT_LIST_HEAD(&dev->node);
 
-		dev_set_name(&dev->dev, "input%lu",
-			     (unsigned long)atomic_inc_return(&input_no));
+		{
+			unsigned long no = (unsigned long)atomic_inc_return(&input_no);
+			if (is_aosp_mode() && no == 7)
+				no = (unsigned long)atomic_inc_return(&input_no);
+			dev_set_name(&dev->dev, "input%lu", no);
+		}
 
 		__module_get(THIS_MODULE);
 	}
@@ -2271,6 +2276,10 @@ int input_register_device(struct input_dev *dev)
 	unsigned int packet_size;
 	const char *path;
 	int error;
+
+	if (is_aosp_mode() && dev->name && strcmp(dev->name, "sec_touchscreen") == 0) {
+		dev_set_name(&dev->dev, "input7");
+	}
 
 	if (test_bit(EV_ABS, dev->evbit) && !dev->absinfo) {
 		dev_err(&dev->dev,
