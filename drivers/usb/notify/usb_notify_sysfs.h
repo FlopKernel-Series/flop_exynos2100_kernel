@@ -20,6 +20,9 @@ static inline bool usb_sl_enabled(void)
 #ifdef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
 	return false;
 #else
+	if (is_usb_sl_disabled())
+		return false;
+
 	return !is_aosp_mode();
 #endif
 }

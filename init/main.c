@@ -238,6 +238,35 @@ bool is_aosp_mode(void)
 	return aosp_mode;
 }
 EXPORT_SYMBOL(is_aosp_mode);
+
+static bool usb_sl_disable;
+static char usb_sl_disable_default_arg[] = "usb_sl_disable=0";
+
+static int __init set_usb_sl_disable(char *val)
+{
+	int tmp = usb_sl_disable;
+
+	if (get_option(&val, &tmp))
+		usb_sl_disable = tmp != 0;
+
+	return 0;
+}
+__setup("usb_sl_disable=", set_usb_sl_disable);
+
+static void __init apply_usb_sl_disable_default(void)
+{
+	char *val;
+
+	val = strchr(usb_sl_disable_default_arg, '=');
+	if (val)
+		set_usb_sl_disable(val + 1);
+}
+
+bool is_usb_sl_disabled(void)
+{
+	return usb_sl_disable;
+}
+EXPORT_SYMBOL(is_usb_sl_disabled);
 #endif
 
 static int __init set_uname_bpf_spoof(char *val)
@@ -1074,6 +1103,7 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_init_protection_default();
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 	apply_aosp_mode_default();
+	apply_usb_sl_disable_default();
 #endif
 
 	pr_info("Workaround: aosp_mode=%s\n",

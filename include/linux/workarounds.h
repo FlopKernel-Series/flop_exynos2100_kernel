@@ -19,6 +19,7 @@ static inline bool is_aosp_mode_fast(void)
 }
 #else
 bool is_aosp_mode(void);
+bool is_usb_sl_disabled(void);
 
 /* Optimized hot path version using static branch */
 extern struct static_key_false aosp_mode_key;
