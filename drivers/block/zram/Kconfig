@@ -41,7 +41,7 @@ config ZRAM_MEMORY_TRACKING
 	  See Documentation/admin-guide/blockdev/zram.rst for more information.
 
 config ZRAM_LRU_WRITEBACK
-	bool
+	bool "ZRAM LRU-based writeback"
 	depends on ZRAM_WRITEBACK
 	help
 	  This feature supports zram lru-based writeback (SQZR).
