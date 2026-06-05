@@ -124,7 +124,7 @@ static ssize_t hall_detect_show(struct device *dev,
 	int state;
 
 	list_for_each_entry(hall, &hall_ic_list, list) {
-		if (hall->event != SW_FLIP)
+		if (hall->event != SW_LID && hall->event != SW_FLIP)
 			continue;
 		hall->state = !!gpio_get_value_cansleep(hall->gpio);
 		state = hall->state ^ hall->active_low;
