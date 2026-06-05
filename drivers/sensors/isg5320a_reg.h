@@ -128,8 +128,8 @@ struct isg5320a_reg_data {
 	unsigned char val;
 };
 
-#if IS_ENABLED(CONFIG_SENSORS_ISG5320A_O1S)
-static const struct isg5320a_reg_data setup_reg[] = {
+// #if IS_ENABLED(CONFIG_SENSORS_ISG5320A_O1S)
+static const struct isg5320a_reg_data setup_reg_o1s[] = {
 	{    .addr = 0x05,    .val = 0xFC,    },
 	{    .addr = 0x06,    .val = 0xF1,    },
 	{    .addr = 0x07,    .val = 0x13,    },
@@ -281,8 +281,8 @@ static const struct isg5320a_reg_data setup_reg[] = {
 	{    .addr = 0xAD,    .val = 0x04,    },
 	{    .addr = 0xAE,    .val = 0x00,    },
 };
-#else
-static const struct isg5320a_reg_data setup_reg[] = {
+// #else
+static const struct isg5320a_reg_data setup_reg_r9s[] = {
 	{    .addr = 0x05,    .val = 0xFC,    },
 	{    .addr = 0x06,    .val = 0xF1,    },
 	{    .addr = 0x07,    .val = 0x13,    },
@@ -434,7 +434,7 @@ static const struct isg5320a_reg_data setup_reg[] = {
 	{    .addr = 0xAD,    .val = 0x04,    },
 	{    .addr = 0xAE,    .val = 0x00,    },
 };
-#endif
+// #endif
 
 extern int sensors_create_symlink(struct input_dev *inputdev);
 extern void sensors_remove_symlink(struct input_dev *inputdev);

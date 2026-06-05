@@ -26,6 +26,7 @@
 #include <linux/interrupt.h>
 #include <linux/regulator/consumer.h>
 #include <linux/power_supply.h>
+#include <linux/sec_detect.h>
 #include <linux/vmalloc.h>
 #if IS_ENABLED(CONFIG_PDIC_NOTIFIER)
 #include <linux/usb/typec/common/pdic_notifier.h>
@@ -139,6 +140,17 @@ struct isg5320a_data {
 	bool first_working;
 
 };
+
+static const struct isg5320a_reg_data *isg5320a_get_setup_reg(size_t *size)
+{
+	if (sec_get_current_device() == SEC_O1S) {
+		*size = ARRAY_SIZE(setup_reg_o1s);
+		return setup_reg_o1s;
+	}
+
+	*size = ARRAY_SIZE(setup_reg_r9s);
+	return setup_reg_r9s;
+}
 
 static int check_hallic_state(char *file_path, unsigned char hall_ic_status[])
 {
@@ -616,6 +628,8 @@ static void isg5320a_initialize(struct isg5320a_data *data)
 	int i;
 	u8 val;
 	u8 buf[2];
+	const struct isg5320a_reg_data *setup_reg;
+	size_t setup_reg_size;
 
 	pr_info("%s %s\n", ISG5320A_TAG, __func__);
 
@@ -627,7 +641,9 @@ static void isg5320a_initialize(struct isg5320a_data *data)
 
 	ret = isg5320a_setup_reg(data);
 	if (ret < 0) {
-		for (i = 0; i < (int)(sizeof(setup_reg) >> 1); i++) {
+		setup_reg = isg5320a_get_setup_reg(&setup_reg_size);
+
+		for (i = 0; i < (int)setup_reg_size; i++) {
 			isg5320a_i2c_write_one(data, setup_reg[i].addr, setup_reg[i].val);
 			pr_info("%s W %02X %02X\n", ISG5320A_TAG, setup_reg[i].addr,
 				setup_reg[i].val);
