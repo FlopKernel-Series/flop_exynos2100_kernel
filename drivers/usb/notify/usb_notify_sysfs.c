@@ -1009,6 +1009,7 @@ static ssize_t usb_sl_store(
 	size_t ret = -ENOMEM;
 	char input_str[25];
 	int i;
+	unsigned long temp_lock;
 
 	if (udev == NULL) {
 		pr_err("udev is NULL\n");
@@ -1034,12 +1035,24 @@ static ssize_t usb_sl_store(
 	}
 
 	secure_lock = ~0UL;
-	for (i = 0; i < VALID_INPUT_CNT; i++) {
-		if (strcmp(input_str, LOCK_STATE_NAMES[i]) == 0) {
-			secure_lock = i;
-			break;
+
+	/* Try to parse as integer first */
+	if (kstrtoul(input_str, 10, &temp_lock) == 0) {
+		if (temp_lock < VALID_INPUT_CNT) {
+			secure_lock = temp_lock;
 		}
 	}
+
+	/* If not a valid integer, try string matching */
+	if (secure_lock == ~0UL) {
+		for (i = 0; i < VALID_INPUT_CNT; i++) {
+			if (strcmp(input_str, LOCK_STATE_NAMES[i]) == 0) {
+				secure_lock = i;
+				break;
+			}
+		}
+	}
+
 	if (secure_lock == ~0UL) {
 		pr_err("%s disallow input (%s)-\n", __func__, input_str);
 		goto error;
