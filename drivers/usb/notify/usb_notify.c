@@ -693,7 +693,7 @@ err:
 	return ret;
 }
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
+
 static int check_time_secure_restrict_cond(struct usb_notify *u_notify, unsigned long event)
 {
 	int ret = 0;
@@ -717,7 +717,6 @@ static int check_time_secure_restrict_cond(struct usb_notify *u_notify, unsigned
 err:
 	return ret;
 }
-#endif
 
 int do_notify_blockstate(struct otg_notify *n, unsigned long event,
 					int type, int enable)
@@ -731,13 +730,11 @@ int do_notify_blockstate(struct otg_notify *n, unsigned long event,
 		break;
 	case NOTIFY_EVENT_SMARTDOCK_USB:
 	case NOTIFY_EVENT_VBUS:
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-		if (enable && (u_notify->lock_state == USB_NOTIFY_LOCK_USB_RESTRICT)) {
+		if (usb_sl_enabled() && enable && (u_notify->lock_state == USB_NOTIFY_LOCK_USB_RESTRICT)) {
 			msleep(200);
 			if (check_time_secure_restrict_cond(u_notify, event))
 				send_usb_restrict_uevent(USB_TIME_SECURE_RESTRICTED);
 		}
-#endif
 		if (enable)
 			if (n->set_chg_current)
 				n->set_chg_current(NOTIFY_USB_CONFIGURED);
@@ -754,10 +751,8 @@ int do_notify_blockstate(struct otg_notify *n, unsigned long event,
 			pr_err("This model doesn't support usb host\n");
 			goto skip;
 		}
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-		if (enable && (u_notify->lock_state == USB_NOTIFY_LOCK_USB_RESTRICT))
+		if (usb_sl_enabled() && enable && (u_notify->lock_state == USB_NOTIFY_LOCK_USB_RESTRICT))
 			send_usb_restrict_uevent(USB_TIME_SECURE_RESTRICTED);
-#endif
 		if (enable)
 			host_state_notify(&u_notify->ndev, NOTIFY_HOST_BLOCK);
 		else
@@ -798,10 +793,8 @@ static void update_cable_status(struct otg_notify *n, unsigned long event,
 			u_notify->c_type = NOTIFY_EVENT_NONE;
 			u_notify->c_status = (start) ?
 				NOTIFY_EVENT_DISABLING : NOTIFY_EVENT_DISABLED;
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-			if (!start)
+			if (usb_sl_enabled() && !start)
 				send_usb_restrict_uevent(USB_SECURE_RELEASE);
-#endif
 		}
 	}
 }
@@ -819,13 +812,13 @@ static void reserve_state_check(struct work_struct *work)
 
 	pr_info("%s +\n", __func__);
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-	wait_event_interruptible(u_noti->init_delay,
-		(u_noti->lock_state != USB_NOTIFY_INIT_STATE
-			|| u_noti->b_delay.reserve_state == NOTIFY_EVENT_VBUS));
+	if (usb_sl_enabled()) {
+		wait_event_interruptible(u_noti->init_delay,
+			(u_noti->lock_state != USB_NOTIFY_INIT_STATE
+				|| u_noti->b_delay.reserve_state == NOTIFY_EVENT_VBUS));
 
-	pr_info("%s after wait\n", __func__);
-#endif	
+		pr_info("%s after wait\n", __func__);
+	}
 
 	if (u_noti->o_notify->booting_delay_sync_usb) {
 		pr_info("%s wait dwc3 probe done -\n", __func__);
@@ -852,18 +845,15 @@ static void reserve_state_check(struct work_struct *work)
 	}
 	notify_event_unlock(u_noti, NOTIFY_EVENT_STATE);
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-	if (u_noti->lock_state == USB_NOTIFY_INIT_STATE) {
+	if (usb_sl_enabled() && u_noti->lock_state == USB_NOTIFY_INIT_STATE) {
 		u_noti->udev.first_restrict = true;
 		set_notify_disable(&u_noti->udev, NOTIFY_BLOCK_TYPE_HOST);
-		u_noti->skip_possible_usb = 1;
 	}
+	u_noti->skip_possible_usb = 1;
 
 	if (!u_noti->skip_possible_usb)
 		send_external_notify(EXTERNAL_NOTIFY_POSSIBLE_USB, 1);
-#else
 	send_external_notify(EXTERNAL_NOTIFY_POSSIBLE_USB, 1);
-#endif
 
 	pr_info("%s -\n", __func__);
 }
@@ -908,8 +898,8 @@ int set_notify_disable(struct usb_notify_dev *udev, int disable)
 
 	u_notify->disable_state = disable;
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-	switch (disable) {
+	if (usb_sl_enabled()) {
+		switch (disable) {
 	case NOTIFY_BLOCK_TYPE_ALL:
 		send_external_notify(EXTERNAL_NOTIFY_HOSTBLOCK_EARLY, 1);
 		if (is_host_cable_enable(n) ||
@@ -1036,8 +1026,8 @@ int set_notify_disable(struct usb_notify_dev *udev, int disable)
 
 		break;
 	}
-#else /* CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION */
-	switch (disable) {
+	} else {
+		switch (disable) {
 	case NOTIFY_BLOCK_TYPE_ALL:
 		send_external_notify(EXTERNAL_NOTIFY_HOSTBLOCK_EARLY, 1);
 		if (is_host_cable_enable(n) ||
@@ -1182,18 +1172,43 @@ int set_notify_disable(struct usb_notify_dev *udev, int disable)
 		send_otg_notify(n, VIRT_EVENT(u_notify->c_type), 1);
 	break;
 	}
-#endif	
+	}
 skip:
 	return 0;
 }
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
 static int set_notify_lock_state(struct usb_notify_dev *udev)
 {
 	struct otg_notify *n = udev->o_notify;
 	struct usb_notify *u_notify = (struct usb_notify *)(n->u_notify);
 	unsigned long reserve_state = u_notify->b_delay.reserve_state;
 	int i, noti = 0, recover = 0, reload = 0, vdm_start = 0;
+
+	if (!usb_sl_enabled()) {
+		u_notify->lock_state = udev->secure_lock;
+
+		if (udev->secure_lock) {
+			pr_info("%s lock\n", __func__);
+		} else {
+			for (i = 0; i < USB_GROUP_MAX; i++)
+				u_notify->secure_connect_group[i] = 0;
+			pr_info("%s unlock host cable=%d, restricted=%d\n", __func__,
+				is_host_cable_block(n), u_notify->restricted);
+			if (u_notify->restricted)
+				vdm_start = 1;
+			if (is_host_cable_block(n) && u_notify->restricted) {
+				u_notify->restricted = 0;
+				send_otg_notify(n, VIRT_EVENT(u_notify->c_type), 1);
+			} else
+				u_notify->restricted = 0;
+			if (vdm_start) {
+				send_external_notify(EXTERNAL_NOTIFY_HOSTBLOCK_PRE, 0);
+				send_external_notify(EXTERNAL_NOTIFY_HOSTBLOCK_POST, 0);
+			}
+		}
+
+		return 0;
+	}
 
 	pr_info("%s +\n", __func__);
 
@@ -1261,38 +1276,6 @@ static int set_notify_lock_state(struct usb_notify_dev *udev)
 	pr_info("%s -\n", __func__);
 	return 0;
 }
-#else
-static int set_notify_lock_state(struct usb_notify_dev *udev)
-{
-	struct otg_notify *n = udev->o_notify;
-	struct usb_notify *u_notify = (struct usb_notify *)(n->u_notify);
-	int i, vdm_start = 0;
-
-	u_notify->lock_state = udev->secure_lock;
-
-	if (udev->secure_lock) {
-		pr_info("%s lock\n", __func__);
-	} else {
-		for (i = 0; i < USB_GROUP_MAX; i++)
-			u_notify->secure_connect_group[i] = 0;
-		pr_info("%s unlock host cable=%d, restricted=%d\n", __func__,
-			is_host_cable_block(n), u_notify->restricted);
-		if (u_notify->restricted)
-			vdm_start = 1;
-		if (is_host_cable_block(n) && u_notify->restricted) {
-			u_notify->restricted = 0;
-			send_otg_notify(n, VIRT_EVENT(u_notify->c_type), 1);
-		} else
-			u_notify->restricted = 0;
-		if (vdm_start) {
-			send_external_notify(EXTERNAL_NOTIFY_HOSTBLOCK_PRE, 0);
-			send_external_notify(EXTERNAL_NOTIFY_HOSTBLOCK_POST, 0);
-		}
-	}
-
-	return 0;
-}
-#endif
 
 void send_usb_mdm_uevent(void)
 {
@@ -1641,7 +1624,6 @@ int usb_check_whitelist_for_mdm(struct usb_device *dev)
 }
 EXPORT_SYMBOL(usb_check_whitelist_for_mdm);
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
 static bool usb_match_any_interface_for_id(struct usb_device *udev,
 				    int *whitelist_array)
 {
@@ -1731,7 +1713,7 @@ bool check_usb_restrict_lock_state(struct otg_notify *n)
 	return (u_notify->lock_state == USB_NOTIFY_LOCK_USB_RESTRICT);
 }
 EXPORT_SYMBOL(check_usb_restrict_lock_state);
-#endif
+
 
 int usb_otg_restart_accessory(struct usb_device *dev)
 {
@@ -1980,10 +1962,8 @@ static void otg_notify_state(struct otg_notify *n,
 				gpio_direction_output
 					(n->redriver_en_gpio, 0);
 			host_state_notify(&u_notify->ndev, NOTIFY_HOST_REMOVE);
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION			
 			if (!virtual)
 				u_notify->allowlist_restricted = 0;
-#endif			
 			if (n->is_host_wakelock)
 				__pm_relax(&u_notify->ws);
 		}
@@ -2142,10 +2122,8 @@ static void otg_notify_state(struct otg_notify *n,
 	}
 	if (type & NOTIFY_EVENT_NEED_HOST) {
 		if (!enable) {
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION			
 			if (!virtual)
 				u_notify->allowlist_restricted = 0;
-#endif
 			u_notify->cond_hshub = 0;
 			u_notify->cond_sshub = 0;
 			u_notify->is_device = 0;
@@ -2421,9 +2399,7 @@ void send_otg_notify(struct otg_notify *n,
 {
 	struct usb_notify *u_notify = NULL;
 	int type = 0;
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
 	int noti = 0;
-#endif
 
 	if (!n) {
 		pr_err("%s otg_notify is null\n", __func__);
@@ -2447,13 +2423,13 @@ void send_otg_notify(struct otg_notify *n,
 			if (u_notify) {
 				u_notify->b_delay.reserve_state =
 					(enable) ? event : NOTIFY_EVENT_NONE;
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-				if (enable && (check_event_type(event) & NOTIFY_EVENT_NEED_CLIENT))
+				if (usb_sl_enabled() && enable && (check_event_type(event) & NOTIFY_EVENT_NEED_CLIENT))
 					wake_up_interruptible(&u_notify->init_delay);
-					
+
+				if (usb_sl_enabled() && !enable)
+					u_notify->allowlist_restricted = 0;
 				if (u_notify->lock_state == USB_NOTIFY_LOCK_USB_RESTRICT)
 					noti = 1;
-#endif					
 				pr_info("%s reserve event\n", __func__);
 			} else
 				pr_err("%s u_notify is null\n", __func__);
@@ -2472,7 +2448,6 @@ void send_otg_notify(struct otg_notify *n,
 
 before_unlock:
 	notify_event_unlock(u_notify, type);
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION	
 	if (noti) {
 		if (enable) {
 			if (check_time_secure_restrict_cond(u_notify, event))
@@ -2480,7 +2455,6 @@ before_unlock:
 		} else
 			send_usb_restrict_uevent(USB_SECURE_RELEASE);
 	}
-#endif	
 end:
 	return;
 }
@@ -3602,9 +3576,8 @@ int set_otg_notify(struct otg_notify *n)
 		goto err6;
 	}
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-	u_notify->udev.secure_lock = USB_NOTIFY_INIT_STATE;
-#endif
+	if (usb_sl_enabled())
+		u_notify->udev.secure_lock = USB_NOTIFY_INIT_STATE;
 	u_notify->typec_status.usb_comm_capable = USB_NOTIFY_INIT_COM_CAPABLE;
 
 	if (gpio_is_valid(n->vbus_detect_gpio) ||
@@ -3621,14 +3594,11 @@ int set_otg_notify(struct otg_notify *n)
 		wakeup_source_add(&u_notify->ws);
 	}
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
 	init_waitqueue_head(&u_notify->init_delay);
-#endif
 
 	if (n->booting_delay_sec) {
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-		u_notify->lock_state = USB_NOTIFY_INIT_STATE;
-#endif
+		if (usb_sl_enabled())
+			u_notify->lock_state = USB_NOTIFY_INIT_STATE;
 		INIT_DELAYED_WORK(&u_notify->b_delay.booting_work,
 				  reserve_state_check);
 		schedule_delayed_work(&u_notify->b_delay.booting_work,

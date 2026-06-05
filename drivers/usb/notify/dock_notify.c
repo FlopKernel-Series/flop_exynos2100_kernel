@@ -20,6 +20,7 @@
 #include <linux/version.h>
 #include <linux/usb_notify.h>
 #include <linux/usb/hcd.h>
+#include "usb_notify_sysfs.h"
 
 #define SMARTDOCK_INDEX	1
 #define MMDOCK_INDEX	2
@@ -80,7 +81,6 @@ static struct dev_table unsupport_device_table[] = {
 	{}
 };
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
 static struct roothub_vid_pid root_hub_reserved[ROOTHUB_MAX_INDEX];
 
 static void save_roothub_vid_pid(struct usb_device *dev)
@@ -119,7 +119,7 @@ static bool match_roothub_vid_pid(struct usb_device *dev)
 
 	return ret;
 }
-#endif
+
 
 static int check_essential_device(struct usb_device *dev, int index)
 {
@@ -319,7 +319,6 @@ done:
 	return;
 }
 
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
 static void connect_usb_driver(struct usb_device *dev)
 {
 	struct usb_interface *intf = NULL;
@@ -362,14 +361,11 @@ static void intf_authorized_clear(struct usb_device *dev)
 	if (hcd)
 		clear_bit(HCD_FLAG_INTF_AUTHORIZED, &hcd->flags);
 }
-#endif
 
 static int call_device_notify(struct usb_device *dev, int connect)
 {
 	struct otg_notify *o_notify = get_otg_notify();
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
 	int ret = 0;
-#endif
 
 	if (dev->bus->root_hub != dev) {
 		if (connect) {
@@ -396,44 +392,42 @@ static int call_device_notify(struct usb_device *dev, int connect)
 				disconnect_usb_driver(dev);
 				usb_set_device_state(dev, USB_STATE_NOTATTACHED);
 			}
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-			ret = usb_check_allowlist_for_lockscreen_enabled_id(dev);
-			if (ret == USB_NOTIFY_NOLIST) {
-				pr_info("This device will be disabled.\n");
-				disconnect_usb_driver(dev);
-				usb_set_device_state(dev, USB_STATE_NOTATTACHED);
-				dev->authorized = 0;
-			} else if (ret == USB_NOTIFY_ALLOWLOST) {
-				if (!match_roothub_vid_pid(dev)) {
-					connect_usb_driver(dev);
-				} else {
-					pr_info("error. this device has same vid,pid with root hub.\n");
+			if (usb_sl_enabled()) {
+				ret = usb_check_allowlist_for_lockscreen_enabled_id(dev);
+				if (ret == USB_NOTIFY_NOLIST) {
+					pr_info("This device will be disabled.\n");
 					disconnect_usb_driver(dev);
 					usb_set_device_state(dev, USB_STATE_NOTATTACHED);
+					dev->authorized = 0;
+				} else if (ret == USB_NOTIFY_ALLOWLOST) {
+					if (!match_roothub_vid_pid(dev)) {
+						connect_usb_driver(dev);
+					} else {
+						pr_info("error. this device has same vid,pid with root hub.\n");
+						disconnect_usb_driver(dev);
+						usb_set_device_state(dev, USB_STATE_NOTATTACHED);
+					}
+				} else if (ret == USB_NOTIFY_NORESTRICT) {
+					connect_usb_driver(dev);
 				}
-			} else if (ret == USB_NOTIFY_NORESTRICT) {
-				connect_usb_driver(dev);
 			}
-#endif
 		} else {
 			send_otg_notify(o_notify,
 				NOTIFY_EVENT_DEVICE_CONNECT, 0);
 			store_usblog_notify(NOTIFY_PORT_DISCONNECT,
 				(void *)&dev->descriptor.idVendor,
 				(void *)&dev->descriptor.idProduct);
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-			if (!dev->authorized)
+			if (usb_sl_enabled() && !dev->authorized)
 				disconnect_unauthorized_device(dev);
-#endif
 		}
 	} else {
 		if (connect) {
 			pr_info("%s root hub\n", __func__);
-#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
-			if (check_usb_restrict_lock_state(o_notify))
-				intf_authorized_clear(dev);
-			save_roothub_vid_pid(dev);
-#endif
+			if (usb_sl_enabled()) {
+				if (check_usb_restrict_lock_state(o_notify))
+					intf_authorized_clear(dev);
+				save_roothub_vid_pid(dev);
+			}
 		}
 	}
 

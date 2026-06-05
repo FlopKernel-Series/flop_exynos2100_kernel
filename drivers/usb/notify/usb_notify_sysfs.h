@@ -13,6 +13,17 @@
 #ifndef __LINUX_USB_NOTIFY_SYSFS_H__
 #define __LINUX_USB_NOTIFY_SYSFS_H__
 
+#include <linux/workarounds.h>
+
+static inline bool usb_sl_enabled(void)
+{
+#ifdef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
+	return false;
+#else
+	return !is_aosp_mode();
+#endif
+}
+
 #define MAX_DISABLE_STR_LEN 32
 #define MAX_WHITELIST_STR_LEN 256
 #define MAX_USB_AUDIO_CARDS 15
