@@ -1292,6 +1292,12 @@ bypass_orig_flow:
 	mnt->mnt.mnt_flags = old->mnt.mnt_flags;
 	mnt->mnt.mnt_flags &= ~(MNT_WRITE_HOLD|MNT_MARKED|MNT_INTERNAL);
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	/*
+	 * Clear the KSU unshared flag to prevent IDA ID leakage
+	 * in child mount namespaces / Zygote forks.
+	 */
+	mnt->mnt.mnt_flags &= ~VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT;
+
 	if (unlikely(is_mnt_ksu_unshared))
 		mnt->mnt.mnt_flags |= VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT;
 
