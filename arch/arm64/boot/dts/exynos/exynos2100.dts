@@ -18706,6 +18706,11 @@
 		interrupts = <0x01 0x07 0xff04>;
 	};
 
+	spe-pmu {
+		compatible = "arm,statistical-profiling-extension-v1";
+		interrupts = <0x01 0x05 0x04>;
+	};
+
 	chipid@10000000 {
 		compatible = "samsung,exynos2100-chipid";
 		reg = <0x00 0x10000000 0x100>;

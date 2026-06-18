@@ -5980,7 +5980,7 @@ CONFIG_PHY_EXYNOS_MIPI_DSIM=m
 # CONFIG_ARM_CCN is not set
 CONFIG_ARM_PMU=y
 # CONFIG_ARM_DSU_PMU is not set
-# CONFIG_ARM_SPE_PMU is not set
+CONFIG_ARM_SPE_PMU=y
 # end of Performance monitor support
 
 # CONFIG_RAS is not set
