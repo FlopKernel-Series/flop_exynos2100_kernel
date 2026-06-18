@@ -383,11 +383,15 @@ static inline bool tmc_etr_has_non_secure_access(struct tmc_drvdata *drvdata)
 static int tmc_etr_setup_caps(struct device *parent, u32 devid, void *dev_caps)
 {
 	int rc;
-	u32 dma_mask = 0;
+	u32 auth, dma_mask = 0;
 	struct tmc_drvdata *drvdata = dev_get_drvdata(parent);
 
-	if (!tmc_etr_has_non_secure_access(drvdata))
+	auth = readl_relaxed(drvdata->base + TMC_AUTHSTATUS);
+	if ((auth & TMC_AUTH_NSID_MASK) != 0x3) {
+		dev_err(parent, "TMC-ETR non-secure access denied: devid=0x%x authstatus=0x%x nsid=0x%x\n",
+			devid, auth, auth & TMC_AUTH_NSID_MASK);
 		return -EACCES;
+	}
 
 	/* Set the unadvertised capabilities */
 	tmc_etr_init_caps(drvdata, (u32)(unsigned long)dev_caps);
@@ -487,6 +491,9 @@ static int tmc_probe(struct amba_device *adev, const struct amba_id *id)
 	/* This device is not associated with a session */
 	drvdata->pid = -1;
 
+	dev_err(dev, "TMC probe: devid=0x%x config_type=%u memwidth=%u\n",
+		devid, drvdata->config_type, drvdata->memwidth);
+
 	if (drvdata->config_type == TMC_CONFIG_TYPE_ETR) {
 		drvdata->size = tmc_etr_get_default_buffer_size(dev);
 		drvdata->hwacg = tmc_etr_set_hwacg(dev);
@@ -510,8 +517,11 @@ static int tmc_probe(struct amba_device *adev, const struct amba_id *id)
 		desc.ops = &tmc_etr_cs_ops;
 		ret = tmc_etr_setup_caps(dev, devid,
 					 coresight_get_uci_data(id));
-		if (ret)
+		if (ret) {
+			dev_err(dev, "TMC-ETR setup failed: ret=%d devid=0x%x authstatus=0x%x\n",
+				ret, devid, readl_relaxed(drvdata->base + TMC_AUTHSTATUS));
 			goto out;
+		}
 		idr_init(&drvdata->idr);
 		mutex_init(&drvdata->idr_mutex);
 		dev_list = &etr_devs;
