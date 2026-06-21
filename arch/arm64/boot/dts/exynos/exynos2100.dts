@@ -19045,10 +19045,6 @@
 		phandle = <0x170>;
 	};
 
-	pasr {
-		compatible = "samsung,exynos-pasr";
-	};
-
 	scaler@18960000 {
 		compatible = "samsung,exynos5-scaler";
 		reg = <0x00 0x18960000 0x3000>;
