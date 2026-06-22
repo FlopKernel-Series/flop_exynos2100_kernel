@@ -642,7 +642,10 @@ static struct hall_ic_pdata *hall_ic_parsing_dt(struct device *dev)
 		}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
 		if (hall->event == 0x15) { /* SW_FLIP */
-			hall->event = SW_LID;
+			if is_aosp_mode()
+				hall->event = SW_LID;
+			else
+				hall->event = 0x10;
 		} else if (hall->event == 0x1b) {	/* SW_CERTIFYHALL */
 			hall->event = 0x0b;
 		} else if (hall->event == 0x1e) {	/* SW_WACOM_HALL */
