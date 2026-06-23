@@ -11,6 +11,7 @@
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
 #include <linux/usb/exynos_usb_audio.h>
 #endif
+#include <linux/workarounds.h>
 
 #include "core.h"
 
@@ -148,19 +149,21 @@ int dwc3_host_init(struct dwc3 *dwc)
 	}
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	/* In data buf alloc */
-	xhci_data.in_data_addr = dma_alloc_coherent(dwc->dev,
-			(PAGE_SIZE * 256), &dma, GFP_KERNEL);
-	xhci_data.in_data_dma = dma;
-	dev_info(dwc->dev, "// IN Data address = 0x%llx (DMA), %p (virt)",
-		(unsigned long long)xhci_data.in_data_dma, xhci_data.in_data_addr);
+	if (!is_aosp_mode()) {
+		/* In data buf alloc */
+		xhci_data.in_data_addr = dma_alloc_coherent(dwc->dev,
+				(PAGE_SIZE * 256), &dma, GFP_KERNEL);
+		xhci_data.in_data_dma = dma;
+		dev_info(dwc->dev, "// IN Data address = 0x%llx (DMA), %p (virt)",
+			(unsigned long long)xhci_data.in_data_dma, xhci_data.in_data_addr);
 
-	/* Out data buf alloc */
-	xhci_data.out_data_addr = dma_alloc_coherent(dwc->dev,
-			(PAGE_SIZE * 256), &dma, GFP_KERNEL);
-	xhci_data.out_data_dma = dma;
-	dev_info(dwc->dev, "// OUT Data address = 0x%llx (DMA), %p (virt)",
-		(unsigned long long)xhci_data.out_data_dma, xhci_data.out_data_addr);
+		/* Out data buf alloc */
+		xhci_data.out_data_addr = dma_alloc_coherent(dwc->dev,
+				(PAGE_SIZE * 256), &dma, GFP_KERNEL);
+		xhci_data.out_data_dma = dma;
+		dev_info(dwc->dev, "// OUT Data address = 0x%llx (DMA), %p (virt)",
+			(unsigned long long)xhci_data.out_data_dma, xhci_data.out_data_addr);
+	}
 #endif
 
 #if 0 // block that host enable is called in booting time

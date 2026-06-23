@@ -486,34 +486,36 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	ret = of_property_read_u32(parent->of_node,
-				"xhci_use_uram_for_audio", &value);
-	if (ret == 0 && value == 1) {
-		/*
-		 * Check URAM address. At least the following address should
-		 * be defined.(Otherwise, URAM feature will be disabled.)
-		 */
-		if (EXYNOS_URAM_DCBAA_ADDR == 0x0 ||
-				EXYNOS_URAM_ABOX_ERST_SEG_ADDR == 0x0 ||
-				EXYNOS_URAM_ABOX_EVT_RING_ADDR == 0x0 ||
-				EXYNOS_URAM_DEVICE_CTX_ADDR == 0x0 ||
-				EXYNOS_URAM_ISOC_OUT_RING_ADDR == 0x0) {
-			dev_info(&pdev->dev,
-				"Some URAM addresses are not defiend!\n");
-			goto skip_uram;
-		}
+	if (!is_aosp_mode()) {
+		ret = of_property_read_u32(parent->of_node,
+					"xhci_use_uram_for_audio", &value);
+		if (ret == 0 && value == 1) {
+			/*
+			* Check URAM address. At least the following address should
+			* be defined.(Otherwise, URAM feature will be disabled.)
+			*/
+			if (EXYNOS_URAM_DCBAA_ADDR == 0x0 ||
+					EXYNOS_URAM_ABOX_ERST_SEG_ADDR == 0x0 ||
+					EXYNOS_URAM_ABOX_EVT_RING_ADDR == 0x0 ||
+					EXYNOS_URAM_DEVICE_CTX_ADDR == 0x0 ||
+					EXYNOS_URAM_ISOC_OUT_RING_ADDR == 0x0) {
+				dev_info(&pdev->dev,
+					"Some URAM addresses are not defiend!\n");
+				goto skip_uram;
+			}
 
-		dev_info(&pdev->dev, "Support URAM for USB audio.\n");
-		xhci->quirks |= XHCI_USE_URAM_FOR_EXYNOS_AUDIO;
-		/* Initialization Default Value */
-		xhci->exynos_uram_ctx_alloc = false;
-		xhci->exynos_uram_isoc_out_alloc = false;
-		xhci->exynos_uram_isoc_in_alloc = false;
-		xhci->usb_audio_ctx_addr = NULL;
-		xhci->usb_audio_isoc_out_addr = NULL;
-		xhci->usb_audio_isoc_in_addr = NULL;
-	} else {
-		dev_err(&pdev->dev, "URAM is not used.\n");
+			dev_info(&pdev->dev, "Support URAM for USB audio.\n");
+			xhci->quirks |= XHCI_USE_URAM_FOR_EXYNOS_AUDIO;
+			/* Initialization Default Value */
+			xhci->exynos_uram_ctx_alloc = false;
+			xhci->exynos_uram_isoc_out_alloc = false;
+			xhci->exynos_uram_isoc_in_alloc = false;
+			xhci->usb_audio_ctx_addr = NULL;
+			xhci->usb_audio_isoc_out_addr = NULL;
+			xhci->usb_audio_isoc_in_addr = NULL;
+		} else {
+			dev_err(&pdev->dev, "URAM is not used.\n");
+		}
 	}
 skip_uram:
 #endif

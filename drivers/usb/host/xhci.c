@@ -18,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/dmi.h>
 #include <linux/dma-mapping.h>
+#include <linux/workarounds.h>
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
 #include <linux/usb/exynos_usb_audio.h>
@@ -737,9 +738,11 @@ int xhci_run(struct usb_hcd *hcd)
 			"ERST deq = 64'h%0lx", (unsigned long) temp_64);
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	temp_64 = xhci_read_64(xhci, &xhci->ir_set_audio->erst_dequeue);
-	temp_64 &= ~ERST_PTR_MASK;
-	xhci_info(xhci,	"ERST2 deq = 64'h%0lx", (unsigned long) temp_64);
+	if (!is_aosp_mode()) {
+		temp_64 = xhci_read_64(xhci, &xhci->ir_set_audio->erst_dequeue);
+		temp_64 &= ~ERST_PTR_MASK;
+		xhci_info(xhci,	"ERST2 deq = 64'h%0lx", (unsigned long) temp_64);
+	}
 #endif
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 			"// Set the interrupt modulation register");
@@ -749,15 +752,17 @@ int xhci_run(struct usb_hcd *hcd)
 	writel(temp, &xhci->ir_set->irq_control);
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	xhci_info(xhci, "// [USB Audio] Set the interrupt modulation register");
-	temp = readl(&xhci->ir_set_audio->irq_control);
-	temp &= ~ER_IRQ_INTERVAL_MASK;
-	/*
-	 * the increment interval is 8 times as much as that defined
-	 * in xHCI spec on MTK's controller
-	 */
-	temp |= (u32) ((xhci->quirks & XHCI_MTK_HOST) ? 20 : 160);
-	writel(temp, &xhci->ir_set_audio->irq_control);
+	if (!is_aosp_mode()) {
+		xhci_info(xhci, "// [USB Audio] Set the interrupt modulation register");
+		temp = readl(&xhci->ir_set_audio->irq_control);
+		temp &= ~ER_IRQ_INTERVAL_MASK;
+		/*
+		 * the increment interval is 8 times as much as that defined
+		 * in xHCI spec on MTK's controller
+		 */
+		temp |= (u32) ((xhci->quirks & XHCI_MTK_HOST) ? 20 : 160);
+		writel(temp, &xhci->ir_set_audio->irq_control);
+	}
 #endif
 	/* Set the HCD state before we enable the irqs */
 	temp = readl(&xhci->op_regs->command);
@@ -773,11 +778,13 @@ int xhci_run(struct usb_hcd *hcd)
 	writel(ER_IRQ_ENABLE(temp), &xhci->ir_set->irq_pending);
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	temp = readl(&xhci->ir_set_audio->irq_pending);
-	xhci_info(xhci, "// [USB Audio] Enabling event ring interrupter %p by writing 0x%x to irq_pending",
-			xhci->ir_set_audio, (unsigned int) ER_IRQ_ENABLE(temp));
-	writel(ER_IRQ_ENABLE(temp), &xhci->ir_set_audio->irq_pending);
-	g_hwinfo = devm_kzalloc(hcd->self.sysdev, sizeof(struct hcd_hw_info), GFP_KERNEL);
+	if (!is_aosp_mode()) {
+		temp = readl(&xhci->ir_set_audio->irq_pending);
+		xhci_info(xhci, "// [USB Audio] Enabling event ring interrupter %p by writing 0x%x to irq_pending",
+				xhci->ir_set_audio, (unsigned int) ER_IRQ_ENABLE(temp));
+		writel(ER_IRQ_ENABLE(temp), &xhci->ir_set_audio->irq_pending);
+		g_hwinfo = devm_kzalloc(hcd->self.sysdev, sizeof(struct hcd_hw_info), GFP_KERNEL);
+	}
 #endif
 	if (xhci->quirks & XHCI_NEC_HOST) {
 		struct xhci_command *command;
@@ -3050,8 +3057,9 @@ int xhci_check_bandwidth(struct usb_hcd *hcd, struct usb_device *udev)
 		goto command_cleanup;
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	xhci_set_deq(xhci, virt_dev->out_ctx,
-		LAST_CTX_TO_EP_NUM(le32_to_cpu(slot_ctx->dev_info)), udev);
+	if (!is_aosp_mode())
+		xhci_set_deq(xhci, virt_dev->out_ctx,
+			LAST_CTX_TO_EP_NUM(le32_to_cpu(slot_ctx->dev_info)), udev);
 #endif
 
 	/* Free any rings that were dropped, but not changed. */
@@ -4025,7 +4033,8 @@ static void xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
 		return;
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	xhci_free_hw_info(hcd, udev);
+	if (!is_aosp_mode())
+		xhci_free_hw_info(hcd, udev);
 #endif
 
 	virt_dev = xhci->devs[udev->slot_id];
@@ -4469,7 +4478,8 @@ static int xhci_setup_device(struct usb_hcd *hcd, struct usb_device *udev,
 		       "Internal device address = %d",
 		       le32_to_cpu(slot_ctx->dev_state) & DEV_ADDR_MASK);
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	xhci_store_hw_info(hcd, udev);
+	if (!is_aosp_mode())
+		xhci_store_hw_info(hcd, udev);
 #endif
 out:
 	mutex_unlock(&xhci->mutex);
