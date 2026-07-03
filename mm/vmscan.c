@@ -3663,6 +3663,9 @@ static void reset_batch_size(struct lruvec *lruvec, struct lru_gen_mm_walk *walk
 		if (lru_gen_is_active(lruvec, gen))
 			lru += LRU_ACTIVE;
 		__update_lru_size(lruvec, lru, zone, delta);
+#ifdef CONFIG_MEMCG
+		mem_cgroup_update_lru_size(lruvec, lru, delta);
+#endif
 	}
 }
 
@@ -4296,6 +4299,10 @@ restart:
 
 			__update_lru_size(lruvec, lru, zone, delta);
 			__update_lru_size(lruvec, lru + LRU_ACTIVE, zone, -delta);
+#ifdef CONFIG_MEMCG
+			mem_cgroup_update_lru_size(lruvec, lru, delta);
+			mem_cgroup_update_lru_size(lruvec, lru + LRU_ACTIVE, -delta);
+#endif
 		}
 	}
 
