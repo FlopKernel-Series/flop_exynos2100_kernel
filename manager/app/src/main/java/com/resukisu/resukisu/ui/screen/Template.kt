@@ -23,8 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ImportExport
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -32,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.resukisu.resukisu.R
@@ -87,6 +90,7 @@ import kotlinx.coroutines.launch
 fun AppProfileTemplateScreen() {
     val pullRefreshState = rememberPullToRefreshState()
     val viewModel = viewModel<TemplateViewModel>()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val scrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
@@ -95,7 +99,7 @@ fun AppProfileTemplateScreen() {
     LaunchedEffect(Unit) {
         scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
 
-        if (viewModel.templateList.isEmpty()) {
+        if (uiState.templateList.isEmpty()) {
             viewModel.fetchTemplates()
         }
 
@@ -186,14 +190,14 @@ fun AppProfileTemplateScreen() {
                     scrollBehavior.nestedScrollConnection
                 )
                 .blurSource(),
-            isRefreshing = viewModel.isRefreshing,
+            isRefreshing = uiState.isRefreshing,
             onRefresh = {
                 scope.launch { viewModel.fetchTemplates() }
             },
             indicator = {
                 PullToRefreshDefaults.LoadingIndicator(
                     state = pullRefreshState,
-                    isRefreshing = viewModel.isRefreshing,
+                    isRefreshing = uiState.isRefreshing,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = innerPadding.calculateTopPadding()),
@@ -213,7 +217,7 @@ fun AppProfileTemplateScreen() {
                 }
 
                 lazySegmentColumn(
-                    items = viewModel.templateList,
+                    items = uiState.templateList,
                     key = { _, app -> app.id }) { _, app ->
                     TemplateItem(app)
                 }
@@ -336,21 +340,35 @@ private fun TopBar(
                     contentDescription = stringResource(id = R.string.app_profile_import_export)
                 )
 
-                DropdownMenu(expanded = showDropdown, onDismissRequest = {
+                DropdownMenuPopup(expanded = showDropdown, onDismissRequest = {
                     showDropdown = false
                 }) {
-                    DropdownMenuItem(text = {
-                        Text(stringResource(id = R.string.app_profile_import_from_clipboard))
-                    }, onClick = {
-                        onImport()
-                        showDropdown = false
-                    })
-                    DropdownMenuItem(text = {
-                        Text(stringResource(id = R.string.app_profile_export_to_clipboard))
-                    }, onClick = {
-                        onExport()
-                        showDropdown = false
-                    })
+                    DropdownMenuGroup(
+                        shapes = MenuDefaults.groupShapes()
+                    ) {
+                        DropdownMenuItem(
+                            selected = false,
+                            text = {
+                                Text(stringResource(id = R.string.app_profile_import_from_clipboard))
+                            },
+                            onClick = {
+                                onImport()
+                                showDropdown = false
+                            },
+                            shapes = MenuDefaults.itemShape(index = 0, count = 2)
+                        )
+                        DropdownMenuItem(
+                            selected = false,
+                            text = {
+                                Text(stringResource(id = R.string.app_profile_export_to_clipboard))
+                            },
+                            onClick = {
+                                onExport()
+                                showDropdown = false
+                            },
+                            shapes = MenuDefaults.itemShape(index = 1, count = 2)
+                        )
+                    }
                 }
             }
         },
