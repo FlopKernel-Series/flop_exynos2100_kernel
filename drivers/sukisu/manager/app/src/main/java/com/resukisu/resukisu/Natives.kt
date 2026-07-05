@@ -2,7 +2,9 @@ package com.resukisu.resukisu
 
 import android.os.Parcelable
 import androidx.annotation.Keep
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
+import com.resukisu.resukisu.Natives.Profile.RootProfileFlag
 import kotlinx.parcelize.Parcelize
 
 /**
@@ -23,7 +25,11 @@ object Natives {
     // 34709: breaking: unify uapi
     // 34713: change kernel_su_domain to u:r:ksu:s0
     // 34795: feature id 3 to adb root
-    const val MINIMAL_SUPPORTED_KERNEL = 34795
+    // 34944: Drop KPM support
+    // 34966(upstream 32513): add uapi version
+    // 34967(upstream 32514): allowlist v4 root profile flags
+    // 35002: add sync set dynamic-manager api
+    const val MINIMAL_SUPPORTED_KERNEL = 35002
 
     const val KERNEL_SU_DOMAIN = "u:r:ksu:s0"
 
@@ -135,7 +141,6 @@ object Natives {
     external fun isSelinuxHideEnabled(): Boolean
     external fun setSelinuxHideEnabled(enabled: Boolean): Int
 
-    external fun isKPMEnabled(): Boolean
     external fun getHookType(): String
 
     /**
@@ -189,8 +194,18 @@ object Natives {
         }
     }
 
+    val kernelUAPIVersion: Int
+        external get
+
+    val managerUAPIVersion: Int
+        external get
+
+    fun checkUAPIMismatch(): Boolean {
+        return kernelUAPIVersion != managerUAPIVersion
+    }
+
     fun requireNewKernel(): Boolean {
-        return version != -1 && version < MINIMAL_SUPPORTED_KERNEL
+        return (version != -1 && version < MINIMAL_SUPPORTED_KERNEL) || checkUAPIMismatch()
     }
 
     @Immutable
@@ -250,7 +265,17 @@ object Natives {
         val nonRootUseDefault: Boolean = true,
         val umountModules: Boolean = true,
         var rules: String = "", // this field is save in ksud!!
+
+        val flags: Long = FLAG_KSU_NO_NEW_PRIVS,
     ) : Parcelable {
+        @Keep
+        enum class RootProfileFlag(val display: String, @param:StringRes val desc: Int) {
+            NO_NEW_PRIVS(
+                "NO_NEW_PRIVS",
+                R.string.profile_flags_desc_no_new_privs
+            )
+        }
+
         enum class Namespace {
             INHERITED,
             GLOBAL,
@@ -259,4 +284,15 @@ object Natives {
 
         constructor() : this("")
     }
+
+    const val FLAG_KSU_NO_NEW_PRIVS = 1L
 }
+
+fun List<RootProfileFlag>.toRawFlags(): Long =
+    fold(0L) { acc, flag -> acc.or(1L.shl(flag.ordinal)) }
+
+fun List<RootProfileFlag>.toOrdinalList(): List<Int> =
+    map { it.ordinal }
+
+fun Long.toRootProfileFlags(): List<RootProfileFlag> =
+    RootProfileFlag.entries.filter { 1L.shl(it.ordinal).and(this) != 0L }.toList()

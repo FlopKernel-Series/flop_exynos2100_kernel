@@ -38,7 +38,7 @@
             android:launchMode="standard"
             android:documentLaunchMode="intoExisting"
             android:autoRemoveFromRecents="true"
-            android:theme="@style/Theme.KernelSU">
+            android:theme="@style/Theme.KernelSU.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -107,6 +107,11 @@
             android:theme="@style/Theme.KernelSU.WebUI"
             android:configChanges="density|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|locale|layoutDirection|fontScale|keyboard|keyboardHidden"
             />
+
+        <activity
+            android:name=".ui.screen.themeSettings.crop.BackgroundCropActivity"
+            android:exported="false"
+            android:theme="@style/Theme.KernelSU" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -1,16 +1,15 @@
+use std::path::PathBuf;
+
 use android_logger::Config;
 use anyhow::{Context, Ok, Result};
 use clap::Parser;
-use std::path::PathBuf;
-
 use log::{LevelFilter, error, info};
 
-use crate::android::susfs;
 use crate::{
     android::{
         debug, dynamic_manager, feature, init_event, ksucalls,
-        module::{self, module_config},
-        profile, sepolicy, su, sulog, umount_config, utils,
+        module::{self, module_config, regenerate_preinit_rc},
+        profile, sepolicy, su, sulog, susfs, uapi, umount_config, utils,
     },
     apk_sign, assets,
     boot_patch::{BootPatchArgs, BootRestoreArgs},
@@ -19,7 +18,7 @@ use crate::{
 
 /// KernelSU userspace cli
 #[derive(Parser, Debug)]
-#[command(author, version = defs::VERSION_NAME, about, long_about = None)]
+#[command(author, version = defs::FULL_VERSION, about, long_about = None)]
 struct Args {
     #[command(subcommand)]
     command: Commands,
@@ -138,13 +137,6 @@ enum Commands {
         command: BootInfo,
     },
 
-    /// KPM module manager
-    #[cfg(all(target_arch = "aarch64", target_os = "android"))]
-    Kpm {
-        #[command(subcommand)]
-        command: kpm_cmd::Kpm,
-    },
-
     /// For developers
     Debug {
         #[command(subcommand)]
@@ -158,6 +150,12 @@ enum Commands {
 
     /// Resetprop - Magisk-compatible system property tool
     Resetprop(crate::android::resetprop::Args),
+
+    /// Manage initrc injection
+    Initrc {
+        #[command(subcommand)]
+        command: Initrc,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -250,6 +248,9 @@ enum Debug {
 
     /// Launch sulogd daemon manually
     Sulogd,
+
+    /// Get kernel info
+    Info,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -492,7 +493,10 @@ enum Kernel {
 #[derive(clap::Subcommand, Debug)]
 enum DynamicManagerOp {
     /// Get the signature of the current dynamic manager (size+hash)
-    Get,
+    Get {
+        #[arg(long)]
+        internal: Option<bool>,
+    },
     /// Set the signature of the dynamic manager
     Set {
         /// the signature size
@@ -531,31 +535,6 @@ enum UmountOp {
     List,
 }
 
-#[cfg(all(target_arch = "aarch64", target_os = "android"))]
-mod kpm_cmd {
-    use std::path::PathBuf;
-
-    use clap::Subcommand;
-
-    #[derive(Subcommand, Debug)]
-    pub enum Kpm {
-        /// Load a KPM module: load <path> [args]
-        Load { path: PathBuf, args: Option<String> },
-        /// Unload a KPM module: unload <name>
-        Unload { name: String },
-        /// Get number of loaded modules
-        Num,
-        /// List loaded KPM modules
-        List,
-        /// Get info of a KPM module: info <name>
-        Info { name: String },
-        /// Send control command to a KPM module: control <name> <args>
-        Control { name: String, args: String },
-        /// Print KPM Loader version
-        Version,
-    }
-}
-
 #[derive(clap::Subcommand, Debug)]
 enum Susfs {
     /// Get SUSFS Status
@@ -564,6 +543,12 @@ enum Susfs {
     Version,
     /// Get SUSFS enable Features
     Features,
+}
+
+#[derive(clap::Subcommand, Debug)]
+enum Initrc {
+    /// Regenerate preinit rc file
+    Refresh,
 }
 
 pub fn run() -> Result<()> {
@@ -730,17 +715,16 @@ pub fn run() -> Result<()> {
             package_name,
         } => {
             if let Some(port) = magica {
-                return crate::android::magica::run(port, &package_name, allow_shell).map_err(
-                    |e| {
+                return crate::android::late_load::magica::run(port, &package_name, allow_shell)
+                    .map_err(|e| {
                         error!("Error running magica: {e}");
                         e
-                    },
-                );
+                    });
             }
             let result = crate::android::late_load::run(&package_name, kmi, allow_shell);
             if post_magica {
                 info!("Restoring adb properties (post-magica cleanup)...");
-                if let Err(e) = crate::android::magica::disable_adb_root() {
+                if let Err(e) = crate::android::late_load::magica::disable_adb_root() {
                     error!("disable adb root failed: {e}");
                 }
             }
@@ -806,6 +790,22 @@ pub fn run() -> Result<()> {
                 MarkCommand::Refresh => debug::mark_refresh(),
             },
             Debug::Sulogd => sulog::ensure_sulogd_running(),
+            Debug::Info => {
+                let info = ksucalls::get_info();
+                println!("version: {}", info.version);
+                println!("full_version: {}", ksucalls::get_full_version());
+                println!("flags: 0x{:x}", info.flags);
+                println!("uapi_version: {}", info.uapi_version);
+                println!("features: 0x{:x}", info.features);
+                println!("lkm: {}", ksucalls::is_lkm());
+                println!("late_load: {}", ksucalls::is_late_load());
+                println!("runtime_mode: {}", ksucalls::runtime_mode());
+                println!(
+                    "pr_build: {}",
+                    (info.flags & uapi::KSU_GET_INFO_FLAG_PR_BUILD) != 0
+                );
+                Ok(())
+            }
         },
 
         Commands::BootPatch(boot_patch) => crate::boot_patch::patch(boot_patch),
@@ -866,9 +866,18 @@ pub fn run() -> Result<()> {
             },
             Kernel::DynamicManager { command } => match command {
                 DynamicManagerOp::Set { size, hash } => dynamic_manager::set(size, hash),
-                DynamicManagerOp::Get => {
+                DynamicManagerOp::Get { internal } => {
                     let (size, hash) = ksucalls::dynamic_manager_get()?;
-                    println!("size: {}, hash: {}", size, String::from_utf8_lossy(&hash));
+                    if internal.is_some_and(|s| s) {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(
+                                &serde_json::json!({"size":size,"hash":String::from_utf8_lossy(&hash)})
+                            )?
+                        );
+                    } else {
+                        println!("size: {}, hash: {}", size, String::from_utf8_lossy(&hash));
+                    }
                     Ok(())
                 }
                 DynamicManagerOp::SetApk { apk } => {
@@ -888,27 +897,9 @@ pub fn run() -> Result<()> {
                 Ok(())
             }
         },
-        #[cfg(all(target_arch = "aarch64", target_os = "android"))]
-        Commands::Kpm { command } => {
-            use kpm_cmd::Kpm;
-
-            use crate::android::kpm;
-            match command {
-                Kpm::Load { path, args } => {
-                    kpm::load_module(path.to_str().unwrap(), args.as_deref())
-                }
-                Kpm::Unload { name } => kpm::unload_module(name),
-                Kpm::Num => kpm::num().map(|_| ()),
-                Kpm::List => kpm::list(),
-                Kpm::Info { name } => kpm::info(name),
-                Kpm::Control { name, args } => {
-                    let ret = kpm::control(name, args)?;
-                    println!("{ret}");
-                    Ok(())
-                }
-                Kpm::Version => kpm::version(),
-            }
-        }
+        Commands::Initrc { command } => match command {
+            Initrc::Refresh => regenerate_preinit_rc(),
+        },
     };
 
     if let Err(e) = &result {
