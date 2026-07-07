@@ -38,7 +38,13 @@ int kbase_backend_gpuprops_get(struct kbase_device *kbdev,
 	struct kbase_gpuprops_regdump registers = { 0 };
 
 	/* Fill regdump with the content of the relevant registers */
-	registers.gpu_id = kbase_reg_read(kbdev, GPU_CONTROL_REG(GPU_ID));
+	/* HACK: Spoof GPU as Mali-G68 (LBEX) r1p1
+	 * Real value: kbase_reg_read(kbdev, GPU_CONTROL_REG(GPU_ID))
+	 * Spoofed:    GPU_ID2_MAKE(9, 2, 0, 4, 1, 1, 0) = 0x92041010
+	 *             arch_major=9, arch_minor=2, arch_rev=0, product_major=4,
+	 *             version_major=1, version_minor=1, version_status=0
+	 */
+	registers.gpu_id = 0x92041010;
 
 	registers.l2_features = kbase_reg_read(kbdev,
 				GPU_CONTROL_REG(L2_FEATURES));
