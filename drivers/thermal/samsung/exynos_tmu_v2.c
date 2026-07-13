@@ -293,7 +293,12 @@ static int __exynos_tmu_sync_hw_trips(struct exynos_tmu_data *data,
 	for (i = ntrips - 1; i >= 0; i--) {
 		tz->ops->get_trip_type(tz, i, &type);
 
-		if (type == THERMAL_TRIP_PASSIVE)
+		/*
+		 * Skip passive trips for everything except G3D (id=3).
+		 * G3D needs the passive control-temp synced to ACPM so
+		 * the thermal offset actually shifts when throttling begins.
+		 */
+		if (type == THERMAL_TRIP_PASSIVE && data->id != 3)
 			continue;
 
 		if (i == override_trip)
@@ -2110,6 +2115,9 @@ static ssize_t exynos_tmu_trip_offset_proc_write(struct file *file,
 	ret = exynos_tmu_apply_trip_offset(data, offset);
 	if (ret)
 		return ret;
+
+	if (data->tzd)
+		thermal_zone_device_update(data->tzd, THERMAL_EVENT_UNSPECIFIED);
 
 	*ppos += count;
 	return count;
