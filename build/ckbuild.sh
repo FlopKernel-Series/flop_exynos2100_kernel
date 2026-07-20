@@ -82,7 +82,7 @@ DROIDSPACES=1
 # Other variables
 DO_KSU=0
 DO_SUKI=0
-DO_RKSU=0
+DO_XXKSU=0
 DO_CLEAN=0
 DO_MENUCONFIG=0
 IS_RELEASE=0
@@ -108,9 +108,9 @@ for arg in "$@"; do
         log_info "ReSukiSU argument passed, a ReSukiSU build will be made"
         DO_SUKI=1
     fi
-    if [[ "$arg" == *u* ]]; then
-        log_info "RKSU argument passed, an RKSU build will be made"
-        DO_RKSU=1
+    if [[ "$arg" == *x* ]]; then
+        log_info "XXKSU argument passed, an XXKSU build will be made"
+        DO_XXKSU=1
     fi
     if [[ "$arg" == *c* ]]; then
         log_info "clean argument passed, output directory will be wiped"
@@ -158,7 +158,7 @@ done
 KSU_COUNT=0
 [ "$DO_KSU" = "1" ] && KSU_COUNT=$((KSU_COUNT + 1))
 [ "$DO_SUKI" = "1" ] && KSU_COUNT=$((KSU_COUNT + 1))
-[ "$DO_RKSU" = "1" ] && KSU_COUNT=$((KSU_COUNT + 1))
+[ "$DO_XXKSU" = "1" ] && KSU_COUNT=$((KSU_COUNT + 1))
 
 if [ "$KSU_COUNT" -gt 1 ]; then
     log_err "Multiple SU variants are mutually exclusive. Please select only one."
@@ -179,9 +179,9 @@ if [ "$DO_KSU" == "1" ]; then
 elif [ "$DO_SUKI" == "1" ]; then
     FK_TYPE="ReSukiSU-SUSFS"
     FK_TYPE_SHORT="RESKS"
-elif [ "$DO_RKSU" == "1" ]; then
-    FK_TYPE="RKSU"
-    FK_TYPE_SHORT="RKS"
+elif [ "$DO_XXKSU" == "1" ]; then
+    FK_TYPE="XXKSU"
+    FK_TYPE_SHORT="XXK"
 else
     FK_TYPE="Vanilla"
     FK_TYPE_SHORT="V"
