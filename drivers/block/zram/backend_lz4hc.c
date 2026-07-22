@@ -19,7 +19,7 @@ static void lz4hc_release_params(struct zcomp_params *params)
 static int lz4hc_setup_params(struct zcomp_params *params)
 {
 	if (params->level == ZCOMP_PARAM_NO_LEVEL)
-		params->level = LZ4HC_DEFAULT_CLEVEL;
+		params->level = LZ4HC_CLEVEL_DEFAULT;
 
 	return 0;
 }

@@ -19,7 +19,7 @@ static void lz4_release_params(struct zcomp_params *params)
 static int lz4_setup_params(struct zcomp_params *params)
 {
 	if (params->level == ZCOMP_PARAM_NO_LEVEL)
-		params->level = LZ4_ACCELERATION_DEFAULT;
+		params->level = 1; /* LZ4_ACCELERATION_DEFAULT */
 
 	return 0;
 }
@@ -74,9 +74,8 @@ static int lz4_compress(struct zcomp_params *params, struct zcomp_ctx *ctx,
 	int ret;
 
 	if (!zctx->cstrm) {
-		ret = LZ4_compress_fast(req->src, req->dst, req->src_len,
-					req->dst_len, params->level,
-					zctx->mem);
+		ret = LZ4_compress_default(req->src, req->dst, req->src_len,
+					   req->dst_len, zctx->mem);
 	} else {
 		/* Cstrm needs to be reset */
 		ret = LZ4_loadDict(zctx->cstrm, params->dict, params->dict_sz);
