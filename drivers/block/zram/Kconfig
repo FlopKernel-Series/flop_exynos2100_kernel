@@ -45,11 +45,24 @@ config ZRAM_BACKEND_842
 	select 842_COMPRESS
 	select 842_DECOMPRESS
 
+config ZRAM_BACKEND_LZ4K
+	bool "lz4k compression support"
+	depends on ZRAM
+	select LZ4K_COMPRESS
+	select LZ4K_DECOMPRESS
+
+config ZRAM_BACKEND_LZ4KD
+	bool "lz4kd compression support"
+	depends on ZRAM
+	select LZ4KD_COMPRESS
+	select LZ4KD_DECOMPRESS
+
 config ZRAM_BACKEND_FORCE_LZO
 	depends on ZRAM
 	def_bool !ZRAM_BACKEND_LZ4 && !ZRAM_BACKEND_LZ4HC && \
 		!ZRAM_BACKEND_ZSTD && !ZRAM_BACKEND_DEFLATE && \
-		!ZRAM_BACKEND_842
+		!ZRAM_BACKEND_842 && !ZRAM_BACKEND_LZ4K && \
+		!ZRAM_BACKEND_LZ4KD
 
 config ZRAM_BACKEND_LZO
 	bool "lzo and lzo-rle compression support" if !ZRAM_BACKEND_FORCE_LZO
@@ -91,6 +104,14 @@ config ZRAM_DEF_COMP_842
 	bool "842"
 	depends on ZRAM_BACKEND_842
 
+config ZRAM_DEF_COMP_LZ4K
+	bool "lz4k"
+	depends on ZRAM_BACKEND_LZ4K
+
+config ZRAM_DEF_COMP_LZ4KD
+	bool "lz4kd"
+	depends on ZRAM_BACKEND_LZ4KD
+
 endchoice
 
 config ZRAM_DEF_COMP
@@ -103,6 +124,8 @@ config ZRAM_DEF_COMP
 	default "zstd" if ZRAM_DEF_COMP_ZSTD
 	default "deflate" if ZRAM_DEF_COMP_DEFLATE
 	default "842" if ZRAM_DEF_COMP_842
+	default "lz4k" if ZRAM_DEF_COMP_LZ4K
+	default "lz4kd" if ZRAM_DEF_COMP_LZ4KD
 	default "unset-value"
 
 config ZRAM_WRITEBACK

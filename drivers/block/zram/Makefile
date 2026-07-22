@@ -8,5 +8,7 @@ zram-$(CONFIG_ZRAM_BACKEND_LZ4HC)	+= backend_lz4hc.o
 zram-$(CONFIG_ZRAM_BACKEND_ZSTD)	+= backend_zstd.o
 zram-$(CONFIG_ZRAM_BACKEND_DEFLATE)	+= backend_deflate.o
 zram-$(CONFIG_ZRAM_BACKEND_842)		+= backend_842.o
+zram-$(CONFIG_ZRAM_BACKEND_LZ4K)	+= backend_lz4k.o
+zram-$(CONFIG_ZRAM_BACKEND_LZ4KD)	+= backend_lz4kd.o
 
 obj-$(CONFIG_ZRAM)	+=	zram.o
