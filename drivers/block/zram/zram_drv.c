@@ -1883,7 +1883,14 @@ int zram_get_entry_type(unsigned long index)
 	if (index >= (zram->disksize >> PAGE_SHIFT))
 		return ret;
 
-	zram_slot_lock(zram, index);
+	/*
+	 * This function may be called from atomic context (e.g. smaps_pte_range
+	 * holds page table spinlock), so must use trylock. If the slot lock
+	 * is contended, skip this entry rather than sleeping.
+	 */
+	if (!zram_slot_trylock(zram, index))
+		return ret;
+
 	if (zram_allocated(zram, index)) {
 		if (zram_test_flag(zram, index, ZRAM_WB))
 			ret = zram_get_handle(zram, index) & (PAGE_SIZE - 1) ?
