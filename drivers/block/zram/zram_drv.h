@@ -149,6 +149,7 @@ struct zram_wb_entry {
 struct zwbs {
 	struct zram_wb_entry entry[ZRAM_WB_THRESHOLD];
 	struct page *page;
+	void *local_copy;
 	u32 cnt;
 	u32 off;
 };

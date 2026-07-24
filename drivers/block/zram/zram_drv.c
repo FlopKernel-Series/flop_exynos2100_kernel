@@ -1172,6 +1172,7 @@ static void free_writeback_buffer(struct zram_writeback_buffer *buf)
 			break;
 		if (zwbs[i]->page)
 			__free_page(zwbs[i]->page);
+		vfree(zwbs[i]->local_copy);
 		kfree(zwbs[i]);
 	}
 	kfree(buf);
@@ -1194,6 +1195,9 @@ static struct zram_writeback_buffer *alloc_writeback_buffer(void)
 			goto out;
 		zwbs[i]->page = alloc_page(GFP_KERNEL);
 		if (!zwbs[i]->page)
+			goto out;
+		zwbs[i]->local_copy = vzalloc(PAGE_SIZE);
+		if (!zwbs[i]->local_copy)
 			goto out;
 	}
 	return buf;
@@ -1429,7 +1433,7 @@ static int zram_writeback_fill_page(struct zram *zram, u32 index,
 		zram_slot_unlock(zram, index);
 		return -ENOENT;
 	}
-	src = zs_obj_read_begin(zram->mem_pool, handle, NULL);
+	src = zs_obj_read_begin(zram->mem_pool, handle, zwbs[idx]->local_copy);
 	dst = kmap_atomic(page);
 	if (header_sz) {
 		zhdr = (struct zram_wb_header *)(dst + offset);
