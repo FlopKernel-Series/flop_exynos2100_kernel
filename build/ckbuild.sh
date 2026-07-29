@@ -10,8 +10,6 @@
 # * ExtremeXT: Logic for generating modules.load on the fly.
 #
 
-set -e
-
 source "$(pwd)/build/lib/log.sh"
 
 DEFAULT_DEFCONFIG="${DEFAULT_DEFCONFIG:-exynos2100-unified_defconfig}"
@@ -171,7 +169,7 @@ else
     BUILD_TYPE="Testing"
 fi
 
-LINUX_VER=$(make kernelversion 2>/dev/null)
+LINUX_VER=$(make kernelversion 2>/dev/null || echo "unknown")
 
 if [ "$DO_KSU" == "1" ]; then
     FK_TYPE="KSUNext-SUSFS"

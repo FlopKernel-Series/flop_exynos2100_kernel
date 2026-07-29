@@ -14,8 +14,8 @@ kernel_modules() {
     cp -a "$IN_VBOOT/." "$RAMDISK_DIR/"
     mkdir -p "$MODULES_DIR/0.0"
 
-    if ! find "$MOD_OUTDIR/lib/modules" -mindepth 1 -maxdepth 1 -type d | read; then
-        echo -e "\n$(log_err "Unknown error!")\n"
+    if [ ! -d "$MOD_OUTDIR/lib/modules" ] || [ -z "$(find "$MOD_OUTDIR/lib/modules" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)" ]; then
+        echo -e "\n$(log_err "No installed modules found in $MOD_OUTDIR/lib/modules!")\n"
         exit 1
     fi
 

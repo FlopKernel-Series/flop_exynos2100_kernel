@@ -42,10 +42,17 @@ build() {
     )
 
     run_make() {
+        local res=0
         if [ "$DO_QUIET" = "1" ]; then
-            make "$@" >> log.txt 2>&1
+            make "$@" >> log.txt 2>&1 || res=$?
         else
-            make "$@" 2>&1 | tee -a log.txt
+            set -o pipefail
+            make "$@" 2>&1 | tee -a log.txt || res=${PIPESTATUS[0]}
+        fi
+
+        if [ "$res" -ne 0 ]; then
+            echo -e "\n$(log_err "make failed with exit code $res! (Command: make $*)")\n"
+            exit "$res"
         fi
     }
 
@@ -90,6 +97,12 @@ build() {
 
     run_make $MAKE_JOBS "${MAKE_COMMON_ARGS[@]}" dtbs
     run_make $MAKE_JOBS "${MAKE_COMMON_ARGS[@]}"
+
+    if [ ! -f "$OUT_KERNEL" ]; then
+        echo -e "\n$(log_err "Kernel image ($OUT_KERNEL) was not created after make!")"
+        exit 1
+    fi
+
     run_make $MAKE_JOBS "${MAKE_COMMON_ARGS[@]}" \
         INSTALL_MOD_STRIP="--strip-debug --keep-section=.ARM.attributes" \
         INSTALL_MOD_PATH="$MOD_OUTDIR" modules_install
