@@ -3522,6 +3522,8 @@
 		#size-cells = <0x01>;
 		ranges;
 		list-scen = "default", "cp_throughput", "mfc_uhd", "mfc_uhd_10bit", "mfc_8k_dec30", "g3d_heavy", "g3d_gamesdk", "g3d_performance", "dp_default", "camera_default", "npu_normal", "mfc_uhd_enc60", "camera_heavy", "npu_performance";
+		/* num_channel, mif_bus_width, bus_width, mif_util, int_util*/
+		bw_params = <4 16 32 65 70>;
 
 		bts_irp0 {
 			#address-cells = <0x02>;
