@@ -214,6 +214,7 @@ source "$SCRIPTS_DIR/build.sh"
 source "$SCRIPTS_DIR/post.sh"
 source "$SCRIPTS_DIR/kpm.sh"
 source "$SCRIPTS_DIR/images.sh"
+source "$SCRIPTS_DIR/dtbo.sh"
 source "$SCRIPTS_DIR/pack.sh"
 source "$SCRIPTS_DIR/upload.sh"
 
@@ -256,6 +257,7 @@ fi
 # apply_kpm_patch
 kernel_modules
 build_images
+build_dtbo_images
 prepare_ak3
 packing
 echo -e "\n$(log_info "Completed in $((SECONDS / 60)) minute(s) and $((SECONDS % 60)) second(s) !")\n"
