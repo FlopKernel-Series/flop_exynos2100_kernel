@@ -694,7 +694,7 @@ int mfc_alloc_firmware(struct mfc_core *core)
 	struct mfc_dev *dev = core->dev;
 	struct mfc_ctx_buf_size *buf_size;
 	struct mfc_special_buf *fw_buf;
-#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+#if IS_ENABLED(CONFIG_SAMSUNG_SECURE_IOVA)
 	unsigned long secure_daddr = 0;
 #endif
 
@@ -734,6 +734,7 @@ int mfc_alloc_firmware(struct mfc_core *core)
 		goto err_reserve_iova;
 	}
 
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_SAMSUNG_SECURE_IOVA)
 	/* allocate Secure-DVA region */
 	secure_daddr = secure_iova_alloc(core->drm_fw_buf.size, EXYNOS_SECBUF_PROT_ALIGNMENTS);
 	if (!secure_daddr) {
@@ -742,6 +743,7 @@ int mfc_alloc_firmware(struct mfc_core *core)
 	}
 
 	core->drm_fw_buf.daddr = (dma_addr_t)secure_daddr;
+#endif
 
 	mfc_core_change_fw_state(core, 1, MFC_FW_ALLOC, 1);
 	mfc_core_info("[MEMINFO][F/W] MFC-%d FW DRM: %pad(vaddr: %pK paddr:%pap), size: %08zu\n",
@@ -755,7 +757,9 @@ int mfc_alloc_firmware(struct mfc_core *core)
 	return 0;
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_SAMSUNG_SECURE_IOVA)
 err_reserve_iova_secure:
+#endif
 	mfc_mem_special_buf_free(dev, &core->drm_fw_buf);
 #endif
 err_reserve_iova:
@@ -883,9 +887,11 @@ int mfc_release_firmware(struct mfc_core *core)
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
 	/* free Secure-DVA region */
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_SAMSUNG_SECURE_IOVA)
 	if (core->drm_fw_buf.daddr)
 		secure_iova_free(core->drm_fw_buf.daddr, core->drm_fw_buf.size);
 	core->drm_fw_buf.daddr = 0;
+#endif
 	mfc_mem_special_buf_free(core->dev, &core->drm_fw_buf);
 #endif
 

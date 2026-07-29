@@ -42,15 +42,21 @@
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
 static int __mfc_core_prot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 {
-	phys_addr_t protdesc_phys;
-	dma_addr_t protdesc_daddr;
 	int ret = 0;
 
 	mfc_core_debug_enter();
 
 	if (!core->drm_fw_buf.sgt) {
 		mfc_core_err("DRM F/W buffer is not allocated\n");
-	} else {
+		core->fw.drm_status = 0;
+		return 0;
+	}
+
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	{
+		phys_addr_t protdesc_phys;
+		dma_addr_t protdesc_daddr;
+
 		core->drm_fw_prot = kzalloc(sizeof(struct buffer_smc_prot_info), GFP_KERNEL);
 		if (!core->drm_fw_prot) {
 			mfc_core_err("no memory for drm_fw_prot\n");
@@ -79,19 +85,19 @@ static int __mfc_core_prot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 			core->drm_fw_prot = NULL;
 			return -EACCES;
 		}
+	}
+#endif
 
-		/* Request buffer protection for DRM F/W */
-		//ret = exynos_smc(SMC_DRM_PPMP_MFCFW_PROT, core->drm_fw_buf.daddr, 0, 0);
-		ret = exynos_smc(SMC_DRM_PPMP_MFCFW_PROT, core->drm_fw_buf.daddr, core->id * PROT_MFC1, 0);
-		if (ret != DRMDRV_OK) {
-			mfc_core_err("failed MFC DRM F/W prot(%#x)\n", ret);
-			call_dop(core, dump_and_stop_debug_mode, core);
-			kfree(core->drm_fw_prot);
-			core->drm_fw_prot = NULL;
-			return -EACCES;
-		} else {
-			mfc_debug(2, "DRM F/W region protected\n");
-		}
+	/* Request buffer protection for DRM F/W */
+	ret = exynos_smc(SMC_DRM_PPMP_MFCFW_PROT, core->drm_fw_buf.daddr, core->id * PROT_MFC1, 0);
+	if (ret != DRMDRV_OK) {
+		mfc_core_err("failed MFC DRM F/W prot(%#x)\n", ret);
+		call_dop(core, dump_and_stop_debug_mode, core);
+		core->fw.drm_status = 0;
+		return -EACCES;
+	} else {
+		mfc_debug(2, "DRM F/W region protected\n");
+		core->fw.drm_status = 1;
 	}
 
 	mfc_core_change_fw_state(core, 1, MFC_FW_VERIFIED, 1);
@@ -102,7 +108,6 @@ static int __mfc_core_prot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 
 static void __mfc_core_unprot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 {
-	phys_addr_t protdesc_phys;
 	int ret = 0;
 
 	mfc_core_debug_enter();
@@ -113,23 +118,26 @@ static void __mfc_core_unprot_firmware(struct mfc_core *core, struct mfc_ctx *ct
 	}
 
 	/* Request buffer unprotection for DRM F/W */
-	//ret = exynos_smc(SMC_DRM_PPMP_MFCFW_UNPROT, core->drm_fw_buf.daddr, 0, 0);
 	ret = exynos_smc(SMC_DRM_PPMP_MFCFW_UNPROT, core->drm_fw_buf.daddr, core->id * PROT_MFC1, 0);
 	if (ret != DRMDRV_OK) {
 		mfc_ctx_err("failed MFC DRM F/W unprot(%#x)\n", ret);
 		call_dop(core, dump_and_stop_debug_mode, core);
 	}
 
-	/* Request buffer Secure-DVA unset */
-	protdesc_phys = virt_to_phys(core->drm_fw_prot);
-	ret = exynos_smc(SMC_DRM_PPMP_UNPROT, protdesc_phys, 0, 0);
-	if (ret != DRMDRV_OK) {
-		mfc_core_err("failed MFC DRM F/W prot region unset(%#x)\n", ret);
-		call_dop(core, dump_and_stop_debug_mode, core);
-	}
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	if (core->drm_fw_prot) {
+		phys_addr_t protdesc_phys = virt_to_phys(core->drm_fw_prot);
 
-	kfree(core->drm_fw_prot);
-	core->drm_fw_prot = NULL;
+		ret = exynos_smc(SMC_DRM_PPMP_UNPROT, protdesc_phys, 0, 0);
+		if (ret != DRMDRV_OK) {
+			mfc_core_err("failed MFC DRM F/W prot region unset(%#x)\n", ret);
+			call_dop(core, dump_and_stop_debug_mode, core);
+		}
+
+		kfree(core->drm_fw_prot);
+		core->drm_fw_prot = NULL;
+	}
+#endif
 	mfc_core_change_fw_state(core, 1, MFC_FW_VERIFIED, 0);
 
 	mfc_core_debug_leave();

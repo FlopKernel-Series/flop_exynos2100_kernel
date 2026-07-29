@@ -748,6 +748,9 @@ struct mfc_special_buf {
 	void				*vaddr;
 	size_t				size;
 	size_t				map_size;
+#if IS_ENABLED(CONFIG_ION_EXYNOS)
+	unsigned int			heapmask;
+#endif
 };
 
 struct mfc_mem {
@@ -1243,6 +1246,7 @@ struct mfc_dev {
 	struct mfc_core	*core[MFC_NUM_CORE];
 	int num_core;
 	int fw_date;
+	size_t fw_base_offset;
 	size_t fw_rmem_offset;
 
 	struct device		*device;

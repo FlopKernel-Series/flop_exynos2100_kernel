@@ -15,7 +15,13 @@
 #include <linux/iommu.h>
 #include <linux/dma-iommu.h>
 #include <linux/of_reserved_mem.h>
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 #include <linux/dma-heap.h>
+#endif
+#if IS_ENABLED(CONFIG_ION_EXYNOS)
+#include <linux/ion.h>
+#include <linux/ion_exynos.h>
+#endif
 
 #include "mfc_mem.h"
 
@@ -76,6 +82,7 @@ void mfc_mem_cleanup_user_shared_handle(struct mfc_ctx *ctx,
 	handle->fd = -1;
 }
 
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 static int mfc_mem_fw_alloc(struct mfc_dev *dev, struct mfc_special_buf *special_buf)
 {
 	struct device_node *rmem_np;
@@ -155,7 +162,9 @@ static void mfc_mem_fw_free(struct mfc_dev *dev, struct mfc_special_buf *special
 	special_buf->attachment = NULL;
 	special_buf->vaddr = NULL;
 }
+#endif
 
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 static int mfc_mem_dma_heap_alloc(struct mfc_dev *dev,
 		struct mfc_special_buf *special_buf)
 {
@@ -265,45 +274,145 @@ void mfc_mem_dma_heap_free(struct mfc_special_buf *special_buf)
 	special_buf->vaddr = NULL;
 
 }
+#endif
+
+#if IS_ENABLED(CONFIG_ION_EXYNOS)
+static int mfc_mem_ion_alloc(struct mfc_dev *dev,
+		struct mfc_special_buf *special_buf)
+{
+	int flag = 0;
+	const char *heapname;
+
+	switch (special_buf->buftype) {
+	case MFCBUF_NORMAL:
+		heapname = "ion_system_heap";
+		break;
+	case MFCBUF_NORMAL_FW:
+		heapname = "vnfw_heap";
+		break;
+#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+	case MFCBUF_DRM:
+		heapname = "vframe_heap";
+		flag |= ION_EXYNOS_FLAG_PROTECTED;
+		break;
+	case MFCBUF_DRM_FW:
+		heapname = "vfw_heap";
+		flag |= ION_EXYNOS_FLAG_PROTECTED;
+		break;
+#endif
+	default:
+		heapname = "unknown";
+		mfc_dev_err("not supported mfc mem type: %d, heapname: %s\n",
+				special_buf->buftype, heapname);
+		return -EINVAL;
+	}
+
+	special_buf->heapmask = ion_get_heapmask_by_name(heapname);
+	if (!special_buf->heapmask)
+		return -EINVAL;
+	special_buf->dma_buf = ion_alloc(special_buf->size, special_buf->heapmask, flag);
+	if (IS_ERR(special_buf->dma_buf)) {
+		mfc_dev_err("Failed to allocate buffer (err %ld)\n",
+				PTR_ERR(special_buf->dma_buf));
+		goto err_ion_alloc;
+	}
+
+	special_buf->attachment = dma_buf_attach(special_buf->dma_buf,
+					dev->device);
+	if (IS_ERR(special_buf->attachment)) {
+		mfc_dev_err("Failed to get dma_buf_attach (err %ld)\n",
+				PTR_ERR(special_buf->attachment));
+		goto err_attach;
+	}
+
+	special_buf->sgt = dma_buf_map_attachment(special_buf->attachment,
+			DMA_BIDIRECTIONAL);
+	if (IS_ERR(special_buf->sgt)) {
+		mfc_dev_err("Failed to get sgt (err %ld)\n",
+				PTR_ERR(special_buf->sgt));
+		goto err_map;
+	}
+
+	special_buf->daddr = sg_dma_address(special_buf->sgt->sgl);
+	if (IS_ERR_VALUE(special_buf->daddr)) {
+		mfc_dev_err("Failed to get iova (err 0x%p)\n",
+				&special_buf->daddr);
+		goto err_daddr;
+	}
+
+	if (special_buf->buftype != MFCBUF_DRM) {
+		special_buf->vaddr = dma_buf_vmap(special_buf->dma_buf);
+		if (IS_ERR_OR_NULL(special_buf->vaddr)) {
+			mfc_dev_err("Failed to get vaddr (err 0x%p)\n",
+					&special_buf->vaddr);
+			goto err_vaddr;
+		}
+	}
+
+	special_buf->paddr = page_to_phys(sg_page(special_buf->sgt->sgl));
+
+	return 0;
+err_vaddr:
+	special_buf->vaddr = NULL;
+err_daddr:
+	special_buf->daddr = 0;
+	dma_buf_unmap_attachment(special_buf->attachment, special_buf->sgt,
+				 DMA_BIDIRECTIONAL);
+err_map:
+	special_buf->sgt = NULL;
+	dma_buf_detach(special_buf->dma_buf, special_buf->attachment);
+err_attach:
+	special_buf->attachment = NULL;
+	dma_buf_put(special_buf->dma_buf);
+err_ion_alloc:
+	special_buf->dma_buf = NULL;
+	return -ENOMEM;
+}
+
+static void mfc_mem_ion_free(struct mfc_special_buf *special_buf)
+{
+	if (special_buf->vaddr)
+		dma_buf_vunmap(special_buf->dma_buf, special_buf->vaddr);
+	if (special_buf->sgt)
+		dma_buf_unmap_attachment(special_buf->attachment,
+					 special_buf->sgt, DMA_BIDIRECTIONAL);
+	if (special_buf->attachment)
+		dma_buf_detach(special_buf->dma_buf, special_buf->attachment);
+	if (special_buf->dma_buf)
+		dma_buf_put(special_buf->dma_buf);
+
+	special_buf->dma_buf = NULL;
+	special_buf->attachment = NULL;
+	special_buf->sgt = NULL;
+	special_buf->daddr = 0;
+	special_buf->vaddr = NULL;
+}
+#endif
 
 int mfc_mem_special_buf_alloc(struct mfc_dev *dev,
 		struct mfc_special_buf *special_buf)
 {
-	int ret;
-
-	switch (special_buf->buftype) {
-	case MFCBUF_DRM_FW:
-		ret = mfc_mem_fw_alloc(dev, special_buf);
-		break;
-	case MFCBUF_NORMAL_FW:
-	case MFCBUF_DRM:
-	case MFCBUF_NORMAL:
-		ret = mfc_mem_dma_heap_alloc(dev, special_buf);
-		break;
-	default:
-		mfc_dev_err("not supported mfc mem type: %d\n", special_buf->buftype);
-		return -EINVAL;
-	}
-
-	return ret;
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	if (special_buf->buftype == MFCBUF_DRM_FW)
+		return mfc_mem_fw_alloc(dev, special_buf);
+	return mfc_mem_dma_heap_alloc(dev, special_buf);
+#elif IS_ENABLED(CONFIG_ION_EXYNOS)
+	return mfc_mem_ion_alloc(dev, special_buf);
+#else
+	return -EINVAL;
+#endif
 }
 
 void mfc_mem_special_buf_free(struct mfc_dev *dev, struct mfc_special_buf *special_buf)
 {
-	switch (special_buf->buftype) {
-	case MFCBUF_DRM_FW:
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	if (special_buf->buftype == MFCBUF_DRM_FW)
 		mfc_mem_fw_free(dev, special_buf);
-		break;
-	case MFCBUF_NORMAL_FW:
-	case MFCBUF_DRM:
-	case MFCBUF_NORMAL:
+	else
 		mfc_mem_dma_heap_free(special_buf);
-		break;
-	default:
-		break;
-	}
-
-	return;
+#elif IS_ENABLED(CONFIG_ION_EXYNOS)
+	mfc_mem_ion_free(special_buf);
+#endif
 }
 
 void mfc_bufcon_put_daddr(struct mfc_ctx *ctx, struct mfc_buf *mfc_buf, int plane)
@@ -587,17 +696,27 @@ void mfc_cleanup_iovmm_except_used(struct mfc_ctx *ctx)
 	mutex_unlock(&dec->dpb_mutex);
 }
 
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf)
 {
 	struct mfc_dev *dev = core->dev;
-	struct device_node *node = core->device->of_node;
+	struct device_node *node = core->device ? core->device->of_node : NULL;
 	dma_addr_t reserved_base;
-	const __be32 *prop;
+	const __be32 *prop = NULL;
 
-	prop = of_get_property(node, "samsung,iommu-reserved-map", NULL);
+	if (node)
+		prop = of_get_property(node, "samsung,iommu-reserved-map", NULL);
+	if (!prop && node && node->parent) {
+		node = node->parent;
+		prop = of_get_property(node, "samsung,iommu-reserved-map", NULL);
+	}
+	if (!prop && dev && dev->device && dev->device->of_node) {
+		node = dev->device->of_node;
+		prop = of_get_property(node, "samsung,iommu-reserved-map", NULL);
+	}
+
 	if (!prop) {
 		mfc_dev_err("No reserved F/W dma area\n");
-		iommu_unmap(core->domain, fw_base_addr, fw_buf->map_size);
 		return -ENOENT;
 	}
 
@@ -605,7 +724,7 @@ int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf
 
 	fw_buf->map_size = iommu_map_sg(core->domain, reserved_base,
 			fw_buf->sgt->sgl,
-			fw_buf->sgt->orig_nents,
+			fw_buf->sgt->orig_nents ? fw_buf->sgt->orig_nents : fw_buf->sgt->nents,
 			IOMMU_READ|IOMMU_WRITE);
 	if (!fw_buf->map_size) {
 		mfc_core_err("Failed to map iova (err VA: %pad, PA: %pap)\n",
@@ -617,6 +736,30 @@ int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf
 
 	return 0;
 }
+#else
+int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf)
+{
+	struct mfc_dev *dev = core->dev;
+	dma_addr_t fw_base_addr;
+
+	fw_base_addr = 0x10000000 + dev->fw_base_offset;
+
+	fw_buf->map_size = iommu_map_sg(core->domain, fw_base_addr,
+			fw_buf->sgt->sgl,
+			fw_buf->sgt->nents,
+			IOMMU_READ|IOMMU_WRITE);
+	if (!fw_buf->map_size) {
+		mfc_core_err("Failed to remap iova (err %#llx)\n",
+				fw_buf->daddr);
+		return -ENOMEM;
+	}
+
+	fw_buf->daddr = fw_base_addr;
+	dev->fw_base_offset += fw_buf->map_size;
+
+	return 0;
+}
+#endif
 
 int mfc_iommu_map_sfr(struct mfc_core *core)
 {
