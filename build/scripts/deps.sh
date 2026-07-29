@@ -6,7 +6,7 @@ elif command -v "sudo" &>/dev/null; then
 	  ROOT="sudo"
 else
 	  log_err "neither doas nor sudo found."
-	  return 1
+	  return 1 2>/dev/null || exit 1
 fi
 
 DEPS=( lz4 brotli flex bc cpio kmod zip binutils-aarch64-linux-gnu ccache )
@@ -24,16 +24,17 @@ UBUNTU() {
 
     if [ ${#MISSING[@]} -gt 0 ]; then
         $ROOT apt-get update -qq || true
-        $ROOT apt-get install -y "${MISSING[@]}"
+        $ROOT apt-get install -y "${MISSING[@]}" || true
     fi
 }
 
 ARCH(){
     local DEPS=( lz4 brotli flex bc cpio kmod zip aarch64-linux-gnu-binutils ccache )
-    local MISSING=$(pacman -T "${DEPS[@]}" 2>/dev/null)
+    local MISSING
+    MISSING=$(pacman -T "${DEPS[@]}" 2>/dev/null || true)
 
     if [ -n "$MISSING" ]; then
-		    $ROOT pacman -Syyuu --needed --noconfirm $MISSING
+		    $ROOT pacman -Syyuu --needed --noconfirm $MISSING || true
 	  fi
 }
 
@@ -49,12 +50,14 @@ GENTOO() {
     done
 
     if [ ${#MISSING[@]} -gt 0 ]; then
-        $ROOT emerge -nvq "${MISSING[@]}"
+        $ROOT emerge -nvq "${MISSING[@]}" || true
     fi
 }
 
-source "/etc/os-release"
-DISTRO_IDS="$ID $ID_LIKE"
+if [ -f /etc/os-release ]; then
+    source "/etc/os-release"
+fi
+DISTRO_IDS="${ID:-} ${ID_LIKE:-}"
 
 if echo "$DISTRO_IDS" | grep -Eq 'ubuntu|debian'; then
     UBUNTU
