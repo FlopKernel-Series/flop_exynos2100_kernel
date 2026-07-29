@@ -17552,6 +17552,7 @@
 		iommus = <0x13b 0x13c 0x13d 0x13e>;
 		samsung,iommu-group = <0x13f>;
 		samsung,tzmp;
+		samsung,iommu-identity-map = <0x0 0x15e10000 0x10000>;
 		ip_ver = <0x1500010c>;
 		debug_mode = <0x00>;
 		nal_q_entry_size = <0x300>;
@@ -17659,6 +17660,7 @@
 			iommus = <0x13b 0x13c>;
 			samsung,iommu-group = <0x13f>;
 			samsung,tzmp;
+			samsung,iommu-identity-map = <0x0 0x15e10000 0x10000>;
 			samsung,imgloader-s2mpu-support;
 			ip_ver = <0x1500010c>;
 			share_sysmmu = <0x00>;
