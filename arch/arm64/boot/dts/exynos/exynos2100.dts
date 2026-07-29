@@ -9189,6 +9189,13 @@
 			phandle = <0x184>;
 		};
 
+		mfc_fw_rmem: mfc_fw_rmem {
+			compatible = "shared-dma-pool";
+			reg = <0x08 0xa2400000 0x800000>;
+			alignment = <0x00 0x10000>;
+			reusable;
+		};
+
 		vfw_heap {
 			size = <0x400000>;
 			alignment = <0x00 0x10000>;
@@ -17553,6 +17560,8 @@
 		samsung,iommu-group = <0x13f>;
 		samsung,tzmp;
 		samsung,iommu-identity-map = <0x0 0x15e10000 0x10000>;
+		samsung,iommu-reserved-map = <0x0 0x0 0x10000000 0x0 0x10000000 0x100000 0x0 0x10100000 0x100000>;
+		memory-region = <&mfc_fw_rmem>;
 		ip_ver = <0x1500010c>;
 		debug_mode = <0x00>;
 		nal_q_entry_size = <0x300>;
@@ -17662,6 +17671,7 @@
 			samsung,iommu-group = <0x13f>;
 			samsung,tzmp;
 			samsung,iommu-identity-map = <0x0 0x15e10000 0x10000>;
+			samsung,iommu-reserved-map = <0x0 0x10000000 0x100000>;
 			samsung,imgloader-s2mpu-support;
 			ip_ver = <0x1500010c>;
 			share_sysmmu = <0x00>;
