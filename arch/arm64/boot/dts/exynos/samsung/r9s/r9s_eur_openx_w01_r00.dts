@@ -9937,7 +9937,7 @@
 		gpm9 = "/fragment@panel_drv/__overlay__/panel_drv_0/gpios/disp-det:gpios:0";
 		gpm13 = "/fragment@panel_drv/__overlay__/panel_drv_0/gpios/conn-det:gpios:0";
 		reserved_memory = "/fragment@48:target:0";
-		secure_camera_heap = "/fragment@49:target:0";
+		secure_camera = "/fragment@49:target:0";
 		camera_heap = "/fragment@50:target:0";
 		usbdrd_phy0 = "/fragment@52:target:0";
 		gpm17 = "/fragment@52/__overlay__:phy,gpio_phy_port:0", "/fragment@75/__overlay__:dp,usb_con_sel:0";
