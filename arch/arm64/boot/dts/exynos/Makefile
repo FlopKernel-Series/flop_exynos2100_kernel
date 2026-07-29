@@ -4,3 +4,6 @@ dtb-$(CONFIG_ARCH_EXYNOS) += \
 	exynos5433-tm2e.dtb	\
 	exynos7-espresso.dtb \
 	exynos2100.dtb
+
+subdir-y += samsung
+
