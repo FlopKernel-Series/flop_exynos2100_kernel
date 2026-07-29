@@ -57,7 +57,16 @@ packing() {
 
             cp -f "$OUT_VENDORBOOTIMG" vendor_boot.img
             cp -f "$OUT_KERNEL" .
-            cp -f "$IMAGES_DIR"/dtbo_*.img . 2>/dev/null || true
+
+            local c
+            for c in "r9s" "o1s" "p3s" "t2s"; do
+                if [ -f "$IMAGES_DIR/dtbo_${c}.img" ]; then
+                    cp -f "$IMAGES_DIR/dtbo_${c}.img" "./dtbo_${c}.img"
+                else
+                    log_warn "DTBO image dtbo_${c}.img not found in $IMAGES_DIR"
+                fi
+            done
+
             rm -f "$ZIP_PATH"
             zip -r9 -q "$ZIP_PATH" . -x .git\* .github\* README.md
             cd "$KDIR"
