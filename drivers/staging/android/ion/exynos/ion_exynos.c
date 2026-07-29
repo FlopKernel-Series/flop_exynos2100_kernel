@@ -82,6 +82,7 @@ unsigned int ion_get_heapmask_by_name(const char *heap_name)
 
 	return 1 << data[i].heap_id;
 }
+EXPORT_SYMBOL_GPL(ion_get_heapmask_by_name);
 
 static inline bool ion_buffer_cached(struct ion_buffer *buffer)
 {
