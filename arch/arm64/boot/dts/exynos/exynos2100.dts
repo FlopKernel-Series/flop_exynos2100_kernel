@@ -17589,6 +17589,8 @@
 		av1_film_grain = <0x01 0x200717>;
 		P010_decoding = <0x01>;
 		dithering_enable = <0x00>;
+		stride_align = <0x10>;
+		stride_type = <0x00>;
 		enc_ts_delta = <0x01 0x211015>;
 		support_10bit = <0x01>;
 		support_422 = <0x01>;
