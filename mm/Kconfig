@@ -436,6 +436,13 @@ config NEED_PER_CPU_KM
 	bool
 	default y
 
+config RBIN
+	bool "RBIN memory support"
+	default y
+	select CLEANCACHE
+	help
+	  This provides RBIN functionality in memory management.
+
 config CLEANCACHE
 	bool "Enable cleancache driver to cache clean pages if tmem is present"
 	help
@@ -743,13 +750,6 @@ config MMAP_READAROUND_LIMIT
 	  Inappropriate mmap readaround size can hurt device performance
 	  during the sluggish situation. Add the hard upper-limit for
 	  mmap readaround.
-
-config RBIN
-	bool "RBIN memory support"
-	default y
-	select CLEANCACHE
-	help
-	  This provides RBIN functionality in memory management.
 
 config PAGE_BOOST
 	bool "PAGE_BOOST feature"

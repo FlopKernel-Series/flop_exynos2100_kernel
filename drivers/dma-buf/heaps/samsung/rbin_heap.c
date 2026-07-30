@@ -18,11 +18,36 @@
 #include <linux/vmalloc.h>
 #include <linux/kthread.h>
 #include <linux/freezer.h>
-#include <linux/memblock.h>
+#include <linux/cpuhotplug.h>
+#include <linux/mm_types.h>
+#include <linux/types.h>
+#include <linux/kobject.h>
+#include <trace/hooks/mm.h>
 
 #include "rbinregion.h"
 #include "heap_private.h"
 #include "../deferred-free-helper.h"
+
+/**
+ * struct rbin_dmabuf_page_pool - pagepool struct
+ * @count[]:		array of number of pages of that type in the pool
+ * @items[]:		array of list of pages of the specific type
+ * @lock:		lock protecting this struct and especially the count
+ *			item list
+ * @gfp_mask:		gfp_mask to use from alloc
+ * @order:		order of pages in the pool
+ * @list:		list node for list of pools
+ *
+ * Allows you to keep a pool of pre allocated pages to use
+ */
+struct rbin_dmabuf_page_pool {
+	int count[POOL_TYPE_SIZE];
+	struct list_head items[POOL_TYPE_SIZE];
+	spinlock_t lock;
+	gfp_t gfp_mask;
+	unsigned int order;
+	struct list_head list;
+};
 
 static const unsigned int orders[] = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
 #define NUM_ORDERS ARRAY_SIZE(orders)
@@ -45,10 +70,10 @@ struct rbin_heap {
 	bool shrink_run;
 	wait_queue_head_t waitqueue;
 	unsigned long count;
-	struct dmabuf_page_pool *pools[NUM_ORDERS];
+	struct rbin_dmabuf_page_pool *pools[NUM_ORDERS];
 };
 
-static void rbin_page_pool_add(struct dmabuf_page_pool *pool, struct page *page)
+static void rbin_page_pool_add(struct rbin_dmabuf_page_pool *pool, struct page *page)
 {
 	int index;
 
@@ -57,32 +82,28 @@ static void rbin_page_pool_add(struct dmabuf_page_pool *pool, struct page *page)
 	else
 		index = POOL_LOWPAGE;
 
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->lock);
 	list_add_tail(&page->lru, &pool->items[index]);
 	pool->count[index]++;
-	mutex_unlock(&pool->mutex);
-	mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
-			    1 << pool->order);
+	spin_unlock(&pool->lock);
 }
 
-static struct page *rbin_page_pool_remove(struct dmabuf_page_pool *pool, int index)
+static struct page *rbin_page_pool_remove(struct rbin_dmabuf_page_pool *pool, int index)
 {
 	struct page *page;
 
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->lock);
 	page = list_first_entry_or_null(&pool->items[index], struct page, lru);
 	if (page) {
 		pool->count[index]--;
 		list_del(&page->lru);
-		mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
-				    -(1 << pool->order));
 	}
-	mutex_unlock(&pool->mutex);
+	spin_unlock(&pool->lock);
 
 	return page;
 }
 
-static struct page *rbin_page_pool_fetch(struct dmabuf_page_pool *pool)
+static struct page *rbin_page_pool_fetch(struct rbin_dmabuf_page_pool *pool)
 {
 	struct page *page = NULL;
 
@@ -93,9 +114,9 @@ static struct page *rbin_page_pool_fetch(struct dmabuf_page_pool *pool)
 	return page;
 }
 
-static struct dmabuf_page_pool *rbin_page_pool_create(gfp_t gfp_mask, unsigned int order)
+static struct rbin_dmabuf_page_pool *rbin_page_pool_create(gfp_t gfp_mask, unsigned int order)
 {
-	struct dmabuf_page_pool *pool = kmalloc(sizeof(*pool), GFP_KERNEL);
+	struct rbin_dmabuf_page_pool *pool = kmalloc(sizeof(*pool), GFP_KERNEL);
 	int i;
 
 	if (!pool)
@@ -107,12 +128,12 @@ static struct dmabuf_page_pool *rbin_page_pool_create(gfp_t gfp_mask, unsigned i
 	}
 	pool->gfp_mask = gfp_mask | __GFP_COMP;
 	pool->order = order;
-	mutex_init(&pool->mutex);
+	spin_lock_init(&pool->lock);
 
 	return pool;
 }
 
-static void rbin_page_pool_free(struct dmabuf_page_pool *pool, struct page *page)
+static void rbin_page_pool_free(struct rbin_dmabuf_page_pool *pool, struct page *page)
 {
 	rbin_page_pool_add(pool, page);
 }
@@ -153,7 +174,7 @@ static inline void do_expand(struct rbin_heap *rbin_heap,
 	unsigned int total_nr_pages;
 	unsigned int free_nr_page;
 	struct page *free_page;
-	struct dmabuf_page_pool *pool;
+	struct rbin_dmabuf_page_pool *pool;
 
 	total_nr_pages = page_private(page) >> PAGE_SHIFT;
 	rem_nr_pages = total_nr_pages - nr_pages;
@@ -296,19 +317,8 @@ free_buffer:
 	return ERR_PTR(ret);
 }
 
-static long rbin_heap_get_pool_size(struct dma_heap *heap)
-{
-	const char *name = dma_heap_get_name(heap);
-
-	if (strcmp(name, "camera"))
-		return 0;
-
-	return atomic_read(&rbin_pool_pages) << PAGE_SHIFT;
-}
-
 static const struct dma_heap_ops rbin_heap_ops = {
 	.allocate = rbin_heap_allocate,
-	.get_pool_size = rbin_heap_get_pool_size,
 };
 
 static void rbin_heap_release(struct samsung_dma_buffer *buffer)
@@ -345,7 +355,7 @@ void wake_dmabuf_rbin_heap_shrink(void)
 	}
 }
 
-static void dmabuf_rbin_heap_destroy_pools(struct dmabuf_page_pool **pools)
+static void dmabuf_rbin_heap_destroy_pools(struct rbin_dmabuf_page_pool **pools)
 {
 	int i;
 
@@ -353,7 +363,7 @@ static void dmabuf_rbin_heap_destroy_pools(struct dmabuf_page_pool **pools)
 		kfree(pools[i]);
 }
 
-static int dmabuf_rbin_heap_create_pools(struct dmabuf_page_pool **pools)
+static int dmabuf_rbin_heap_create_pools(struct rbin_dmabuf_page_pool **pools)
 {
 	int i;
 
@@ -373,18 +383,15 @@ static int dmabuf_rbin_heap_prereclaim(void *data)
 {
 	struct rbin_heap *rbin_heap = data;
 	unsigned int order;
-	unsigned long total_size;
 	unsigned long size = PAGE_SIZE << orders[0];
 	unsigned long last_size;
-	struct dmabuf_page_pool *pool;
+	struct rbin_dmabuf_page_pool *pool;
 	struct page *page;
 	unsigned long jiffies_bstop;
 
 	while (true) {
 		wait_event_freezable(rbin_heap->waitqueue, rbin_heap->task_run);
 		jiffies_bstop = jiffies + (HZ / 10);
-		trace_printk("%s\n", "start");
-		total_size = 0;
 		last_size = size;
 		while (true) {
 			page = alloc_rbin_page(size, last_size);
@@ -400,10 +407,8 @@ static int dmabuf_rbin_heap_prereclaim(void *data)
 			order = get_order(page_private(page));
 			pool = rbin_heap->pools[order_to_index(order)];
 			rbin_page_pool_free(pool, page);
-			total_size += page_private(page);
 			atomic_add(1 << order, &rbin_pool_pages);
 		}
-		trace_printk("end %lu\n", total_size);
 		rbin_heap->task_run = 0;
 	}
 	return 0;
@@ -412,22 +417,17 @@ static int dmabuf_rbin_heap_prereclaim(void *data)
 static int dmabuf_rbin_heap_shrink(void *data)
 {
 	struct rbin_heap *rbin_heap = data;
-	unsigned long total_size;
 	unsigned long size = PAGE_SIZE << orders[0];
 	struct page *page;
 
 	while (true) {
 		wait_event_freezable(rbin_heap->waitqueue, rbin_heap->shrink_run);
-		trace_printk("%s", "start\n");
-		total_size = 0;
 		while (true) {
 			page = alloc_rbin_page_from_pool(rbin_heap, size);
 			if (!page)
 				break;
 			dmabuf_rbin_free(page_to_phys(page), page_private(page));
-			total_size += page_private(page);
 		}
-		trace_printk("%lu\n", total_size);
 		rbin_heap->shrink_run = 0;
 	}
 	return 0;
@@ -435,21 +435,11 @@ static int dmabuf_rbin_heap_shrink(void *data)
 
 struct kobject *rbin_kobject;
 
-static bool under_8GB_device(void)
-{
-	return memblock_end_of_DRAM() <= 0xa00000000 ? true : false;
-}
-
 static int rbin_heap_probe(struct platform_device *pdev)
 {
 	struct reserved_mem *rmem;
 	struct device_node *rmem_np;
 	struct rbin_heap *rbin_heap;
-
-	if (!under_8GB_device()) {
-		pr_info("%s for >8GB devices, create carveout heap instead.\n", __func__);
-		return carveout_heap_probe(pdev);
-	}
 
 	rmem_np = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
 	rmem = of_reserved_mem_lookup(rmem_np);
@@ -486,9 +476,11 @@ static int rbin_heap_probe(struct platform_device *pdev)
 		dmabuf_rbin_heap_destroy_pools(rbin_heap->pools);
 		goto out;
 	}
+
 	init_waitqueue_head(&rbin_heap->waitqueue);
 	rbin_heap->task = kthread_run(dmabuf_rbin_heap_prereclaim, rbin_heap, "rbin");
 	rbin_heap->task_shrink = kthread_run(dmabuf_rbin_heap_shrink, rbin_heap, "rbin_shrink");
+
 	g_rbin_heap = rbin_heap;
 	pr_info("%s created %s\n", __func__, rmem->name);
 

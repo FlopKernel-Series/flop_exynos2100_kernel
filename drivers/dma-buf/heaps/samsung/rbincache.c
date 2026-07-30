@@ -612,20 +612,6 @@ static int rc_init_shared_fs(uuid_t *uuid, size_t pagesize)
 	return rc_init_fs(pagesize);
 }
 
-static int rbincache_oem_func(int cmd, int *stats)
-{
-	if (cmd == 1) {
-		wake_dmabuf_rbin_heap_prereclaim();
-	} else if (cmd == 2) {
-		stats[RBIN_ALLOCATED] = atomic_read(&rbin_allocated_pages);
-		stats[RBIN_CACHED] = atomic_read(&rbin_cached_pages);
-		stats[RBIN_FREE] = atomic_read(&rbin_free_pages);
-		stats[RBIN_POOL] = atomic_read(&rbin_pool_pages);
-	}
-
-	return 0;
-}
-
 static const struct cleancache_ops rbincache_ops = {
 	.init_fs = rc_init_fs,
 	.init_shared_fs = rc_init_shared_fs,
@@ -634,7 +620,6 @@ static const struct cleancache_ops rbincache_ops = {
 	.invalidate_page = rc_flush_page,
 	.invalidate_inode = rc_flush_inode,
 	.invalidate_fs = rc_flush_fs,
-	.android_oem_data1 = (u64)rbincache_oem_func,
 };
 
 /* Cleancache API implementation end */
