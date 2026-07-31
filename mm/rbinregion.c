@@ -368,6 +368,11 @@ void ion_rbin_free(phys_addr_t addr, unsigned long size)
 
 int init_rbinregion(unsigned long base, unsigned long size)
 {
+	if (region.pool) {
+		pr_info("%s: rbin region already initialized, skipping\n", __func__);
+		return 0;
+	}
+
 	region.pool = gen_pool_create(PAGE_SHIFT, -1);
 	if (!region.pool) {
 		pr_err("%s failed get_pool_create\n", __func__);
@@ -376,6 +381,7 @@ int init_rbinregion(unsigned long base, unsigned long size)
 	gen_pool_add(region.pool, base, size, -1);
 	if (init_rbincache(PFN_DOWN(base), size >> PAGE_SHIFT)) {
 		gen_pool_destroy(region.pool);
+		region.pool = NULL;
 		return -1;
 	}
 	return 0;
