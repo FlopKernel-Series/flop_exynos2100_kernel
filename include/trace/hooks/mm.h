@@ -39,6 +39,12 @@ DECLARE_RESTRICTED_HOOK(android_rvh_set_readahead_gfp_mask,
 
 #endif
 
+DECLARE_HOOK(android_vh_meminfo_proc_show,
+	TP_PROTO(struct seq_file *m),
+	TP_ARGS(m));
+DECLARE_HOOK(android_vh_show_mem,
+	TP_PROTO(unsigned int filter, nodemask_t *nodemask),
+	TP_ARGS(filter, nodemask));
 #endif /* _TRACE_HOOK_MM_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
