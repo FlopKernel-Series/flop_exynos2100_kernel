@@ -115,6 +115,9 @@ obj-$(CONFIG_HARDENED_USERCOPY) += usercopy.o
 obj-$(CONFIG_PERCPU_STATS) += percpu-stats.o
 obj-$(CONFIG_ZONE_DEVICE) += memremap.o
 obj-$(CONFIG_HMM_MIRROR) += hmm.o
+# Core RBIN infrastructure: build when either the core (ION) RBIN or the
+# DMA-BUF samsung RBIN heap is enabled.
 obj-$(CONFIG_RBIN) += rbinregion.o rbincache.o
+obj-$(CONFIG_DMABUF_HEAPS_SAMSUNG_RBIN) += rbinregion.o rbincache.o
 obj-$(CONFIG_MEMFD_CREATE) += memfd.o
 obj-$(CONFIG_PAGE_BOOST_RECORDING) += io_record.o

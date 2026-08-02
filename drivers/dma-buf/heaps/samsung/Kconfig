@@ -55,9 +55,12 @@ config DMABUF_CONTAINER
 	  dma-buf objects. It is useful when delivering a lot of dma-buf objects
 	  between processes or user and kernel to reduce communication overhead.
 
-config RBIN
+config DMABUF_HEAPS_SAMSUNG_RBIN
 	bool "DMA-BUF RBIN Samsung Heap"
 	depends on DMABUF_SAMSUNG_HEAPS && CLEANCACHE
 	default y
 	help
 	  Choose this option to enable dma-buf rbin heap for samsung.
+	  This is a separate Kconfig symbol from the core mm CONFIG_RBIN
+	  (which backs the ION rbin heap) so that the DMA-BUF RBIN heap
+	  can be enabled independently of the ION RBIN heap.

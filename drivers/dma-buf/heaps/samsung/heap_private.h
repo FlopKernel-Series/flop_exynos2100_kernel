@@ -195,7 +195,7 @@ static inline int __init carveout_dma_heap_init(void)
 #define carveout_dma_heap_exit() do { } while (0)
 #endif
 
-#if defined(CONFIG_RBIN)
+#if defined(CONFIG_DMABUF_HEAPS_SAMSUNG_RBIN)
 int carveout_heap_probe(struct platform_device *pdev);
 int __init rbin_dma_heap_init(void);
 void rbin_dma_heap_exit(void);
