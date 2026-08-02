@@ -17575,6 +17575,7 @@
 		wait_nalq_status = <0x01 0x191107>;
 		drm_switch_predict = <0x01 0x00>;
 		sbwc_enc_src_ctrl = <0x01 0x200110>;
+		average_qp = <0x01 0x201030>;
 		enc_idr_flag = <0x01 0x210614>;
 		min_quality_mode = <0x01 0x210713>;
 		support_av1_dec = <0x01>;
