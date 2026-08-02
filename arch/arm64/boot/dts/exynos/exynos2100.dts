@@ -17555,6 +17555,11 @@
 		compatible = "samsung,exynos-mfc";
 		iommus = <0x13b 0x13c 0x13d 0x13e>;
 		samsung,iommu-group = <0x13f>;
+		samsung,iommu-reserved-map = <0x0 0x0 0x10000000>,
+				/* Normal MFC0 firmware */
+				<0x0 0x10000000 0x100000>,
+				/* Normal MFC1 firmware */
+				<0x0 0x10100000 0x100000>;
 		samsung,tzmp;
 		samsung,iommu-identity-map = <0x0 0x15e10000 0x10000>;
 		ip_ver = <0x1500010c>;
@@ -17665,6 +17670,7 @@
 			clocks = <0x0d 0x5dc>;
 			iommus = <0x13b 0x13c>;
 			samsung,iommu-group = <0x13f>;
+			samsung,iommu-reserved-map = <0x0 0x10000000 0x100000>;
 			samsung,tzmp;
 			samsung,iommu-identity-map = <0x0 0x15e10000 0x10000>;
 			samsung,imgloader-s2mpu-support;
@@ -17884,6 +17890,7 @@
 			clocks = <0x0d 0x60e>;
 			iommus = <0x13d 0x13e>;
 			samsung,iommu-group = <0x13f>;
+			samsung,iommu-reserved-map = <0x0 0x10100000 0x100000>;
 			samsung,tzmp;
 			samsung,imgloader-s2mpu-support;
 			ip_ver = <0x1500010d>;
