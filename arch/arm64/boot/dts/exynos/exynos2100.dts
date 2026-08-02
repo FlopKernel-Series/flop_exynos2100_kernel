@@ -9189,6 +9189,13 @@
 			phandle = <0x184>;
 		};
 
+		mfc_fw_rmem: mfc_fw_rmem {
+			compatible = "shared-dma-pool";
+			reg = <0x08 0xa2400000 0x800000>;
+			alignment = <0x00 0x10000>;
+			reusable;
+		};
+
 		vfw_heap {
 			size = <0x400000>;
 			alignment = <0x00 0x10000>;
@@ -17561,6 +17568,10 @@
 				/* Normal MFC1 firmware */
 				<0x0 0x10100000 0x100000>;
 		samsung,tzmp;
+
+		/* for F/W buffer */
+		memory-region = <&mfc_fw_rmem>;
+
 		samsung,iommu-identity-map = <0x0 0x15e10000 0x10000>;
 		ip_ver = <0x1500010c>;
 		debug_mode = <0x00>;
