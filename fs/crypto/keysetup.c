@@ -1013,7 +1013,6 @@ static inline int __find_and_derive_fskey(
 					struct fscrypt_info *ci,
 					struct fscrypt_key *fskey)
 {
-	struct key *key;
 	struct fscrypt_master_key *mk = NULL;
 	struct fscrypt_key_specifier mk_spec;
 	int err;
@@ -1036,12 +1035,11 @@ static inline int __find_and_derive_fskey(
 		return -EINVAL;
 	}
 
-	key = fscrypt_find_master_key(ci->ci_inode->i_sb, &mk_spec);
-	if (IS_ERR(key))
-		return PTR_ERR(key);
+	mk = fscrypt_find_master_key(ci->ci_inode->i_sb, &mk_spec);
+	if (!mk)
+		return -ENOKEY;
 
-	mk = key->payload.data[0];
-	down_read(&key->sem);
+	down_read(&mk->mk_sem);
 
 	/* Has the secret been removed (via FS_IOC_REMOVE_ENCRYPTION_KEY)? */
 	if (!is_master_key_secret_present(&mk->mk_secret)) {
@@ -1100,8 +1098,8 @@ static inline int __find_and_derive_fskey(
 	}
 
 out_release_key:
-	up_read(&key->sem);
-	key_put(key);
+	up_read(&mk->mk_sem);
+	fscrypt_put_master_key(mk);
 	return err;
 }
 
