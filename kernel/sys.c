@@ -1271,6 +1271,10 @@ const char *get_bpf_spoof_version(void)
 #endif
 }
 
+#ifdef CONFIG_MALI_VERSION_SELECTOR
+extern char mali_selected_version[8];
+#endif
+
 static int fk_feature_get_state(u32 feature_id, u64 *value, bool *supported)
 {
 	if (!value || !supported)
@@ -1316,6 +1320,13 @@ static int fk_feature_get_state(u32 feature_id, u64 *value, bool *supported)
 		break;
 	case FK_FEATURE_ENABLE_DMA_BUF:
 		*value = is_dma_buf_env();
+		break;
+	case FK_FEATURE_MALI_VERSION:
+#ifdef CONFIG_MALI_VERSION_SELECTOR
+		memcpy(value, mali_selected_version, sizeof(mali_selected_version));
+#else
+		*supported = false;
+#endif
 		break;
 	default:
 		*supported = false;
@@ -1406,6 +1417,17 @@ static int fk_feature_get_info_by_index(u32 index,
 		strscpy(info->name, "dma_buf_env", sizeof(info->name));
 		return 0;
 	}
+#ifdef CONFIG_MALI_VERSION_SELECTOR
+	index--;
+	if (index == 0) {
+		info->feature_id = FK_FEATURE_MALI_VERSION;
+		info->flags = PR_FK_FEATURE_SUPPORTED;
+		memcpy(&info->value, mali_selected_version,
+		       sizeof(mali_selected_version));
+		strscpy(info->name, "mali_version", sizeof(info->name));
+		return 0;
+	}
+#endif
 
 	return -ENOENT;
 }
@@ -1446,6 +1468,9 @@ static int fk_feature_get_info_by_id(u32 feature_id,
 		break;
 	case FK_FEATURE_ENABLE_DMA_BUF:
 		strscpy(info->name, "dma_buf_env", sizeof(info->name));
+		break;
+	case FK_FEATURE_MALI_VERSION:
+		strscpy(info->name, "mali_version", sizeof(info->name));
 		break;
 	default:
 		return 0;

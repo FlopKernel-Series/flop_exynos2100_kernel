@@ -203,6 +203,12 @@ static char init_protection_default_arg[] = "init_protection=1";
 static bool init_debug;
 static char init_debug_default_arg[] = "init_debug=0";
 
+// Initialize to something
+char mali_selected_version[8] = "r38p0";
+EXPORT_SYMBOL(mali_selected_version);
+// Actual consumed value
+static char mali_selected_version_arg[] = "mali.version=r38p0";
+
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 static bool aosp_mode;
 static char aosp_mode_default_arg[] = "aosp_mode=0";
@@ -442,6 +448,15 @@ bool is_dma_buf_env(void)
 	return dma_buf_env;
 }
 EXPORT_SYMBOL(is_dma_buf_env);
+
+static void __init apply_mali_version_default(void)
+{
+	char *val;
+
+	val = strchr(mali_selected_version_arg, '=');
+	if (val)
+		strscpy(mali_selected_version, val + 1, sizeof(mali_selected_version));
+}
 
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
 const char *envp_init[MAX_INIT_ENVS+2] = { "HOME=/", "TERM=linux", NULL, };
@@ -1159,6 +1174,7 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_init_protection_default();
 	apply_init_debug_default();
 	apply_dma_buf_env_default();
+	apply_mali_version_default();
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 	apply_aosp_mode_default();
 	apply_usb_sl_disable_default();

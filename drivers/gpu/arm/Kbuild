@@ -18,31 +18,6 @@
 # SPDX-License-Identifier: GPL-2.0
 #
 
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R20P0),y)
-	obj-$(CONFIG_MALI_MIDGARD) += v_r20p0/
-endif
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R23P0),y)
-	obj-$(CONFIG_MALI_MIDGARD) += v_r23p0/
-endif
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R24P0),y)
-	obj-$(CONFIG_MALI_MIDGARD) += v_r24p0/
-endif
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R25P1),y)
-	obj-$(CONFIG_MALI_MIDGARD) += bv_r25p1/
-endif
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R26P0),y)
-	obj-$(CONFIG_MALI_MIDGARD) += bv_r26p0/
-endif
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R32P1),y)
-	obj-$(CONFIG_MALI_MIDGARD) += bv_r32p1/
-endif
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R38P0),y)
-	obj-$(CONFIG_MALI_MIDGARD) += bv_r38p0/
-endif
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R38P1),y)
-	obj-$(CONFIG_MALI_MIDGARD) += v_r38p1/
-endif
-
-ifeq ($(CONFIG_MALI_DDK_VALHALL_R44P1),y)
-	obj-$(CONFIG_MALI_MIDGARD) += v_r44p1/
-endif
+obj-$(CONFIG_MALI_MIDGARD_R38P0) += bv_r38p0/
+obj-$(CONFIG_MALI_MIDGARD_R38P1) += v_r38p1/
+obj-$(CONFIG_MALI_MIDGARD_R44P1) += v_r44p1/
