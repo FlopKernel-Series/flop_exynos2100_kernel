@@ -85,7 +85,7 @@ struct is_vb2_buf {
 	struct dma_buf_attachment	*atch[IS_MAX_PLANES];
 	struct sg_table			*sgt[IS_MAX_PLANES];
 
-#if IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)
+#if IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)
 	ulong				kva[IS_MAX_PLANES];
 	dma_addr_t			dva[IS_MAX_PLANES];
 #else

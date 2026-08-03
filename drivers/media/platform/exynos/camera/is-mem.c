@@ -97,7 +97,7 @@ static inline ulong is_vb2_dma_sg_plane_kmap(
 	struct dma_buf *dbuf;
 	u32 adj_plane = plane;
 
-	if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)) && vbuf->num_merged_dbufs) {
+	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) && vbuf->num_merged_dbufs) {
 		/* Is a non-image plane? */
 		if (plane >= num_i_planes)
 			adj_plane = (vbuf->num_merged_dbufs * num_i_planes)
@@ -110,7 +110,7 @@ static inline ulong is_vb2_dma_sg_plane_kmap(
 		return vbuf->kva[adj_plane];
 
 	/* Use a dma_buf extracted from the DMA buffer container or original one. */
-	if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER))
+	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)
 		&& vbuf->num_merged_dbufs && (plane < num_i_planes))
 		dbuf = vbuf->dbuf[adj_plane];
 	else
@@ -156,7 +156,7 @@ static inline void is_vb2_dma_sg_plane_kunmap(
 	struct dma_buf *dbuf;
 	u32 adj_plane = plane;
 
-	if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)) && vbuf->num_merged_dbufs) {
+	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) && vbuf->num_merged_dbufs) {
 		if ((plane - num_i_planes) >= 0)
 			adj_plane = (vbuf->num_merged_dbufs * num_i_planes)
 				+ (plane - num_i_planes);
@@ -247,7 +247,7 @@ static void is_vb2_dma_sg_unremap_attr(struct is_vb2_buf *vbuf, int attr)
 	atomic_inc(&stats.cnt_buf_unremap);
 }
 
-#if IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)
+#if IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)
 static long is_dbufcon_prepare(struct is_vb2_buf *vbuf, struct device *dev)
 {
 	struct vb2_buffer *vb = &vbuf->vb.vb2_buf;

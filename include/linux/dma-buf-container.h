@@ -10,7 +10,7 @@
 
 #include <linux/types.h>
 
-#if IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)
+#if IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)
 int dmabuf_container_get_count(struct dma_buf *dmabuf);
 struct dma_buf *dmabuf_container_get_buffer(struct dma_buf *dmabuf, int index);
 int dmabuf_container_set_mask(struct dma_buf *dmabuf, u64 mask);
@@ -32,6 +32,6 @@ static inline int dmabuf_container_get_mask(struct dma_buf *dmabuf, u64 *mask)
 {
 	return -EINVAL;
 }
-#endif /* IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER) */
+#endif /* IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) */
 
 #endif /* _LINUX_DMA_BUF_CONTAINER_H_ */

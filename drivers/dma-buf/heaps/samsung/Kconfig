@@ -2,7 +2,7 @@
 config DMABUF_SAMSUNG_HEAPS
 	tristate "DMA-BUF Userland Memory Heaps for Samsung"
 	select SAMSUNG_SECURE_IOVA
-	select DMABUF_CONTAINER
+	select DMA_BUF_CONTAINER
 	select DMABUF_HEAPS_PAGE_POOL
 	select DMABUF_HEAPS_DEFERRED_FREE
 	depends on DMABUF_HEAPS
@@ -46,14 +46,6 @@ config DMABUF_HEAPS_SAMSUNG_SYSTEM
 	depends on DMABUF_SAMSUNG_HEAPS
 	help
 	  Choose this option to enable dma-buf System heap for samsung.
-
-config DMABUF_CONTAINER
-	tristate "Dma-buf container support"
-	depends on DMA_SHARED_BUFFER
-	help
-	  dma-buf container is a dma-buf that can contain multiple different
-	  dma-buf objects. It is useful when delivering a lot of dma-buf objects
-	  between processes or user and kernel to reduce communication overhead.
 
 config DMABUF_HEAPS_SAMSUNG_RBIN
 	bool "DMA-BUF RBIN Samsung Heap"

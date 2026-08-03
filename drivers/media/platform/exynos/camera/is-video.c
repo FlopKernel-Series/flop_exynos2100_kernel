@@ -1563,7 +1563,7 @@ int is_queue_buffer_queue(struct is_queue *queue,
 	FIMC_BUG(!video);
 
 	/* image planes */
-	if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)) && vbuf->num_merged_dbufs) {
+	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) && vbuf->num_merged_dbufs) {
 		/* vbuf has been sorted by the order of buffer */
 		memcpy(queue->buf_dva[index], vbuf->dva,
 			sizeof(dma_addr_t) * vbuf->num_merged_dbufs * num_i_planes);
@@ -1709,7 +1709,7 @@ set_info:
 		set_bit(IS_QUEUE_BUFFER_READY, &queue->state);
 
 	if (queue->buf_maxcount == queue->buf_refcount) {
-		if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER))
+		if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)
 				&& vbuf->num_merged_dbufs)
 			mvinfo("%s number of merged buffers: %d\n",
 				vctx, video, queue->name, frame->num_buffers);
@@ -1800,7 +1800,7 @@ int is_queue_buffer_prepare(struct vb2_buffer *vb)
 		);
 
 	/* Unmerged dma_buf_container */
-	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)) {
+	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER)) {
 		ret = vbuf->ops->dbufcon_prepare(vbuf, ctx->dev);
 		if (ret) {
 			mverr("failed to prepare dmabuf-container: %d",
@@ -2009,7 +2009,7 @@ void is_queue_buffer_finish(struct vb2_buffer *vb)
 	}
 #endif
 
-	if ((IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) || IS_ENABLED(CONFIG_DMABUF_CONTAINER)) &&
+	if (IS_ENABLED(CONFIG_DMA_BUF_CONTAINER) &&
 			(vbuf->num_merged_dbufs)) {
 		for (i = 0; i < num_i_planes && vbuf->kva[i]; i++)
 			vbuf->ops->dbufcon_kunmap(vbuf, i);
