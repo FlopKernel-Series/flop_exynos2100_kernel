@@ -20,6 +20,7 @@
 #include <linux/freezer.h>
 #include <linux/cpuhotplug.h>
 #include <linux/mm_types.h>
+#include <linux/workarounds.h>
 #include <linux/types.h>
 #include <linux/kobject.h>
 #include <trace/hooks/mm.h>
@@ -441,6 +442,11 @@ static int rbin_heap_probe(struct platform_device *pdev)
 	struct device_node *rmem_np;
 	struct rbin_heap *rbin_heap;
 
+	if (!is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is disabled so rbin dma-heap can't probe\n");
+		return -ENODEV;
+	}
+
 	rmem_np = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
 	rmem = of_reserved_mem_lookup(rmem_np);
 	if (!rmem) {
@@ -509,6 +515,10 @@ static struct platform_driver rbin_heap_driver = {
 
 int __init rbin_dma_heap_init(void)
 {
+	if (!is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is disabled so rbin dma-heap driver can't probe\n");
+		return 0;
+	}
 	return platform_driver_register(&rbin_heap_driver);
 }
 

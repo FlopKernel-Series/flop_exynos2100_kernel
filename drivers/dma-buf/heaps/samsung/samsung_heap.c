@@ -18,6 +18,7 @@
 #include <linux/scatterlist.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
+#include <linux/workarounds.h>
 
 #include <trace/hooks/mm.h>
 
@@ -461,6 +462,11 @@ static void dma_heap_add_exception_area(void)
 static int __init samsung_dma_heap_init(void)
 {
 	int ret;
+
+	if (!is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is disabled so Samsung dma-heap module can't probe\n");
+		return 0;
+	}
 
 	ret = chunk_dma_heap_init();
 	if (ret)

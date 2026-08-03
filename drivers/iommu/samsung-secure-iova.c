@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/slab.h>
+#include <linux/workarounds.h>
 
 #define SECURE_DMA_BASE	0x40000000
 /*
@@ -63,6 +64,11 @@ static int __init samsung_secure_iova_init(void)
 	struct device_node *np;
 	phys_addr_t base = SECURE_DMA_BASE, size = SECURE_DMA_SIZE;
 	int ret;
+
+	if (!is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is disabled so Secure IOVA can't probe\n");
+		return 0;
+	}
 
 	secure_iova_pool = gen_pool_create(PAGE_SHIFT, -1);
 	if (!secure_iova_pool) {

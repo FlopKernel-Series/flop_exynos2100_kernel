@@ -17,6 +17,7 @@
 #include <linux/of_reserved_mem.h>
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 #include <linux/dma-heap.h>
+#include <linux/workarounds.h>
 #endif
 #if IS_ENABLED(CONFIG_ION_EXYNOS)
 #include <linux/ion.h>
@@ -392,11 +393,21 @@ static void mfc_mem_ion_free(struct mfc_special_buf *special_buf)
 int mfc_mem_special_buf_alloc(struct mfc_dev *dev,
 		struct mfc_special_buf *special_buf)
 {
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION_EXYNOS)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env()) {
+		if (special_buf->buftype == MFCBUF_DRM_FW)
+			return mfc_mem_fw_alloc(dev, special_buf);
+		return mfc_mem_dma_heap_alloc(dev, special_buf);
+	}
+	return mfc_mem_ion_alloc(dev, special_buf);
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
 	if (special_buf->buftype == MFCBUF_DRM_FW)
 		return mfc_mem_fw_alloc(dev, special_buf);
 	return mfc_mem_dma_heap_alloc(dev, special_buf);
 #elif IS_ENABLED(CONFIG_ION_EXYNOS)
+	/* ION only */
 	return mfc_mem_ion_alloc(dev, special_buf);
 #else
 	return -EINVAL;
@@ -405,12 +416,24 @@ int mfc_mem_special_buf_alloc(struct mfc_dev *dev,
 
 void mfc_mem_special_buf_free(struct mfc_dev *dev, struct mfc_special_buf *special_buf)
 {
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION_EXYNOS)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env()) {
+		if (special_buf->buftype == MFCBUF_DRM_FW)
+			mfc_mem_fw_free(dev, special_buf);
+		else
+			mfc_mem_dma_heap_free(special_buf);
+		return;
+	}
+	mfc_mem_ion_free(special_buf);
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
 	if (special_buf->buftype == MFCBUF_DRM_FW)
 		mfc_mem_fw_free(dev, special_buf);
 	else
 		mfc_mem_dma_heap_free(special_buf);
 #elif IS_ENABLED(CONFIG_ION_EXYNOS)
+	/* ION only */
 	mfc_mem_ion_free(special_buf);
 #endif
 }
@@ -697,7 +720,7 @@ void mfc_cleanup_iovmm_except_used(struct mfc_ctx *ctx)
 }
 
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf)
+static int mfc_iommu_map_firmware_dmabuf(struct mfc_core *core, struct mfc_special_buf *fw_buf)
 {
 	struct mfc_dev *dev = core->dev;
 	struct device_node *node = core->device ? core->device->of_node : NULL;
@@ -736,8 +759,10 @@ int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf
 
 	return 0;
 }
-#else
-int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf)
+#endif
+
+#if IS_ENABLED(CONFIG_ION_EXYNOS)
+static int mfc_iommu_map_firmware_ion(struct mfc_core *core, struct mfc_special_buf *fw_buf)
 {
 	struct mfc_dev *dev = core->dev;
 	dma_addr_t fw_base_addr;
@@ -760,6 +785,24 @@ int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf
 	return 0;
 }
 #endif
+
+int mfc_iommu_map_firmware(struct mfc_core *core, struct mfc_special_buf *fw_buf)
+{
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION_EXYNOS)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env())
+		return mfc_iommu_map_firmware_dmabuf(core, fw_buf);
+	return mfc_iommu_map_firmware_ion(core, fw_buf);
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
+	return mfc_iommu_map_firmware_dmabuf(core, fw_buf);
+#elif IS_ENABLED(CONFIG_ION_EXYNOS)
+	/* ION only */
+	return mfc_iommu_map_firmware_ion(core, fw_buf);
+#else
+	return -ENOENT;
+#endif
+}
 
 int mfc_iommu_map_sfr(struct mfc_core *core)
 {

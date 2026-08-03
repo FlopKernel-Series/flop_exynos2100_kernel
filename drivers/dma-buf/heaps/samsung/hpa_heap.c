@@ -21,6 +21,7 @@
 #include <linux/iommu.h>
 #include <linux/kmemleak.h>
 #include <linux/ktime.h>
+#include <linux/workarounds.h>
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -968,6 +969,11 @@ static int __init hpa_dma_heap_init(void)
 	struct dma_heap_export_info exp_info;
 	struct dma_heap *dma_heap;
 	int ret, i = 0;
+
+	if (!is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is disabled so HPA dma-heap can't probe\n");
+		return 0;
+	}
 
 	ret = hpa_secure_iova_pool_init();
 	if (ret)

@@ -11,6 +11,7 @@
  */
 
 #include <soc/samsung/exynos-smc.h>
+#include <linux/workarounds.h>
 #if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 #include <soc/samsung/imgloader.h>
 #endif
@@ -53,7 +54,7 @@ static int __mfc_core_prot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-	{
+	if (is_dma_buf_env()) {
 		phys_addr_t protdesc_phys;
 		dma_addr_t protdesc_daddr;
 
@@ -125,7 +126,7 @@ static void __mfc_core_unprot_firmware(struct mfc_core *core, struct mfc_ctx *ct
 	}
 
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-	if (core->drm_fw_prot) {
+	if (is_dma_buf_env() && core->drm_fw_prot) {
 		phys_addr_t protdesc_phys = virt_to_phys(core->drm_fw_prot);
 
 		ret = exynos_smc(SMC_DRM_PPMP_UNPROT, protdesc_phys, 0, 0);

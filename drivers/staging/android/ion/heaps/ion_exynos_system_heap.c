@@ -15,6 +15,7 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+#include <linux/workarounds.h>
 
 #include "ion_page_pool.h"
 #include "../ion_bltin.h"
@@ -295,6 +296,11 @@ static int __init ion_system_heap_init(void)
 {
 	struct device *dev;
 	int ret = -ENOMEM;
+
+	if (is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is enabled so ION exynos system heap can't probe\n");
+		return 0;
+	}
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev)

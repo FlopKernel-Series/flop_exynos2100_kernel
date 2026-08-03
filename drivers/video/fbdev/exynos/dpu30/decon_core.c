@@ -21,9 +21,11 @@
 #include <linux/clk-provider.h>
 #include <linux/console.h>
 #include <linux/dma-buf.h>
+#include <linux/workarounds.h>
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 #include <linux/dma-heap.h>
-#else
+#endif
+#if IS_ENABLED(CONFIG_ION)
 #include <linux/ion.h>
 #endif
 #include <uapi/linux/sched/types.h>
@@ -5066,7 +5068,30 @@ static int decon_fb_alloc_memory(struct decon_device *decon, struct decon_win *w
 	size = PAGE_ALIGN(size);
 
 	dev_info(decon->dev, "want %u bytes for window[%d]\n", size, win->idx);
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env()) {
+		dma_heap = dma_heap_find("system-uncached");
+		if (!dma_heap) {
+			decon_err("dma_heap_find() failed [%x]\n", dma_heap);
+			return -ENODEV;
+		}
+
+		buf = dma_heap_buffer_alloc(dma_heap, (size_t)size, 0, 0);
+		dma_heap_put(dma_heap);
+		if (IS_ERR(buf)) {
+			decon_err("dma_buf allocation is failed [%x]\n", buf);
+			return PTR_ERR(buf);
+		}
+	} else {
+		buf = ion_alloc((size_t)size, ION_HEAP_SYSTEM, 0);
+		if (IS_ERR(buf)) {
+			dev_err(decon->dev, "ion_alloc() failed\n");
+			goto err_share_dma_buf;
+		}
+	}
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
 	dma_heap = dma_heap_find("system-uncached");
 	if (!dma_heap) {
 		decon_err("dma_heap_find() failed [%x]\n", dma_heap);
@@ -5080,6 +5105,7 @@ static int decon_fb_alloc_memory(struct decon_device *decon, struct decon_win *w
 		return PTR_ERR(buf);
 	}
 #else
+	/* ION only */
 	buf = ion_alloc((size_t)size, ION_HEAP_SYSTEM, 0);
 	if (IS_ERR(buf)) {
 		dev_err(decon->dev, "ion_alloc() failed\n");
@@ -5141,7 +5167,7 @@ static int decon_fb_alloc_memory(struct decon_device *decon, struct decon_win *w
 
 err_map:
 	dma_buf_put(buf);
-#if !IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_ION)
 err_share_dma_buf:
 #endif
 	return -ENOMEM;
@@ -5172,7 +5198,30 @@ static int decon_fb_test_alloc_memory(struct decon_device *decon, u32 size)
 
 	dev_info(decon->dev, "want %u bytes for window[%d]\n", size, win->idx);
 
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env()) {
+		dma_heap = dma_heap_find("system-uncached");
+		if (!dma_heap) {
+			decon_err("dma_heap_find() failed [%x]\n", dma_heap);
+			return -ENODEV;
+		}
+
+		buf = dma_heap_buffer_alloc(dma_heap, (size_t)size, 0, 0);
+		dma_heap_put(dma_heap);
+		if (IS_ERR(buf)) {
+			decon_err("dma_buf allocation is failed [%x]\n", buf);
+			return PTR_ERR(buf);
+		}
+	} else {
+		buf = ion_alloc((size_t)size, ION_HEAP_SYSTEM, 0);
+		if (IS_ERR(buf)) {
+			dev_err(decon->dev, "ion_alloc() failed\n");
+			goto err_share_dma_buf;
+		}
+	}
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
 	dma_heap = dma_heap_find("system-uncached");
 	if (!dma_heap) {
 		decon_err("dma_heap_find() failed [%x]\n", dma_heap);
@@ -5186,6 +5235,7 @@ static int decon_fb_test_alloc_memory(struct decon_device *decon, u32 size)
 		return PTR_ERR(buf);
 	}
 #else
+	/* ION only */
 	buf = ion_alloc((size_t)size, ION_HEAP_SYSTEM, 0);
 	if (IS_ERR(buf)) {
 		dev_err(decon->dev, "ion_alloc() failed\n");
@@ -5234,7 +5284,7 @@ static int decon_fb_test_alloc_memory(struct decon_device *decon, u32 size)
 
 err_map:
 	dma_buf_put(buf);
-#if !IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_ION)
 err_share_dma_buf:
 #endif
 	return -ENOMEM;

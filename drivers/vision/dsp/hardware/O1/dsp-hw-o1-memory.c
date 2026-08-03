@@ -9,6 +9,7 @@
 #include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/iommu.h>
+#include <linux/workarounds.h>
 #if defined(CONFIG_EXYNOS_IOVMM) && defined(CONFIG_ION_EXYNOS)
 #include <linux/ion_exynos.h>
 #include <linux/exynos_iovmm.h>
@@ -780,6 +781,10 @@ static int dsp_hw_o1_memory_probe(struct dsp_system *sys)
 	struct dsp_reserved_mem *rmem;
 
 	dsp_enter();
+	if (is_dma_buf_env()) {
+		dsp_info("FK_FEATURE_ENABLE_DMA_BUF is enabled so DSP O1 memory can't probe\n");
+		return -ENODEV;
+	}
 	mem = &sys->memory;
 	mem->dev = sys->dev;
 	mem->priv_mem_count = DSP_O1_PRIV_MEM_COUNT;

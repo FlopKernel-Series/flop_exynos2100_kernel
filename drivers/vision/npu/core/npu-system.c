@@ -30,11 +30,13 @@
 
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 #include <linux/dma-heap.h>
-#else
+#endif
+#if IS_ENABLED(CONFIG_ION)
 #include <linux/ion_exynos.h>
 #include <linux/ion.h>
 #include <uapi/linux/ion.h>
 #endif
+#include <linux/workarounds.h>
 
 #include "npu-log.h"
 #include "npu-device.h"
@@ -61,23 +63,7 @@
  *****                         wrapper function                          *****
  *****************************************************************************/
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-static struct dma_buf *npu_memory_ion_alloc(size_t size, unsigned int flag)
-{
-	struct dma_buf *dma_buf = NULL;
-	struct dma_heap *dma_heap;
-
-	dma_heap = dma_heap_find("system-uncached");
-	if (dma_heap) {
-		dma_buf = dma_heap_buffer_alloc(dma_heap, size, 0, flag);
-		dma_heap_put(dma_heap);
-	} else {
-		npu_info("dma_heap is not exist\n");
-	}
-
-	return dma_buf;
-}
-#else
+#if IS_ENABLED(CONFIG_ION)
 static unsigned int __npu_memory_get_query_from_ion(const char *heapname)
 {
 	struct ion_heap_data data[ION_NUM_MAX_HEAPS];
@@ -96,17 +82,59 @@ static unsigned int __npu_memory_get_query_from_ion(const char *heapname)
 
 	return 1 << data[i].heap_id;
 }
-
+#endif
 static struct dma_buf *npu_memory_ion_alloc(size_t size, unsigned int flag)
 {
-	unsigned int heapmask = __npu_memory_get_query_from_ion("vendor_system_heap");
+	struct dma_buf *dma_buf = NULL;
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env()) {
+		struct dma_heap *dma_heap;
 
-	if (!heapmask)
-		heapmask = __npu_memory_get_query_from_ion("ion_system_heap");
+		dma_heap = dma_heap_find("system-uncached");
+		if (dma_heap) {
+			dma_buf = dma_heap_buffer_alloc(dma_heap, size, 0, flag);
+			dma_heap_put(dma_heap);
+		} else {
+			npu_info("dma_heap is not exist\n");
+		}
+	} else {
+		unsigned int heapmask =
+			__npu_memory_get_query_from_ion("vendor_system_heap");
 
-	return ion_alloc(size, heapmask, flag);
-}
+		if (!heapmask)
+			heapmask = __npu_memory_get_query_from_ion("ion_system_heap");
+
+		dma_buf = ion_alloc(size, heapmask, flag);
+	}
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
+	{
+		struct dma_heap *dma_heap;
+
+		dma_heap = dma_heap_find("system-uncached");
+		if (dma_heap) {
+			dma_buf = dma_heap_buffer_alloc(dma_heap, size, 0, flag);
+			dma_heap_put(dma_heap);
+		} else {
+			npu_info("dma_heap is not exist\n");
+		}
+	}
+#else
+	/* ION only */
+	{
+		unsigned int heapmask =
+			__npu_memory_get_query_from_ion("vendor_system_heap");
+
+		if (!heapmask)
+			heapmask = __npu_memory_get_query_from_ion("ion_system_heap");
+
+		dma_buf = ion_alloc(size, heapmask, flag);
+	}
 #endif
+
+	return dma_buf;
+}
 static dma_addr_t npu_memory_dma_buf_dva_map(struct npu_memory_buffer *buffer)
 {
 	return sg_dma_address(buffer->sgt->sgl);

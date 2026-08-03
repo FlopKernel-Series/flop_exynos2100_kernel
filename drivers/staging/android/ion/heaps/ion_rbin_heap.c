@@ -28,6 +28,7 @@
 #include <linux/ion.h>
 #include <asm/cacheflush.h>
 #include <linux/sec_detect.h>
+#include <linux/workarounds.h>
 
 #ifndef CONFIG_ION_MSM_HEAPS
 #define CREATE_TRACE_POINTS
@@ -475,6 +476,11 @@ static struct platform_driver ion_rbin_heap_driver = {
 
 int __init ion_rbin_heap_init(void)
 {
+	if (is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is enabled so ION rbin heap can't probe\n");
+		return 0;
+	}
+
 	if (!sec_get_feat(SEC_FEAT_USES_RBIN)) {
 		SEC_DETECT_LOG("This device cannot use rbin heap, disabling it\n");
 		return 0;

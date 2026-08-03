@@ -28,6 +28,7 @@
 #include <linux/module.h>
 #include <linux/iommu.h>
 #include <linux/dma-iommu.h>
+#include <linux/workarounds.h>
 #include <video/mipi_display.h>
 #if !defined(CONFIG_UML)
 #include <soc/samsung/cal-if.h>
@@ -1101,7 +1102,31 @@ static int dsim_alloc_fcmd_memory(u32 id)
 
 	dev_info(dsim->dev, "want %u bytes\n", size);
 
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env()) {
+		dma_heap = dma_heap_find("system-uncached");
+		if (dma_heap) {
+			dsim->fcmd_buf = dma_heap_buffer_alloc(dma_heap, (size_t)size, 0, 0);
+			dma_heap_put(dma_heap);
+		} else {
+			pr_err("dma_heap_find() failed\n");
+			goto err_share_dma_buf;
+		}
+
+		if (IS_ERR(dsim->fcmd_buf)) {
+			dev_err(dsim->dev, "ion_alloc() failed\n");
+			goto err_share_dma_buf;
+		}
+	} else {
+		dsim->fcmd_buf = ion_alloc((size_t)size, ION_HEAP_SYSTEM, 0);
+		if (IS_ERR(dsim->fcmd_buf)) {
+			dev_err(dsim->dev, "ion_alloc() failed\n");
+			goto err_share_dma_buf;
+		}
+	}
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
 	dma_heap = dma_heap_find("system-uncached");
 	if (dma_heap) {
 		dsim->fcmd_buf = dma_heap_buffer_alloc(dma_heap, (size_t)size, 0, 0);
@@ -1116,6 +1141,7 @@ static int dsim_alloc_fcmd_memory(u32 id)
 		goto err_share_dma_buf;
 	}
 #else
+	/* ION only */
 	dsim->fcmd_buf = ion_alloc((size_t)size, ION_HEAP_SYSTEM, 0);
 	if (IS_ERR(dsim->fcmd_buf)) {
 		dev_err(dsim->dev, "ion_alloc() failed\n");

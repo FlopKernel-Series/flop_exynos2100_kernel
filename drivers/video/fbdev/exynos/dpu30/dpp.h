@@ -24,7 +24,8 @@
 #include <linux/of_address.h>
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 #include <linux/dma-heap.h>
-#else
+#endif
+#if IS_ENABLED(CONFIG_ION)
 #include <linux/ion.h>
 #endif
 #include <linux/dma-buf.h>

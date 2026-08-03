@@ -23,9 +23,11 @@
 #include <linux/pm_runtime.h>
 #include <linux/iommu.h>
 #include <linux/dma-iommu.h>
+#include <linux/workarounds.h>
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 #include <linux/dma-heap.h>
-#else
+#endif
+#if IS_ENABLED(CONFIG_ION)
 #include <linux/ion.h>
 #endif
 #include <linux/dma-buf.h>
@@ -2142,7 +2144,8 @@ static void destroy_intermediate_frame(struct sc_ctx *ctx)
 	if (ctx->i_frame) {
 		free_intermediate_frame(ctx);
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-		dma_heap_put(ctx->i_frame->dma_heap);
+		if (is_dma_buf_env() && ctx->i_frame->dma_heap)
+			dma_heap_put(ctx->i_frame->dma_heap);
 #endif
 		kfree(ctx->i_frame);
 		ctx->i_frame = NULL;
@@ -2150,20 +2153,25 @@ static void destroy_intermediate_frame(struct sc_ctx *ctx)
 	}
 }
 
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-static bool
-alloc_intermediate_buffer(struct device *dev,
-		struct sc_int_frame *iframe, int i, size_t size)
-{
-	iframe->dma_buf[i] = dma_heap_buffer_alloc(
-				iframe->dma_heap, size, 0, 0);
-#else
 static bool
 alloc_intermediate_buffer(struct device *dev,
 		struct sc_int_frame *iframe, int i,
 		size_t size, unsigned int heapmask,
 		unsigned long flags)
 {
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env())
+		iframe->dma_buf[i] = dma_heap_buffer_alloc(
+					iframe->dma_heap, size, 0, 0);
+	else
+		iframe->dma_buf[i] = ion_alloc(size, heapmask, flags);
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
+	iframe->dma_buf[i] = dma_heap_buffer_alloc(
+				iframe->dma_heap, size, 0, 0);
+#else
+	/* ION only */
 	iframe->dma_buf[i] = ion_alloc(size, heapmask, flags);
 #endif
 	if (IS_ERR(iframe->dma_buf[i])) {
@@ -2216,7 +2224,7 @@ err_dmabuf:
 	return false;
 }
 
-#if !IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_ION)
 #define SC_ION_EXYNOS_FLAG_PROTECTED (1 << 16)
 unsigned int sc_ion_get_heapmask_by_name(const char *heap_name)
 {
@@ -2239,10 +2247,9 @@ static bool initialize_initermediate_frame(struct sc_ctx *ctx)
 	struct sc_dev *sc = ctx->sc_dev;
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
 	char *heap_name;
-#else
-	unsigned int heapmask;
-	unsigned long flag;
 #endif
+	unsigned int heapmask = 0;
+	unsigned long flag = 0;
 	int i;
 
 	frame = &ctx->i_frame->frame;
@@ -2263,7 +2270,39 @@ static bool initialize_initermediate_frame(struct sc_ctx *ctx)
 	if (ctx->i_frame->dma_buf[0])
 		return true;
 
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_ION)
+	/* both allocators built: runtime-select */
+	if (is_dma_buf_env()) {
+		if (test_bit(CTX_INT_FRAME_CP, &ctx->flags))
+			heap_name = "vscaler-secure";
+		else
+			heap_name = "system-uncached";
+
+		ctx->i_frame->dma_heap = dma_heap_find(heap_name);
+		if (!ctx->i_frame->dma_heap) {
+			dev_err(sc->dev, "%s:failed to get dma_heap(%s)\n",
+					__func__, heap_name);
+			return false;
+		}
+	} else {
+		if (test_bit(CTX_INT_FRAME_CP, &ctx->flags)) {
+			char *heapname = "vscaler_heap";
+
+			heapmask = sc_ion_get_heapmask_by_name(heapname);
+			if (!heapmask) {
+				dev_err(sc->dev,
+					"%s: failed to get heapmask by name(%s)\n",
+					__func__, heapname);
+				return false;
+			}
+			flag = SC_ION_EXYNOS_FLAG_PROTECTED;
+		} else {
+			heapmask = ION_HEAP_SYSTEM;
+			flag = 0;
+		}
+	}
+#elif IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+	/* DMA-BUF only */
 	if (test_bit(CTX_INT_FRAME_CP, &ctx->flags))
 		heap_name = "vscaler-secure";
 	else
@@ -2276,6 +2315,7 @@ static bool initialize_initermediate_frame(struct sc_ctx *ctx)
 		return false;
 	}
 #else
+	/* ION only */
 	if (test_bit(CTX_INT_FRAME_CP, &ctx->flags)) {
 		char *heapname = "vscaler_heap";
 
@@ -2300,12 +2340,8 @@ static bool initialize_initermediate_frame(struct sc_ctx *ctx)
 			break;
 
 		if (!alloc_intermediate_buffer(sc->dev, ctx->i_frame, i,
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-					       frame->addr.size[i]))
-#else
 					       frame->addr.size[i],
 					       heapmask, flag))
-#endif
 			goto err_ion_alloc;
 
 		frame->addr.ioaddr[i] = ctx->i_frame->dst_addr.ioaddr[i];
@@ -2316,7 +2352,8 @@ static bool initialize_initermediate_frame(struct sc_ctx *ctx)
 err_ion_alloc:
 	free_intermediate_frame(ctx);
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-	dma_heap_put(ctx->i_frame->dma_heap);
+	if (is_dma_buf_env() && ctx->i_frame->dma_heap)
+		dma_heap_put(ctx->i_frame->dma_heap);
 #endif
 	return false;
 }

@@ -19,6 +19,7 @@
 #include <linux/platform_device.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#include <linux/workarounds.h>
 
 #include "heap_private.h"
 
@@ -122,6 +123,11 @@ static int cma_heap_probe(struct platform_device *pdev)
 	struct cma_heap *cma_heap;
 	int ret;
 
+	if (!is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is disabled so cma dma-heap can't probe\n");
+		return -ENODEV;
+	}
+
 	ret = of_reserved_mem_device_init(&pdev->dev);
 	if (ret || !pdev->dev.cma_area) {
 		dev_err(&pdev->dev, "The CMA reserved area is not assigned (ret %d)\n", ret);
@@ -163,6 +169,10 @@ static struct platform_driver cma_heap_driver = {
 
 int __init cma_dma_heap_init(void)
 {
+	if (!is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is disabled so cma dma-heap driver can't probe\n");
+		return 0;
+	}
 	return platform_driver_register(&cma_heap_driver);
 }
 

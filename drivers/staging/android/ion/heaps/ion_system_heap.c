@@ -15,6 +15,7 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+#include <linux/workarounds.h>
 
 #include "ion_page_pool.h"
 
@@ -290,7 +291,14 @@ static struct ion_system_heap system_heap = {
 
 static int __init ion_system_heap_init(void)
 {
-	int ret = ion_system_heap_create_pools(system_heap.pools);
+	int ret;
+
+	if (is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is enabled so ION system heap can't probe\n");
+		return 0;
+	}
+
+	ret = ion_system_heap_create_pools(system_heap.pools);
 	if (ret)
 		return ret;
 

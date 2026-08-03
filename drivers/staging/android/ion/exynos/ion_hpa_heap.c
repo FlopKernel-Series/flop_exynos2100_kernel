@@ -23,6 +23,7 @@
 #include <linux/smc.h>
 #include <linux/kmemleak.h>
 #include <linux/dma-mapping.h>
+#include <linux/workarounds.h>
 #include <soc/samsung/exynos-smc.h>
 
 #include "ion_exynos_prot.h"
@@ -464,6 +465,11 @@ const struct dma_buf_ops ion_hpa_buf_ops = {
 static int __init exynos_hpa_init(void)
 {
 	int ret, i = 0;
+
+	if (is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is enabled so ION HPA heap can't probe\n");
+		return 0;
+	}
 
 	ret = hpa_secure_iova_pool_create();
 	if (ret)

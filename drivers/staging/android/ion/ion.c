@@ -24,6 +24,7 @@
 #include <linux/sched/task.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/workarounds.h>
 
 #include "ion_private.h"
 #include "ion_bltin.h"
@@ -534,6 +535,11 @@ static int ion_device_create(void)
 {
 	struct ion_device *idev;
 	int ret;
+
+	if (is_dma_buf_env()) {
+		pr_info("FK_FEATURE_ENABLE_DMA_BUF is enabled so ION can't probe\n");
+		return 0;
+	}
 
 	idev = kzalloc(sizeof(*idev), GFP_KERNEL);
 	if (!idev)
