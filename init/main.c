@@ -204,10 +204,10 @@ static bool init_debug;
 static char init_debug_default_arg[] = "init_debug=0";
 
 // Initialize to something
-char mali_selected_version[8] = "r38p0";
+char mali_selected_version[8] = "r38p1";
 EXPORT_SYMBOL(mali_selected_version);
 // Actual consumed value
-static char mali_selected_version_arg[] = "mali.version=r38p0";
+static char mali_selected_version_arg[] = "mali.version=r38p1";
 
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 static bool aosp_mode;
