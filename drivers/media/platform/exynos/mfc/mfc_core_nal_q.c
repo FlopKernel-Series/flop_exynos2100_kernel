@@ -2168,6 +2168,7 @@ static void __mfc_core_nal_q_handle_frame_input(struct mfc_core *core, struct mf
 		src_mb = mfc_get_del_buf(ctx, &ctx->src_buf_nal_queue, MFC_BUF_NO_TOUCH_USED);
 		if (src_mb)
 			vb2_buffer_done(&src_mb->vb.vb2_buf, VB2_BUF_STATE_DONE);
+		dec->consumed = 0;
 	}
 
 	/* Check multi-frame */
