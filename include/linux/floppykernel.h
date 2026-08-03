@@ -20,6 +20,7 @@ enum fk_feature_id {
 	FK_FEATURE_AOSP_MODE = 5,
 	FK_FEATURE_USB_SL_DISABLE = 6,
 	FK_FEATURE_INIT_DEBUG = 7,
+	FK_FEATURE_ENABLE_DMA_BUF = 8,
 };
 
 enum fk_selinux_mode {

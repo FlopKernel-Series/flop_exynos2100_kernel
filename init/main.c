@@ -414,6 +414,35 @@ bool is_init_debug_enabled(void)
 	return init_debug;
 }
 
+static bool dma_buf_env;
+static char dma_buf_env_default_arg[] = "dma_buf_env=0";
+
+static int __init set_dma_buf_env(char *val)
+{
+	int tmp = dma_buf_env;
+
+	if (get_option(&val, &tmp))
+		dma_buf_env = !!tmp;
+
+	return 0;
+}
+__setup("dma_buf_env=", set_dma_buf_env);
+
+static void __init apply_dma_buf_env_default(void)
+{
+	char *val;
+
+	val = strchr(dma_buf_env_default_arg, '=');
+	if (val)
+		set_dma_buf_env(val + 1);
+}
+
+bool is_dma_buf_env(void)
+{
+	return dma_buf_env;
+}
+EXPORT_SYMBOL(is_dma_buf_env);
+
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
 const char *envp_init[MAX_INIT_ENVS+2] = { "HOME=/", "TERM=linux", NULL, };
 static const char *panic_later, *panic_param;
@@ -1129,6 +1158,7 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_selinux_mode_default();
 	apply_init_protection_default();
 	apply_init_debug_default();
+	apply_dma_buf_env_default();
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 	apply_aosp_mode_default();
 	apply_usb_sl_disable_default();
@@ -1136,6 +1166,8 @@ asmlinkage __visible void __init start_kernel(void)
 
 	pr_info("Workaround: aosp_mode=%s\n",
 		is_aosp_mode() ? "enabled" : "disabled");
+	pr_info("Workaround: dma_buf_env=%s\n",
+		is_dma_buf_env() ? "enabled" : "disabled");
 
 	if (uname_bpf_spoof == 1)
 		pr_info("Workaround: BpfSpoof Partial (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());
