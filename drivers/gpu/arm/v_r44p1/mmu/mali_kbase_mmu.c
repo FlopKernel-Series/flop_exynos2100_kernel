@@ -311,9 +311,14 @@ static void kbase_mmu_sync_pgd_cpu(struct kbase_device *kbdev, dma_addr_t handle
 	/* In non-coherent system, ensure the GPU can read
 	 * the pages from memory
 	 */
-	if (kbdev->system_coherency == COHERENCY_NONE)
+#if IS_ENABLED(CONFIG_MALI_EXYNOS_LLC)
+	if (kbdev->system_coherency != COHERENCY_ACE){
+#else
+	if (kbdev->system_coherency == COHERENCY_NONE){
+#endif
 		dma_sync_single_for_device(kbdev->dev, handle, size,
 				DMA_TO_DEVICE);
+	}
 }
 
 /**
@@ -1909,17 +1914,17 @@ static int update_parent_pgds(struct kbase_device *kbdev, struct kbase_mmu_table
 		if (parent_index != insert_level) {
 			/* Newly allocated PGDs */
 			kbase_mmu_sync_pgd_cpu(
-				kbdev, kbase_dma_addr(parent_page) + (parent_vpfn * sizeof(u64)),
-				sizeof(u64));
+				kbdev, kbase_dma_addr(parent_page),
+				PAGE_SIZE);
 		} else {
 			/* A new valid entry is added to an existing PGD. Perform the
 			 * invalidate operation for GPU cache as it could be having a
 			 * cacheline that contains the entry (in an invalid form).
 			 */
 			kbase_mmu_sync_pgd(
-				kbdev, mmut->kctx, parent_pgd + (parent_vpfn * sizeof(u64)),
-				kbase_dma_addr(parent_page) + (parent_vpfn * sizeof(u64)),
-				sizeof(u64), KBASE_MMU_OP_FLUSH_PT);
+				kbdev, mmut->kctx, parent_pgd,
+				kbase_dma_addr(parent_page),
+				PAGE_SIZE, KBASE_MMU_OP_FLUSH_PT);
 		}
 
 		/* Update the new target_pgd page to its stable state */
