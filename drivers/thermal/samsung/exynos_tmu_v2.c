@@ -1757,7 +1757,7 @@ static int exynos_tmu_apply_trip_offset(struct exynos_tmu_data *data, int offset
 
 	if (data->enabled) {
 		if (data->hotplug_enable)
-			kthread_queue_work(&data->thermal_worker, &data->hotplug_work);
+			kthread_queue_work(&hotplug_worker, &data->hotplug_work);
 
 		if (data->use_pi_thermal)
 			kthread_mod_delayed_work(&data->thermal_worker,
