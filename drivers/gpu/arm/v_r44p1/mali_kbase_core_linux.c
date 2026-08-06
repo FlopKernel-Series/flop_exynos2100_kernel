@@ -20,6 +20,7 @@
  */
 
 #include <mali_kbase.h>
+#include <linux/trace_events.h>
 #include <mali_kbase_config_defaults.h>
 #include <gpu/mali_kbase_gpu_regmap.h>
 #include <mali_kbase_gator.h>
@@ -6264,6 +6265,7 @@ static int __init kbase_driver_init(void)
 	    strcmp(mali_selected_version, "r44p1") != 0) {
 		pr_info("mali_kbase_r44p1: not selected (requested=%s), skipping\n",
 			mali_selected_version);
+		ftrace_remove_module_events(THIS_MODULE);
 		return 0;
 	}
 
