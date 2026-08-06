@@ -2400,6 +2400,7 @@ static void zram_handle_comp_page(struct work_struct *work)
 	int header_sz = sizeof(struct zram_wb_header);
 	int ret = 0;
 	u32 index;
+	u32 zhdr_size;
 	u8 *src, *dst, *src_decomp;
 	bool spanned;
 
@@ -2411,38 +2412,48 @@ static void zram_handle_comp_page(struct work_struct *work)
 	src = kmap_atomic(src_page[page_idx]);
 	zhdr = (struct zram_wb_header *)(src + offset);
 	index = zhdr->index;
+	zhdr_size = zhdr->size;
+	kunmap_atomic(src);
+
 	if (size == 0)
 		size = PAGE_SIZE;
-	if (zhdr->size != size) {
+	if (zhdr_size != size) {
+		src = kmap_atomic(src_page[page_idx]);
 		pr_err("%s %s zhdr error, size should be %u but was %u src=0x%px offset=%u\n",
-			__func__, zram->comp_algs[ZRAM_PRIMARY_COMP], size, zhdr->size, src,
+			__func__, zram->comp_algs[ZRAM_PRIMARY_COMP], size, zhdr_size, src,
 			offset);
 		print_hex_dump_pages(src_page, zw->nr_pages, page_idx);
+		kunmap_atomic(src);
 		BUG();
 	}
 
-	if (!dst_page) {
-		kunmap_atomic(src);
+	if (!dst_page)
 		goto out;
-	}
 
-	dst = kmap_atomic(dst_page);
 	zstrm = zcomp_stream_get(zram->comps[ZRAM_PRIMARY_COMP]);
 	spanned = (offset + header_sz + size > PAGE_SIZE) ? true : false;
 	if (spanned) {
-		kunmap_atomic(src);
+		dst = kmap_atomic(dst_page);
 		if (size == PAGE_SIZE) {
 			copy_to_buf(dst, src_page, page_idx, offset + header_sz, size);
+			kunmap_atomic(dst);
 			goto out_huge;
 		}
 		src = zstrm->tmpbuf;
 		copy_to_buf(src, src_page, page_idx, offset + header_sz, size);
 		src_decomp = src;
+		ret = zcomp_decompress(zram->comps[ZRAM_PRIMARY_COMP], zstrm,
+				       src_decomp, size, dst);
+		kunmap_atomic(dst);
 	} else {
+		src = kmap_atomic(src_page[page_idx]);
+		dst = kmap_atomic(dst_page);
 		src_decomp = src + offset + header_sz;
+		ret = zcomp_decompress(zram->comps[ZRAM_PRIMARY_COMP], zstrm,
+				       src_decomp, size, dst);
+		kunmap_atomic(dst);
+		kunmap_atomic(src);
 	}
-	ret = zcomp_decompress(zram->comps[ZRAM_PRIMARY_COMP], zstrm,
-			       src_decomp, size, dst);
 out_huge:
 	zcomp_stream_put(zstrm);
 	if (ret) {
@@ -2454,9 +2465,6 @@ out_huge:
 		handle_decomp_fail(zram->comp_algs[ZRAM_PRIMARY_COMP], ret, offset + header_sz,
 				   src_decomp, size, &hdp);
 	}
-	kunmap_atomic(dst);
-	if (!spanned)
-		kunmap_atomic(src);
 
 	zram_slot_lock(zram, index);
 	zram_clear_flag(zram, index, ZRAM_READ_BDEV);
