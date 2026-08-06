@@ -80,6 +80,7 @@ static int f2fs_check_utf8_comparisons(struct f2fs_sb_info *sbi)
 }
 
 /* If @dir is casefolded, initialize @fname->cf_name from @fname->usr_fname. */
+extern struct kmem_cache *f2fs_cf_name_slab;
 static int __f2fs_init_casefolded_name(const struct inode *dir,
 			      struct f2fs_filename *fname)
 {
@@ -88,8 +89,8 @@ static int __f2fs_init_casefolded_name(const struct inode *dir,
 	if (IS_CASEFOLDED(dir)) {
 			int ret = SEC_CASEFOLD_NR_RETRY;
 
-		fname->cf_name.name = f2fs_kmalloc(sbi, F2FS_NAME_LEN,
-						   GFP_NOFS);
+		fname->cf_name.name = kmem_cache_alloc(f2fs_cf_name_slab,
+						       GFP_NOFS);
 		if (!fname->cf_name.name)
 			return -ENOMEM;
 
@@ -119,7 +120,7 @@ retry_casefold:
 			if (ret > 0)
 				goto retry_casefold;
 
-			kfree(fname->cf_name.name);
+			kmem_cache_free(f2fs_cf_name_slab, fname->cf_name.name);
 			fname->cf_name.name = NULL;
 
 				if (sb_has_strict_encoding(dir->i_sb))
