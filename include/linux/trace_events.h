@@ -644,4 +644,10 @@ perf_trace_buf_submit(void *raw_data, int size, int rctx, u16 type,
 
 #endif
 
+#ifdef CONFIG_MODULES
+extern void ftrace_remove_module_events(struct module *mod);
+#else
+static inline void ftrace_remove_module_events(struct module *mod) {}
+#endif
+
 #endif /* _LINUX_TRACE_EVENT_H */
