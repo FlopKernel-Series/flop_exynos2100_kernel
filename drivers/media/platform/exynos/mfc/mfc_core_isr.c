@@ -1529,12 +1529,15 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 		}
 	}
 
-	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->color_aspect_dec)
-			&& dev->pdata->sbwc_dec_hdr10_off)
+	if (dev->pdata->sbwc_dec_hdr10_off && ctx->is_10bit) {
+		is_hdr10_sbwc_off = 1;
+	} else if (MFC_FEATURE_SUPPORT(dev, dev->pdata->color_aspect_dec)
+			&& dev->pdata->sbwc_dec_hdr10_off) {
 		if (mfc_core_get_video_signal_type() && mfc_core_get_colour_description())
 			is_hdr10_sbwc_off = IS_HDR10(ctx, mfc_core_get_primaries(),
 					mfc_core_get_transfer(),
 					mfc_core_get_matrix_coeff());
+	}
 
 	if (ctx->img_width == 0 || ctx->img_height == 0) {
 		mfc_err("[STREAM] wrong resolution w: %d, h: %d\n",
