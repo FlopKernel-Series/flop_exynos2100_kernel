@@ -17612,7 +17612,7 @@
 		sbwc_dec_max_width = <0x780>;
 		sbwc_dec_max_height = <0x440>;
 		sbwc_dec_max_inst_num = <0x01>;
-		sbwc_dec_hdr10_off = <0x00>;
+		sbwc_dec_hdr10_off = <0x01>;
 		max_hdr_win = <0x01>;
 		display_err_type = <0x02>;
 		display_framerate = <0x00>;
