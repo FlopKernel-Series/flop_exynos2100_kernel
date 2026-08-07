@@ -2332,7 +2332,7 @@ static void zram_handle_remain(struct zram *zram, struct page **pages,
 				__GFP_HIGHMEM |
 				__GFP_MOVABLE |
 				__GFP_CMA);
-		if (!handle) {
+		if (IS_ERR_VALUE(handle)) {
 			zram_slot_unlock(zram, index);
 			break;
 		}
