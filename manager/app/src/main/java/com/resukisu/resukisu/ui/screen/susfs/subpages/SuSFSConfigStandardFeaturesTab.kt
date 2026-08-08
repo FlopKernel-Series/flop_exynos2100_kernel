@@ -1,10 +1,20 @@
 package com.resukisu.resukisu.ui.screen.susfs.subpages
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
@@ -19,30 +29,46 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.data.susfs.SuSFSConfigHelper
+import com.resukisu.resukisu.data.susfs.SuSFSSlotInfo
 import com.resukisu.resukisu.ui.component.settings.SegmentedColumn
+import com.resukisu.resukisu.ui.component.settings.SettingsBaseWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsJumpPageWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsSwitchWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsTextFieldWidget
+import com.resukisu.resukisu.ui.component.settings.lazySegmentColumn
 import com.resukisu.resukisu.ui.screen.susfs.RegisterSuSFSRefresh
 import com.resukisu.resukisu.ui.screen.susfs.SuSFSRefreshRegistrar
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
+import com.resukisu.resukisu.ui.util.showReplacingSnackbar
 import kotlinx.coroutines.launch
+
+private enum class UnameDialogTab {
+    Manual,
+    SlotInfo,
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -65,11 +91,42 @@ fun StandardFeaturesTab(
 
     var showUnameDialog by remember { mutableStateOf(false) }
     var showCmdlineDialog by remember { mutableStateOf(false) }
+    var unameDialogTab by remember { mutableStateOf(UnameDialogTab.Manual) }
+    var slotInfos by remember { mutableStateOf<List<SuSFSSlotInfo>?>(null) }
+    var selectedSlotName by remember { mutableStateOf<String?>(null) }
+    var isSlotInfoLoading by remember { mutableStateOf(false) }
+    var slotInfoLoadFailed by remember { mutableStateOf(false) }
+    var slotInfoReloadKey by remember { mutableIntStateOf(0) }
     val unameVersionInput = remember { TextFieldState() }
     val unameReleaseInput = remember { TextFieldState() }
     val cmdlineInput = remember { TextFieldState() }
 
     val operationFailedMsg = stringResource(R.string.susfs_operation_failed)
+
+    LaunchedEffect(showUnameDialog, unameDialogTab, slotInfoReloadKey) {
+        if (!showUnameDialog ||
+            unameDialogTab != UnameDialogTab.SlotInfo ||
+            slotInfos != null
+        ) {
+            return@LaunchedEffect
+        }
+
+        isSlotInfoLoading = true
+        slotInfoLoadFailed = false
+        try {
+            val loadedSlotInfos = SuSFSConfigHelper.loadSlotInfo()
+            if (loadedSlotInfos == null) {
+                slotInfoLoadFailed = true
+            } else {
+                slotInfos = loadedSlotInfos
+                selectedSlotName = loadedSlotInfos.firstOrNull {
+                    it.uname == unameRelease && it.buildTime == unameVersion
+                }?.slotName
+            }
+        } finally {
+            isSlotInfoLoading = false
+        }
+    }
 
     RegisterSuSFSRefresh(onRegisterRefresh) { config, _ ->
         isLoading = true
@@ -93,7 +150,7 @@ fun StandardFeaturesTab(
                 if (ok) {
                     loggingEnabled = newValue
                 } else {
-                    snackbarHost.showSnackbar(operationFailedMsg)
+                    snackbarHost.showReplacingSnackbar(operationFailedMsg)
                 }
             }
         }
@@ -107,7 +164,7 @@ fun StandardFeaturesTab(
                     if (ok) {
                         avcLogSpoofingEnabled = newValue
                     } else {
-                        snackbarHost.showSnackbar(operationFailedMsg)
+                        snackbarHost.showReplacingSnackbar(operationFailedMsg)
                     }
                 }
             }
@@ -121,7 +178,7 @@ fun StandardFeaturesTab(
                     if (ok) {
                         hideSusMntsEnabled = newValue
                     } else {
-                        snackbarHost.showSnackbar(operationFailedMsg)
+                        snackbarHost.showReplacingSnackbar(operationFailedMsg)
                     }
                 }
             }
@@ -129,23 +186,37 @@ fun StandardFeaturesTab(
 
     val handleUnameSave: () -> Unit = remember(scope, snackbarHost, operationFailedMsg) {
         {
-            val v = unameVersionInput.text.toString().trim()
-            val r = unameReleaseInput.text.toString().trim()
+            val unameValues = when (unameDialogTab) {
+                UnameDialogTab.Manual -> {
+                    unameReleaseInput.text.toString().trim() to
+                            unameVersionInput.text.toString().trim()
+                }
+
+                UnameDialogTab.SlotInfo -> {
+                    slotInfos
+                        ?.firstOrNull { it.slotName == selectedSlotName }
+                        ?.let { it.uname.trim() to it.buildTime.trim() }
+                }
+            }
+
+            if (unameValues != null) {
+                val (r, v) = unameValues
                 scope.launch {
                     isLoading = true
-                    val ok = SuSFSConfigHelper.setUname(r, v)
-                    if (ok) {
-                        unameVersion = v
-                        unameRelease = r
-                        showUnameDialog = false
-                    } else {
-                        isLoading = false
-                        scope.launch {
-                            snackbarHost.showSnackbar(operationFailedMsg)
+                    try {
+                        val ok = SuSFSConfigHelper.setUname(r, v)
+                        if (ok) {
+                            unameVersion = v
+                            unameRelease = r
+                            showUnameDialog = false
+                        } else {
+                            snackbarHost.showReplacingSnackbar(operationFailedMsg)
                         }
+                    } finally {
+                        isLoading = false
                     }
-                    isLoading = false
                 }
+            }
         }
     }
 
@@ -161,7 +232,7 @@ fun StandardFeaturesTab(
                     } else {
                         isLoading = false
                         scope.launch {
-                            snackbarHost.showSnackbar(operationFailedMsg)
+                            snackbarHost.showReplacingSnackbar(operationFailedMsg)
                         }
                     }
                     isLoading = false
@@ -223,6 +294,11 @@ fun StandardFeaturesTab(
                                 onClick = {
                                     unameReleaseInput.setTextAndPlaceCursorAtEnd(unameRelease)
                                     unameVersionInput.setTextAndPlaceCursorAtEnd(unameVersion)
+                                    unameDialogTab = UnameDialogTab.Manual
+                                    slotInfos = null
+                                    selectedSlotName = null
+                                    isSlotInfoLoading = false
+                                    slotInfoLoadFailed = false
                                     showUnameDialog = true
                                 }
                             )
@@ -265,32 +341,156 @@ fun StandardFeaturesTab(
                 onDismissRequest = { showUnameDialog = false },
                 title = { Text(stringResource(R.string.susfs_standard_uname)) },
                 text = {
-                    SegmentedColumn(contentPadding = PaddingValues(0.dp)) {
-                        item {
-                            SettingsTextFieldWidget(
-                                state = unameReleaseInput,
-                                title = stringResource(R.string.susfs_standard_uname_release),
-                                useLabelAsPlaceholder = true,
-                                enabled = !isLoading,
-                                lineLimits = TextFieldLineLimits.SingleLine,
-                                renderBackgroundBlur = false
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        PrimaryTabRow(
+                            selectedTabIndex = unameDialogTab.ordinal,
+                            containerColor = Color.Transparent,
+                            divider = {}
+                        ) {
+                            Tab(
+                                selected = unameDialogTab == UnameDialogTab.Manual,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                onClick = { unameDialogTab = UnameDialogTab.Manual },
+                                text = {
+                                    Text(stringResource(R.string.susfs_standard_uname_tab_manual))
+                                },
+                            )
+                            Tab(
+                                selected = unameDialogTab == UnameDialogTab.SlotInfo,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                onClick = { unameDialogTab = UnameDialogTab.SlotInfo },
+                                text = {
+                                    Text(stringResource(R.string.susfs_standard_uname_tab_slot_info))
+                                },
                             )
                         }
-                        item {
-                            SettingsTextFieldWidget(
-                                state = unameVersionInput,
-                                title = stringResource(R.string.susfs_standard_uname_version),
-                                useLabelAsPlaceholder = true,
-                                enabled = !isLoading,
-                                lineLimits = TextFieldLineLimits.SingleLine,
-                                renderBackgroundBlur = false
-                            )
+
+                        AnimatedContent(
+                            targetState = unameDialogTab,
+                            transitionSpec = {
+                                val direction =
+                                    if (targetState.ordinal > initialState.ordinal) 1 else -1
+                                val enter = slideInHorizontally { width ->
+                                    direction * width / 3
+                                } + fadeIn()
+                                val exit = slideOutHorizontally { width ->
+                                    -direction * width / 3
+                                } + fadeOut()
+                                enter togetherWith exit
+                            },
+                            label = "UnameDialogTabContent",
+                        ) { currentTab ->
+                            when (currentTab) {
+                                UnameDialogTab.Manual -> {
+                                    SegmentedColumn(contentPadding = PaddingValues(top = 8.dp)) {
+                                        item {
+                                            SettingsTextFieldWidget(
+                                                state = unameReleaseInput,
+                                                title = stringResource(R.string.susfs_standard_uname_release),
+                                                useLabelAsPlaceholder = true,
+                                                lineLimits = TextFieldLineLimits.SingleLine,
+                                                renderBackgroundBlur = false
+                                            )
+                                        }
+                                        item {
+                                            SettingsTextFieldWidget(
+                                                state = unameVersionInput,
+                                                title = stringResource(R.string.susfs_standard_uname_version),
+                                                useLabelAsPlaceholder = true,
+                                                lineLimits = TextFieldLineLimits.SingleLine,
+                                                renderBackgroundBlur = false
+                                            )
+                                        }
+                                    }
+                                }
+
+                                UnameDialogTab.SlotInfo -> {
+                                    when {
+                                        isSlotInfoLoading ||
+                                                (slotInfos == null && !slotInfoLoadFailed) -> {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .heightIn(min = 160.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                LoadingIndicator()
+                                            }
+                                        }
+
+                                        slotInfoLoadFailed || slotInfos.isNullOrEmpty() -> {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .heightIn(min = 160.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.Center,
+                                            ) {
+                                                Text(
+                                                    text = stringResource(
+                                                        if (slotInfoLoadFailed) {
+                                                            R.string.susfs_standard_uname_slot_info_load_failed
+                                                        } else {
+                                                            R.string.susfs_standard_uname_slot_info_empty
+                                                        }
+                                                    ),
+                                                )
+                                                TextButton(
+                                                    onClick = {
+                                                        slotInfos = null
+                                                        slotInfoLoadFailed = false
+                                                        slotInfoReloadKey++
+                                                    },
+                                                ) {
+                                                    Text(stringResource(R.string.network_retry))
+                                                }
+                                            }
+                                        }
+
+                                        else -> {
+                                            LazyColumn(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .heightIn(max = 320.dp),
+                                                contentPadding = PaddingValues(vertical = 8.dp),
+                                            ) {
+                                                lazySegmentColumn(
+                                                    items = checkNotNull(slotInfos),
+                                                    noHorizontalPadding = true,
+                                                    key = { index, slot ->
+                                                        "$index:${slot.slotName}"
+                                                    },
+                                                ) { _, slot ->
+                                                    val selected =
+                                                        selectedSlotName == slot.slotName
+                                                    SettingsBaseWidget(
+                                                        iconPlaceholder = false,
+                                                        title = slot.slotName,
+                                                        description = "${slot.uname}\n${slot.buildTime}",
+                                                        selected = selected,
+                                                        isOnBackground = false,
+                                                        onClick = {
+                                                            selectedSlotName = slot.slotName
+                                                        },
+                                                        leadingContent = {
+                                                            RadioButton(
+                                                                selected = selected,
+                                                                onClick = null,
+                                                            )
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 },
                 confirmButton = {
                     TextButton(
-                        onClick = handleUnameSave
+                        onClick = handleUnameSave,
                     ) {
                         Text(stringResource(R.string.susfs_save))
                     }
@@ -316,7 +516,6 @@ fun StandardFeaturesTab(
                                 state = cmdlineInput,
                                 title = stringResource(R.string.susfs_standard_cmdline_path),
                                 useLabelAsPlaceholder = true,
-                                enabled = !isLoading,
                                 lineLimits = TextFieldLineLimits.SingleLine,
                                 renderBackgroundBlur = false
                             )

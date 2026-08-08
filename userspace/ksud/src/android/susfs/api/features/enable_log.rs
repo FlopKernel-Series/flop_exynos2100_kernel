@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::android::susfs::api::{
     magic::{CMD_SUSFS_ENABLE_LOG, ERR_CMD_NOT_SUPPORTED},
-    susfsctl::{communicate, parse_err},
+    susfsctl::{parse_err, susfsctl},
 };
 
 #[repr(C)]
@@ -17,6 +17,6 @@ pub fn enable_log(enabled: bool) -> Result<()> {
         err: ERR_CMD_NOT_SUPPORTED,
     };
 
-    communicate(CMD_SUSFS_ENABLE_LOG, &mut info);
+    susfsctl(CMD_SUSFS_ENABLE_LOG, &mut info);
     parse_err(CMD_SUSFS_ENABLE_LOG, info.err)
 }

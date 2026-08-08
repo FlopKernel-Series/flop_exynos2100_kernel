@@ -6,7 +6,7 @@ use libc::{SYS_reboot, syscall};
 use crate::android::susfs::api::magic::{ERR_CMD_NOT_SUPPORTED, KSU_INSTALL_MAGIC1, SUSFS_MAGIC};
 
 /// Communicate with SuSFS
-pub(super) fn communicate<T>(cmd: u64, arg: &mut T) {
+pub(super) fn susfsctl<T>(cmd: u64, arg: &mut T) {
     unsafe {
         syscall(
             SYS_reboot,

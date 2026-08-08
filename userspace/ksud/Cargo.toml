@@ -59,10 +59,6 @@ nom = "8"
 derive-new = "0.7"
 getopts = "0.2"
 serde = { version = "1.0", features = ["derive"] }
-bzip2 = "0.6"
-flate2 = "1"
-lz4 = "1"
-lzma-rust2 = { version = "0.15", features = ["std", "xz"] }
 ksuinit = { path = "../ksuinit" }
 adb_client = { git = "https://github.com/Kernel-SU/adb_client" }
 num_enum = "0.7"
@@ -80,3 +76,4 @@ codegen-units = 1
 
 [build-dependencies]
 bindgen = "0.72.1"
+cc = "1"

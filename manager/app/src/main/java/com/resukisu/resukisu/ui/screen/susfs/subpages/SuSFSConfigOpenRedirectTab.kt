@@ -36,6 +36,7 @@ import com.resukisu.resukisu.ui.screen.susfs.component.ManualAddDialog
 import com.resukisu.resukisu.ui.screen.susfs.component.SuSFSDescriptionCard
 import com.resukisu.resukisu.ui.screen.susfs.component.susfsEntryList
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
+import com.resukisu.resukisu.ui.util.showReplacingSnackbar
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -159,7 +160,7 @@ fun OpenRedirectTab(
                     entries = SuSFSConfigHelper.refreshConfig().open_redirect
                     showManualAdd = false
                 } else {
-                    snackbarHost.showSnackbar(operationFailedMsg)
+                    snackbarHost.showReplacingSnackbar(operationFailedMsg)
                 }
                 isLoading = false
             }
@@ -193,6 +194,7 @@ fun OpenRedirectTab(
                     choice = uidSchemeOptions.indexOfFirst { it.first == manualUidScheme }
                         .coerceAtLeast(0),
                     data = uidSchemeOptions.map { it.second },
+                    renderBackgroundBlur = false,
                     onChoiceChange = { index -> manualUidScheme = uidSchemeOptions[index].first },
                 )
             }
@@ -217,7 +219,7 @@ fun OpenRedirectTab(
                         entries = SuSFSConfigHelper.refreshConfig().open_redirect
                         detailItem = null
                     } else {
-                        snackbarHost.showSnackbar(operationFailedMsg)
+                        snackbarHost.showReplacingSnackbar(operationFailedMsg)
                     }
                     isLoading = false
                 }

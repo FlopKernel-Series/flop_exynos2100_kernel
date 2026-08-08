@@ -156,7 +156,7 @@ fun SettingsTextFieldWidget(
         title = if (useLabelAsPlaceholder) null else title,
         icon = null,
         iconPlaceholder = false,
-        renderBackgroundBlur = renderBackgroundBlur,
+        isOnBackground = renderBackgroundBlur,
         leadingContent = leadingContent,
         onClick = if (isClickableMode) {
             { onClickInternal() }
@@ -321,8 +321,10 @@ fun SettingsTextFieldWidget(
                 )
             }
         },
-        trailingContent = {
-            trailingContent?.invoke()
-        }
+        trailingContent = if (trailingContent != null) {
+            {
+                trailingContent()
+            }
+        } else null
     )
 }

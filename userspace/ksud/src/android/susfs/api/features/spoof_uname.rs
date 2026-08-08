@@ -3,9 +3,9 @@ use anyhow::Result;
 use crate::android::susfs::{
     api::{
         magic::{CMD_SUSFS_SET_UNAME, ERR_CMD_NOT_SUPPORTED, NEW_UTS_LEN},
-        susfsctl::{communicate, parse_err},
+        susfsctl::{parse_err, susfsctl},
     },
-    utils::{ensure_valid_uname_release, ensure_valid_uname_version, str_to_c_array},
+    utils::str_to_c_array,
 };
 
 #[repr(C)]
@@ -27,16 +27,14 @@ impl Default for SusfsUname {
 
 pub fn set_uname(release: &str, version: &str) -> Result<()> {
     let mut info = SusfsUname::default();
-    let release = ensure_valid_uname_release(release);
-    let version = ensure_valid_uname_version(version);
 
     // ksud stores spoof_version as the visible uname/release value and spoof_release
     // as the kernel build-time string.
     // The SuSFS ABI struct keeps the kernel field order (release, then version).
-    str_to_c_array(&release, &mut info.release);
-    str_to_c_array(&version, &mut info.version);
+    str_to_c_array(release, &mut info.release);
+    str_to_c_array(version, &mut info.version);
     info.err = ERR_CMD_NOT_SUPPORTED;
 
-    communicate(CMD_SUSFS_SET_UNAME, &mut info);
+    susfsctl(CMD_SUSFS_SET_UNAME, &mut info);
     parse_err(CMD_SUSFS_SET_UNAME, info.err)
 }

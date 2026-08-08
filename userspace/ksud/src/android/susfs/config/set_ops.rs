@@ -2,7 +2,6 @@ use crate::android::susfs::{
     config::model::{Config, OpenRedirectItem, SusKstatItem, SusKstatStatically, SusPathItem},
     enums::{SusKstatType, UidScheme},
     macros::ensure_path_exists,
-    utils::{ensure_valid_uname_release, ensure_valid_uname_version},
 };
 use anyhow::Result;
 
@@ -36,11 +35,8 @@ impl Config {
     }
 
     pub fn set_uname(&mut self, release: &str, version: &str) -> Result<&mut Self> {
-        let release = ensure_valid_uname_release(release);
-        let version = ensure_valid_uname_version(version);
-
-        self.uname.version = version;
-        self.uname.release = release;
+        self.uname.version = version.to_string();
+        self.uname.release = release.to_string();
 
         Ok(self)
     }

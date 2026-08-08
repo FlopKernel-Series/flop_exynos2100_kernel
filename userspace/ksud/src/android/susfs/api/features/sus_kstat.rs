@@ -15,7 +15,7 @@ use crate::android::susfs::{
             CMD_SUSFS_ADD_SUS_KSTAT, CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY,
             CMD_SUSFS_UPDATE_SUS_KSTAT, ERR_CMD_NOT_SUPPORTED, SUSFS_MAX_LEN_PATHNAME,
         },
-        susfsctl::{communicate, parse_err},
+        susfsctl::{parse_err, susfsctl},
     },
     utils::str_to_c_array,
 };
@@ -126,7 +126,7 @@ pub fn update_sus_kstat(path: &str, full_clone: bool) -> Result<()> {
     info.flags |= spoof_flag.bits();
     info.err = ERR_CMD_NOT_SUPPORTED;
 
-    communicate(CMD_SUSFS_UPDATE_SUS_KSTAT, &mut info);
+    susfsctl(CMD_SUSFS_UPDATE_SUS_KSTAT, &mut info);
     parse_err(CMD_SUSFS_UPDATE_SUS_KSTAT, info.err)?;
     Ok(())
 }
@@ -143,7 +143,7 @@ pub fn add_sus_kstat(path: &str) -> Result<()> {
     info.flags |= SusKstatSpoofFlags::AUTO.bits();
     info.err = ERR_CMD_NOT_SUPPORTED;
 
-    communicate(CMD_SUSFS_ADD_SUS_KSTAT, &mut info);
+    susfsctl(CMD_SUSFS_ADD_SUS_KSTAT, &mut info);
     parse_err(CMD_SUSFS_ADD_SUS_KSTAT, info.err)?;
     Ok(())
 }
@@ -198,7 +198,7 @@ pub fn add_sus_kstat_statically(
 
     info.err = ERR_CMD_NOT_SUPPORTED;
 
-    communicate(CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY, &mut info);
+    susfsctl(CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY, &mut info);
     parse_err(CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY, info.err)?;
     Ok(())
 }

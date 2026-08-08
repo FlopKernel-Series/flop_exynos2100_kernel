@@ -2,6 +2,7 @@
 
 plugins {
     alias(libs.plugins.agp.app)
+    alias(libs.plugins.androidx.baselineprofile)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.lsplugin.apksign)
@@ -159,6 +160,12 @@ android {
     }
 }
 
+baselineProfile {
+    mergeIntoMain = true
+    saveInSrc = true
+    automaticGenerationDuringBuild = false
+}
+
 base {
     archivesName.set(
         "ReSukiSU_${managerVersionName}_${managerVersionCode}"
@@ -180,10 +187,12 @@ aboutLibraries {
 
 dependencies {
     lintChecks(project(":lint-rules"))
+    baselineProfile(project(":baselineprofile"))
 
     implementation(libs.gson)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.profileinstaller)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material.icons.extended)
