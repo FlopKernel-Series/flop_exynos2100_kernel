@@ -335,8 +335,9 @@ append_module_rc:
 
 static bool is_init_rc(struct file *fp)
 {
-	if (strcmp(current->comm, "init")) {
-		// we are only interest in `init` process
+	// we are only interested in `init-like` process
+	// catch generic_init, init
+	if (!strstr(current->comm, "init")) {
 		return false;
 	}
 
@@ -367,9 +368,6 @@ static bool is_init_rc(struct file *fp)
 
 static noinline void ksu_install_rc_hook(struct file *file)
 {
-	if (!is_init(current_cred()))
-		return;
-
 	// if init process is running, always try to grab module_rc length
 	// this is because we are also running newfstat hook on kprobe
 	// and we really cannot kern_path on it
@@ -429,9 +427,6 @@ static noinline void ksu_handle_sys_read_fd(unsigned int fd)
 	if (likely(!ksu_vfs_read_hook))
 		return;
 
-	if (!is_init(current_cred()))
-		return;
-
 	struct file *file = fget(fd);
 	if (!file) {
 		return;
@@ -446,9 +441,6 @@ static noinline void ksu_handle_sys_read_fd(unsigned int fd)
 static inline void ksu_common_newfstat_ret(unsigned int fd_int, void **statbuf_ptr, 
 			const int type, const char *syscall_name)
 {
-	if (!is_init(current_cred()))
-		return;
-
 	struct file *file = fget(fd_int);
 	if (!file)
 		return;

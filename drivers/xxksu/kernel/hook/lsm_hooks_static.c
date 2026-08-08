@@ -150,11 +150,7 @@ static void __init ksu_core_init(void)
 	uintptr_t target_callsite;
 	uintptr_t symbol_addr;
 
-#ifdef CONFIG_KPROBES
-#define ksu_kallsyms_lookup_name kp_cfi_kallsyms_lookup_name
-#else
-#define ksu_kallsyms_lookup_name kallsyms_lookup_name
-#endif
+#define ksu_kallsyms_lookup_name kallsyms_lookup_retry
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 	target_callsite = ksu_kallsyms_lookup_name("do_renameat2");
@@ -190,7 +186,7 @@ rename_hook_done:
 	pr_info("lsm_hijack: security_bprm_check: ret %d \n", ret);
 #endif
 
-#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE) && !defined(CONFIG_KSU_HACK_ARM64_BRANCH_LINK)
 	symbol_addr = ksu_kallsyms_lookup_name("vfs_read");
 	ret = arm64_bl_patch(ksu_kallsyms_lookup_name("ksys_read"), 64 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_read);
 	if (ret)

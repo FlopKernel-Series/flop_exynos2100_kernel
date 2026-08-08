@@ -253,7 +253,7 @@ static __init void ksu_lsm_hook_init(void)
 	LSM_HACK_INIT(bprm_committing_creds, ksu_bprm_committing_creds);
 #endif
 
-#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE) && !defined(CONFIG_KSU_HACK_ARM64_BRANCH_LINK)
 	LSM_HACK_INIT(file_permission, ksu_file_permission);
 	kthread_run(ksu_restore_file_permission, NULL, "kthread");
 #endif
