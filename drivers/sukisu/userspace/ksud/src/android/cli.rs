@@ -11,6 +11,7 @@ use crate::{
         module::{self, module_config, regenerate_preinit_rc},
         profile, sepolicy, su, sulog, susfs, uapi, umount_config, utils,
     },
+    anykernel3::{self, Slot},
     apk_sign, assets,
     boot_patch::{BootPatchArgs, BootRestoreArgs},
     defs,
@@ -26,6 +27,17 @@ struct Args {
 
 #[derive(clap::Subcommand, Debug)]
 enum Commands {
+    /// Flash an AnyKernel3 ZIP
+    #[command(name = "anykernel3")]
+    AnyKernel3 {
+        /// AnyKernel3 ZIP file path
+        zip: PathBuf,
+
+        /// Select A/B slot for flashing
+        #[arg(long, value_enum)]
+        slot: Option<Slot>,
+    },
+
     /// Manage KernelSU modules
     Module {
         #[command(subcommand)]
@@ -428,7 +440,15 @@ enum Profile {
     },
 
     /// list all templates
-    ListTemplates,
+    ListTemplates {
+        /// print template names instead of ids
+        #[arg(short, long)]
+        name: bool,
+
+        /// locale used to resolve localized template names (for example, zh_CN)
+        #[arg(long, requires = "name")]
+        locale: Option<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -567,6 +587,7 @@ pub fn run() -> Result<()> {
     log::info!("command: {:?}", cli.command);
 
     let result = match cli.command {
+        Commands::AnyKernel3 { zip, slot } => anykernel3::flash(&zip, slot),
         Commands::Susfs(args) => crate::android::susfs::cli::run_main(args),
         Commands::PostFsData => init_event::on_post_data_fs(),
         Commands::BootCompleted => {
@@ -729,7 +750,9 @@ pub fn run() -> Result<()> {
             Profile::GetTemplate { id } => profile::get_template(id),
             Profile::SetTemplate { id, template } => profile::set_template(id, template),
             Profile::DeleteTemplate { id } => profile::delete_template(id),
-            Profile::ListTemplates => profile::list_templates(),
+            Profile::ListTemplates { name, locale } => {
+                profile::list_templates(name, locale.as_deref())
+            }
         },
 
         Commands::Feature { command } => match command {

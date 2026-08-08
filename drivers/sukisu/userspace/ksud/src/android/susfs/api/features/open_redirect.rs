@@ -5,7 +5,7 @@ use anyhow::{Result, anyhow};
 use crate::android::susfs::{
     api::{
         magic::{CMD_SUSFS_ADD_OPEN_REDIRECT, ERR_CMD_NOT_SUPPORTED, SUSFS_MAX_LEN_PATHNAME},
-        susfsctl::{communicate, parse_err},
+        susfsctl::{parse_err, susfsctl},
     },
     enums::UidScheme,
     utils::str_to_c_array,
@@ -53,7 +53,7 @@ pub fn add_open_redirect(
     info.uid_scheme = (*uid_scheme) as i32;
     info.err = ERR_CMD_NOT_SUPPORTED;
 
-    communicate(CMD_SUSFS_ADD_OPEN_REDIRECT, &mut info);
+    susfsctl(CMD_SUSFS_ADD_OPEN_REDIRECT, &mut info);
     parse_err(CMD_SUSFS_ADD_OPEN_REDIRECT, info.err)?;
     Ok(())
 }

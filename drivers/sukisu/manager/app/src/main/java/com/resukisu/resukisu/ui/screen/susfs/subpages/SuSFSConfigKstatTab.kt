@@ -39,6 +39,7 @@ import com.resukisu.resukisu.ui.screen.susfs.component.SuSFSDescriptionCard
 import com.resukisu.resukisu.ui.screen.susfs.component.susfsEntryList
 import com.resukisu.resukisu.ui.screen.susfs.component.toImportedEntryLines
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
+import com.resukisu.resukisu.ui.util.showReplacingSnackbar
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,6 +126,7 @@ fun SusKstatTab(
     val fieldBlocksLabel = stringResource(R.string.susfs_kstat_field_blocks)
     val fieldBlksizeLabel = stringResource(R.string.susfs_kstat_field_blksize)
     val defaultValueLabel = stringResource(R.string.susfs_value_default)
+    val susfsEntryImportSuccess = stringResource(R.string.susfs_entry_import_success)
 
     fun SusKstatType.localizedLabel(): String {
         return when (this) {
@@ -242,13 +244,13 @@ fun SusKstatTab(
                         snackbarMessage = operationFailedMsg
                     }
                 } else {
-                    snackbarMessage = context.getString(R.string.susfs_entry_import_success, successCount, failCount)
+                    snackbarMessage = susfsEntryImportSuccess.format(successCount, failCount)
                     if (failCount == 0) {
                         showManualAdd = false
                     }
                 }
                 isLoading = false
-                snackbarMessage?.let { snackbarHost.showSnackbar(it) }
+                snackbarMessage?.let { snackbarHost.showReplacingSnackbar(it) }
             }
         },
         formContent = {
@@ -266,45 +268,46 @@ fun SusKstatTab(
                     renderBackgroundBlur = false
                 )
             }
-            if (selectedSubtype == subtypeStatically) {
-                item(key = "susfs_kstat_static_fields") {
-                    SettingsBaseWidget(
-                        iconPlaceholder = false,
-                        title = staticallyFieldsLabel,
-                        renderBackgroundBlur = false,
+            item(
+                key = "susfs_kstat_static_fields",
+                visible = selectedSubtype == subtypeStatically
+            ) {
+                SettingsBaseWidget(
+                    iconPlaceholder = false,
+                    title = staticallyFieldsLabel,
+                    isOnBackground = false,
+                )
+            }
+            listOf(
+                fieldInoLabel to statIno,
+                fieldDevLabel to statDev,
+                fieldNlinkLabel to statNlink,
+                fieldSizeLabel to statSize,
+                fieldAtimeLabel to statAtime,
+                fieldAtimeNsecLabel to statAtimeNsec,
+                fieldMtimeLabel to statMtime,
+                fieldMtimeNsecLabel to statMtimeNsec,
+                fieldCtimeLabel to statCtime,
+                fieldCtimeNsecLabel to statCtimeNsec,
+                fieldBlocksLabel to statBlocks,
+                fieldBlksizeLabel to statBlksize
+            ).forEachIndexed { index, (label, state) ->
+                item(key = "susfs_kstat_static_$index") {
+                    SettingsTextFieldWidget(
+                        state = state,
+                        title = label,
+                        useLabelAsPlaceholder = true,
+                        enabled = !isLoading,
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                        renderBackgroundBlur = false
                     )
-                }
-                listOf(
-                    fieldInoLabel to statIno,
-                    fieldDevLabel to statDev,
-                    fieldNlinkLabel to statNlink,
-                    fieldSizeLabel to statSize,
-                    fieldAtimeLabel to statAtime,
-                    fieldAtimeNsecLabel to statAtimeNsec,
-                    fieldMtimeLabel to statMtime,
-                    fieldMtimeNsecLabel to statMtimeNsec,
-                    fieldCtimeLabel to statCtime,
-                    fieldCtimeNsecLabel to statCtimeNsec,
-                    fieldBlocksLabel to statBlocks,
-                    fieldBlksizeLabel to statBlksize
-                ).forEachIndexed { index, (label, state) ->
-                    item(key = "susfs_kstat_static_$index") {
-                        SettingsTextFieldWidget(
-                            state = state,
-                            title = label,
-                            useLabelAsPlaceholder = true,
-                            enabled = !isLoading,
-                            lineLimits = TextFieldLineLimits.SingleLine,
-                            renderBackgroundBlur = false
-                        )
-                    }
                 }
             }
         }
     )
 
     detailItem?.let { item ->
-        val fields = mutableListOf<Pair<String, String>>(
+        val fields = mutableListOf(
             pathLabel to item.path,
             spoofTypeLabel to item.spoof_type.localizedLabel()
         )
@@ -337,7 +340,7 @@ fun SusKstatTab(
                     } else {
                         isLoading = false
                         scope.launch {
-                            snackbarHost.showSnackbar(operationFailedMsg)
+                            snackbarHost.showReplacingSnackbar(operationFailedMsg)
                         }
                     }
                     isLoading = false

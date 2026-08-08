@@ -69,8 +69,10 @@ object CardConfig {
 
     fun updateBackground(enabled: Boolean) {
         isCustomBackgroundEnabled = enabled
-        // 自定义背景时自动禁用阴影以获得更好的视觉效果
         if (enabled) {
+            if (!isCustomAlphaSet) {
+                updateAlpha(0.55f, isCustom = false)
+            }
             updateShadow(false)
         }
     }
@@ -92,7 +94,16 @@ object CardConfig {
 
     fun setThemeDefaults(isDarkMode: Boolean) {
         if (!isCustomAlphaSet) {
-            updateAlpha(if (isDarkMode) 0.88f else 1f, false)
+            updateAlpha(
+                if (isCustomBackgroundEnabled) {
+                    0.55f
+                } else if (isDarkMode) {
+                    0.88f
+                } else {
+                    1f
+                },
+                isCustom = false,
+            )
         }
         // 暗色模式下默认启用轻微阴影
         if (isDarkMode && !isCustomBackgroundEnabled) {

@@ -220,10 +220,6 @@ pub enum SuSFSSubCommands {
         /// Path to boot image (optional)
         /// Defaults to /dev/block/by-name/[boot_a|boot_b|boot]
         boot_image: Option<String>,
-
-        /// Enable verbose debug logging
-        #[arg(short, long)]
-        verbose: bool,
     },
 }
 
@@ -358,14 +354,11 @@ pub fn run_main(args: SusfsArgs) -> Result<()> {
                 println!("{variant}");
             }
         },
-        SuSFSSubCommands::SlotInfo {
-            boot_image,
-            verbose,
-        } => {
+        SuSFSSubCommands::SlotInfo { boot_image } => {
             if let Some(path) = boot_image {
-                slot_info::analyze_boot_image(&path, verbose)?;
+                slot_info::analyze_boot_image(&path)?;
             } else {
-                slot_info::show_slot_info_json(verbose)?;
+                slot_info::show_slot_info_json()?;
             }
         }
     }

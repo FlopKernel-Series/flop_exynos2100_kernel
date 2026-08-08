@@ -189,6 +189,31 @@ object SuSFSConfigHelper {
         )
     }
 
+    suspend fun loadSlotInfo(): List<SuSFSSlotInfo>? {
+        val result = executeSusfsCommand("slot_info")
+        if (!result.success || result.stdout.isBlank()) {
+            Log.e(TAG, "Failed to load SUSFS slot info: ${result.stderr}")
+            return null
+        }
+
+        return try {
+            val slots = checkNotNull(
+                gson.fromJson(result.stdout, Array<SuSFSSlotInfo>::class.java)
+            )
+            check(
+                slots.all { slot ->
+                    slot.slotName.isNotBlank() &&
+                            slot.uname.isNotBlank() &&
+                            slot.buildTime.isNotBlank()
+                }
+            )
+            slots.toList()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse SUSFS slot info", e)
+            null
+        }
+    }
+
     suspend fun enableLog(enabled: Boolean): Boolean {
         return executeConfigMutation(
             command = "logging ${if (enabled) "add" else "remove"}",
@@ -397,6 +422,15 @@ data class UnameConfig(
     val version: String,
     @SerializedName("release")
     val release: String,
+)
+
+data class SuSFSSlotInfo(
+    @SerializedName("slot_name")
+    val slotName: String,
+    @SerializedName("uname")
+    val uname: String,
+    @SerializedName("build_time")
+    val buildTime: String,
 )
 
 data class SuSFSStatusInfo(

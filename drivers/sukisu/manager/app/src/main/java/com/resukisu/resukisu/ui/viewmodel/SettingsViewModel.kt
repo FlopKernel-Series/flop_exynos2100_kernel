@@ -16,6 +16,7 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.resukisu.resukisu.Natives
 import com.resukisu.resukisu.R
+import com.resukisu.resukisu.data.AppPreferencesRepository
 import com.resukisu.resukisu.data.appPreferences
 import com.resukisu.resukisu.ksuApp
 import com.resukisu.resukisu.magica.BootCompletedReceiver
@@ -24,8 +25,6 @@ import com.resukisu.resukisu.ui.screen.themeSettings.util.toggleLauncherIcon
 import com.resukisu.resukisu.ui.theme.BackgroundManager
 import com.resukisu.resukisu.ui.theme.CardConfig
 import com.resukisu.resukisu.ui.theme.ThemeConfig
-import com.resukisu.resukisu.ui.theme.saveAndApplyCustomBackground
-import com.resukisu.resukisu.ui.theme.saveCustomBackground
 import com.resukisu.resukisu.ui.theme.saveDynamicColorSpec
 import com.resukisu.resukisu.ui.theme.saveDynamicColorState
 import com.resukisu.resukisu.ui.theme.saveDynamicPaletteStyle
@@ -94,8 +93,9 @@ data class SettingsUiState(
     val isDpiCustom: Boolean = true,
     val dpiPresets: Map<String, Int> = emptyMap(),
 
-    val checkUpdate: Boolean = true,
+    val checkManagerUpdate: Boolean = true,
     val checkBetaUpdate: Boolean = true,
+    val checkModuleUpdate: Boolean = true,
     val suCompatMode: Int = 0,
     val suStatus: String = "",
     val kernelUmountStatus: String = "",
@@ -114,12 +114,41 @@ class SettingsViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
+    private fun loadModuleUpdatePreference(prefs: AppPreferencesRepository): Boolean {
+        val enabled = prefs.getBoolean(
+            "check_module_update",
+            prefs.getBoolean("check_update", true),
+        )
+        if (!prefs.contains("check_module_update")) {
+            prefs.putBoolean("check_module_update", enabled)
+        }
+        return enabled
+    }
+
     fun initialize(context: Context, systemIsDark: Boolean = isSystemDark(context)) {
         val prefs = context.appPreferences
         val systemDpi = context.resources.displayMetrics.densityDpi
         val currentDpi = prefs.getInt("app_dpi", systemDpi)
+        val checkModuleUpdate = loadModuleUpdatePreference(prefs)
+        val themeMode = when (ThemeConfig.forceDarkMode) {
+            true -> 2
+            false -> 1
+            null -> 0
+        }
+        val hasCustomBackground = prefs.getString("custom_background", null) != null
 
         CardConfig.load(context)
+        CardConfig.updateBackground(hasCustomBackground)
+
+        when (themeMode) {
+            2 -> CardConfig.updateThemePreference(darkMode = true, lightMode = false)
+            1 -> CardConfig.updateThemePreference(darkMode = false, lightMode = true)
+            else -> CardConfig.updateThemePreference(darkMode = null, lightMode = null)
+        }
+
+        if (themeMode == 0 && systemIsDark) {
+            CardConfig.setThemeDefaults(true)
+        }
 
         _uiState.update {
             it.copy(
@@ -130,11 +159,7 @@ class SettingsViewModel : ViewModel() {
                 predictiveBackExitDirection = PredictiveBackExitDirection.fromValueOrDefault(
                     prefs.getString("predictive_back_exit_direction", "") ?: ""
                 ),
-                themeMode = when (ThemeConfig.forceDarkMode) {
-                    true -> 2
-                    false -> 1
-                    null -> 0
-                },
+                themeMode = themeMode,
                 themeOptions = listOf(
                     context.getString(R.string.theme_follow_system),
                     context.getString(R.string.theme_light),
@@ -147,37 +172,17 @@ class SettingsViewModel : ViewModel() {
                 useAltIcon = prefs.getBoolean("use_alt_icon", false),
                 cardAlpha = CardConfig.cardAlpha,
                 backgroundDim = ThemeConfig.backgroundDim,
-                isCustomBackgroundEnabled = ThemeConfig.customBackgroundUri != null,
+                isCustomBackgroundEnabled = hasCustomBackground,
                 systemDpi = systemDpi,
                 currentDpi = currentDpi,
                 tempDpi = currentDpi,
                 isDpiCustom = !dpiPresetValues().contains(currentDpi),
                 dpiPresets = dpiPresets(context),
-                checkUpdate = prefs.getBoolean("check_update", true),
+                checkManagerUpdate = prefs.getBoolean("check_update", true),
                 checkBetaUpdate = prefs.getBoolean("check_beta_update", true),
+                checkModuleUpdate = checkModuleUpdate,
                 autoJailbreakEnabled = prefs.getBoolean("auto_jailbreak", false),
             )
-        }
-
-        when (_uiState.value.themeMode) {
-            2 -> {
-                CardConfig.isUserDarkModeEnabled = true
-                CardConfig.isUserLightModeEnabled = false
-            }
-
-            1 -> {
-                CardConfig.isUserDarkModeEnabled = false
-                CardConfig.isUserLightModeEnabled = true
-            }
-
-            0 -> {
-                CardConfig.isUserDarkModeEnabled = false
-                CardConfig.isUserLightModeEnabled = false
-            }
-        }
-
-        if (_uiState.value.themeMode == 0 && systemIsDark) {
-            CardConfig.setThemeDefaults(true)
         }
 
         CardConfig.save(context)
@@ -198,14 +203,16 @@ class SettingsViewModel : ViewModel() {
             val prefs = context.appPreferences
             val currentSuEnabled = runCatching { Natives.isSuEnabled() }.getOrDefault(false)
             val suPersistValue = runCatching { getFeaturePersistValue("su_compat") }.getOrNull()
+            val checkModuleUpdate = loadModuleUpdatePreference(prefs)
             val suCompatMode = suPersistValue?.let { value ->
                 if (value == 0L) 2 else if (!currentSuEnabled) 1 else 0
             } ?: if (!currentSuEnabled) 1 else 0
 
             _uiState.update {
                 it.copy(
-                    checkUpdate = prefs.getBoolean("check_update", true),
+                    checkManagerUpdate = prefs.getBoolean("check_update", true),
                     checkBetaUpdate = prefs.getBoolean("check_beta_update", true),
+                    checkModuleUpdate = checkModuleUpdate,
                     suCompatMode = suCompatMode,
                     suStatus = runCatching { getFeatureStatus("su_compat") }.getOrDefault(""),
                     kernelUmountStatus = runCatching { getFeatureStatus("kernel_umount") }.getOrDefault(
@@ -354,34 +361,48 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun handleCustomBackground(context: Context, transformedUri: Uri) {
-        context.saveAndApplyCustomBackground(transformedUri)
-        CardConfig.cardAlpha = 0.55f
-        BackgroundManager.saveBackgroundDim(context, 0.3f)
-        BackgroundManager.saveEnableBlur(context, true)
-        BackgroundManager.saveEnableBlurExp(context, false)
-        BackgroundManager.saveUseBackgroundSeedColor(context, true)
-        BackgroundManager.saveEnableHighContrastMode(context, false)
-        CardConfig.cardElevation = 0.dp
-        CardConfig.isCustomBackgroundEnabled = true
-        CardConfig.save(context)
-
-        _uiState.update {
-            it.copy(
-                isCustomBackgroundEnabled = true,
-                cardAlpha = CardConfig.cardAlpha,
-                backgroundDim = ThemeConfig.backgroundDim,
+        val appContext = context.applicationContext
+        viewModelScope.launch {
+            val backgroundApplied = BackgroundManager.saveAndApplyCustomBackground(
+                appContext,
+                transformedUri,
             )
-        }
+            if (!backgroundApplied) {
+                Toast.makeText(
+                    appContext,
+                    appContext.getString(R.string.background_crop_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return@launch
+            }
 
-        Toast.makeText(
-            context,
-            context.getString(R.string.background_set_success),
-            Toast.LENGTH_SHORT
-        ).show()
+            BackgroundManager.saveBackgroundDim(appContext, 0.3f)
+            BackgroundManager.saveEnableBlur(appContext, true)
+            BackgroundManager.saveEnableBlurExp(appContext, false)
+            BackgroundManager.saveUseBackgroundSeedColor(appContext, true)
+            BackgroundManager.saveEnableHighContrastMode(appContext, false)
+            CardConfig.cardElevation = 0.dp
+            CardConfig.updateBackground(true)
+            CardConfig.save(appContext)
+
+            _uiState.update {
+                it.copy(
+                    isCustomBackgroundEnabled = true,
+                    cardAlpha = CardConfig.cardAlpha,
+                    backgroundDim = ThemeConfig.backgroundDim,
+                )
+            }
+
+            Toast.makeText(
+                appContext,
+                appContext.getString(R.string.background_set_success),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
     }
 
     fun handleRemoveCustomBackground(context: Context) {
-        context.saveCustomBackground(null)
+        BackgroundManager.clearCustomBackground(context)
         CardConfig.cardAlpha = 1f
         CardConfig.isCustomAlphaSet = false
         CardConfig.isCustomBackgroundEnabled = false
@@ -436,8 +457,10 @@ class SettingsViewModel : ViewModel() {
             .show()
     }
 
-    fun handleCheckUpdateChange(context: Context, enabled: Boolean) {
-        updateBooleanPref(context, "check_update", enabled) { it.copy(checkUpdate = enabled) }
+    fun handleCheckManagerUpdateChange(context: Context, enabled: Boolean) {
+        updateBooleanPref(context, "check_update", enabled) {
+            it.copy(checkManagerUpdate = enabled)
+        }
         if (!enabled) {
             updateBooleanPref(context, "check_beta_update", false) {
                 it.copy(checkBetaUpdate = false)
@@ -453,6 +476,14 @@ class SettingsViewModel : ViewModel() {
             enabled
         ) { it.copy(checkBetaUpdate = enabled) }
         refreshHomeData(context)
+    }
+
+    fun handleCheckModuleUpdateChange(context: Context, enabled: Boolean) {
+        updateBooleanPref(context, "check_module_update", enabled) {
+            it.copy(checkModuleUpdate = enabled)
+        }
+        ViewModelProvider(ksuApp)[ModuleViewModel::class.java]
+            .fetchModuleList(manualRefresh = true)
     }
 
     private fun refreshHomeData(context: Context) {

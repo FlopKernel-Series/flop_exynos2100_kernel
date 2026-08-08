@@ -7,7 +7,7 @@ use crate::android::susfs::{
             ERR_CMD_NOT_SUPPORTED, SUSFS_ENABLED_FEATURES_SIZE, SUSFS_MAX_VARIANT_BUFSIZE,
             SUSFS_MAX_VERSION_BUFSIZE,
         },
-        susfsctl::{communicate, parse_err},
+        susfsctl::{parse_err, susfsctl},
     },
     utils::c_array_to_string,
 };
@@ -35,7 +35,7 @@ pub fn version() -> Result<String> {
         susfs_version: [0; SUSFS_MAX_VERSION_BUFSIZE],
         err: ERR_CMD_NOT_SUPPORTED,
     };
-    communicate(CMD_SUSFS_SHOW_VERSION, &mut info);
+    susfsctl(CMD_SUSFS_SHOW_VERSION, &mut info);
     parse_err(CMD_SUSFS_SHOW_VERSION, info.err)?;
 
     let ver = c_array_to_string(&info.susfs_version);
@@ -52,7 +52,7 @@ pub fn variant() -> Result<String> {
         susfs_variant: [0; SUSFS_MAX_VARIANT_BUFSIZE],
         err: ERR_CMD_NOT_SUPPORTED,
     };
-    communicate(CMD_SUSFS_SHOW_VARIANT, &mut info);
+    susfsctl(CMD_SUSFS_SHOW_VARIANT, &mut info);
     parse_err(CMD_SUSFS_SHOW_VARIANT, info.err)?;
 
     let variant = c_array_to_string(&info.susfs_variant);
@@ -64,7 +64,7 @@ pub fn enabled_features() -> Result<String> {
         enabled_features: [0; SUSFS_ENABLED_FEATURES_SIZE],
         err: ERR_CMD_NOT_SUPPORTED,
     });
-    communicate(CMD_SUSFS_SHOW_ENABLED_FEATURES, &mut *info);
+    susfsctl(CMD_SUSFS_SHOW_ENABLED_FEATURES, &mut *info);
     parse_err(CMD_SUSFS_SHOW_ENABLED_FEATURES, info.err)?;
 
     let features = c_array_to_string(&info.enabled_features);

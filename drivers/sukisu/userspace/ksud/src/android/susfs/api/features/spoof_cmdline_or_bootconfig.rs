@@ -7,7 +7,7 @@ use crate::android::susfs::api::{
         CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG, ERR_CMD_NOT_SUPPORTED,
         SUSFS_FAKE_CMDLINE_OR_BOOTCONFIG_SIZE,
     },
-    susfsctl::{communicate, parse_err},
+    susfsctl::{parse_err, susfsctl},
 };
 
 #[repr(C)]
@@ -36,6 +36,6 @@ pub fn set_cmdline_or_bootconfig(path: &str) -> Result<()> {
         info.fake_cmdline_or_bootconfig[i] = b;
     }
 
-    communicate(CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG, &mut *info);
+    susfsctl(CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG, &mut *info);
     parse_err(CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG, info.err)
 }
