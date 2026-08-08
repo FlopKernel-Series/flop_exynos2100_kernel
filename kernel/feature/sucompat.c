@@ -78,6 +78,11 @@ static inline void ksu_sucompat_enable_branch() { } // no-op
 static inline void ksu_sucompat_disable_branch() { } // no-op
 #endif
 
+static noinline bool __ksu_is_allow_uid_copy(uid_t uid)
+{
+	return __ksu_is_allow_uid(uid);
+}
+
 static __always_inline bool is_su_allowed(const void **ptr_to_check)
 {
 #ifndef CONFIG_KSU_TAMPER_SYSCALL_TABLE
@@ -92,7 +97,7 @@ static __always_inline bool is_su_allowed(const void **ptr_to_check)
 #endif
 
 	// put ret hot on insn pipeline
-	if (likely(test_thread_flag(TIF_SECCOMP)))
+	if (likely(ksu_is_seccomp_enabled()))
 		return false;
 
 	// see seccomp check above
@@ -106,14 +111,18 @@ static __always_inline bool is_su_allowed(const void **ptr_to_check)
 		return false;
 	goto check_ptr;
 
-	// NOTE: shell has its seccomp disabled, so we only need to check for this thing
-	// short-circuit if not shell! as we allow apps on setuid lsm by disabling seccomp
 uid_check:
+#ifndef CONFIG_KSU_ENABLE_FULL_UID_CHECKS
+// NOTE: shell has its seccomp disabled, so we only need to check for this thing
+// short-circuit if not shell! as we allow apps on setuid lsm by disabling seccomp
 	if (likely(uid != 2000))
 		goto check_ptr;
-
-	// use internal function, not the macro
-	if (!__ksu_is_allow_uid(uid))
+#endif
+	// use our noinline copy.
+	// only shell falls through this. 
+	// nbd that it opens up a stack frame
+	// having small code around here is worth
+	if (!__ksu_is_allow_uid_copy(uid))
 		return false;
 
 check_ptr:
@@ -128,10 +137,7 @@ check_ptr:
 	return true;
 }
 
-static __always_inline void ksu_sucompat_user_common(const char __user **filename_user,
-				const char *syscall_name,
-				const bool escalate,
-				const uint8_t sym)
+static __always_inline void ksu_sucompat_user_common(const char __user **filename_user, const char *syscall_name)
 {
 	uintptr_t buf;
 	const char su[16] = SU_PATH;
@@ -192,9 +198,15 @@ static __always_inline void ksu_sucompat_user_common(const char __user **filenam
 	if (unlikely(buf != su_p[0]))
 		return;
 
-	write_sulog(sym);
+	if (!__builtin_strcmp(syscall_name, "faccessat"))
+		write_sulog('a');
+	if (!__builtin_strcmp(syscall_name, "newfstatat"))
+		write_sulog('s');
+	if (!__builtin_strcmp(syscall_name, "sys_execve"))
+		write_sulog('x');
 
-	if (!escalate)
+	// escalate if execve
+	if (!!__builtin_strcmp(syscall_name, "sys_execve"))
 		goto no_escalate;
 
 #ifdef CONFIG_KSU_FEATURE_SULOG
@@ -227,7 +239,7 @@ SUCOMPAT_HOOK_TYPE ksu_handle_faccessat(int *dfd, const char __user **filename_u
 	if (!is_su_allowed((const void **)filename_user))
 		return 0;
 
-	ksu_sucompat_user_common(filename_user, "faccessat", false, 'a');
+	ksu_sucompat_user_common(filename_user, "faccessat");
 	return 0;
 }
 
@@ -237,7 +249,7 @@ SUCOMPAT_HOOK_TYPE ksu_handle_stat(int *dfd, const char __user **filename_user, 
 	if (!is_su_allowed((const void **)filename_user))
 		return 0;
 
-	ksu_sucompat_user_common(filename_user, "newfstatat", false, 's');
+	ksu_sucompat_user_common(filename_user, "newfstatat");
 	return 0;
 }
 
@@ -252,7 +264,7 @@ SUCOMPAT_HOOK_TYPE ksu_handle_execve(const char __user **filename_user, void *ar
 	if (!is_su_allowed((const void **)filename_user))
 		return 0;
 
-	ksu_sucompat_user_common(filename_user, "sys_execve", true, 'x');
+	ksu_sucompat_user_common(filename_user, "sys_execve");
 	return 0;
 }
 

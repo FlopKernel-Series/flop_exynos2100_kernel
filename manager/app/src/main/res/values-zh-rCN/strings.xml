@@ -60,6 +60,7 @@
     <string name="jailbreak_mode">越狱模式</string>
     <string name="home_jailbreak">越狱</string>
     <string name="jailbreak_timeout">越狱可能失败，请检查日志</string>
+    <string name="jailbreak_reboot_warning">当前处于越狱模式，重启后将失去 Root 权限，开机后需要重新越狱。确定要重启吗？</string>
     <string name="safe_mode_module_disabled">处于安全模式下，禁止安装模块</string>
     <string name="reboot_to_apply">重启生效</string>
     <string name="module_magisk_conflict">因与 Magisk 有冲突，所有模块不可用！</string>
@@ -288,6 +289,6 @@
     <string name="sulog_entry_title_dropped_events">丢弃的事件</string>
     <string name="nav_rail_expand">展开导航栏</string>
     <string name="nav_rail_collapse">收起导航栏</string>
-    <string name="settings_navigation_badge">模块角标</string>
-    <string name="settings_navigation_badge_summary">在导航栏显示已启用模块数量，有可更新模块时以红色显示可更新数量</string>
+    <string name="settings_navigation_badge">导航栏角标</string>
+    <string name="settings_navigation_badge_summary">在导航栏显示已授权应用和已启用模块数量</string>
 </resources>

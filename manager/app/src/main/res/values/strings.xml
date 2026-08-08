@@ -79,6 +79,7 @@
     <string name="jailbreak_mode">Jailbreak mode</string>
     <string name="home_jailbreak">Jailbreak</string>
     <string name="jailbreak_timeout">Jailbreak may have failed, please check logs</string>
+    <string name="jailbreak_reboot_warning">You are in Jailbreak mode. Rebooting will lose root access, and you will have to jailbreak again after the device starts up. Reboot anyway?</string>
     <string name="safe_mode_module_disabled">Module installation is disabled in safe mode</string>
     <string name="reboot_to_apply">Reboot to take effect</string>
     <string name="module_magisk_conflict">Modules are unavailable due to a conflict with Magisk!</string>
@@ -294,6 +295,6 @@
     <string name="module_shortcut_scheme_copied">URL scheme copied</string>
     <string name="nav_rail_expand">Expand navigation rail</string>
     <string name="nav_rail_collapse">Collapse navigation rail</string>
-    <string name="settings_navigation_badge">Module badge</string>
-    <string name="settings_navigation_badge_summary">Show the enabled module count on the navigation bar, or the pending update count in red</string>
+    <string name="settings_navigation_badge">Navigation badge</string>
+    <string name="settings_navigation_badge_summary">Show granted app and enabled module counts on the navigation bar</string>
 </resources>
