@@ -3975,7 +3975,7 @@ release_init_lock:
 	return ret;
 }
 
-static int zram_recompress_interval = 300;
+static int zram_recompress_interval = 180;
 static int zram_recompress_min_huge_pages = 64;
 static int zram_recompress_batch = 1024;
 module_param(zram_recompress_interval, int, 0644);
