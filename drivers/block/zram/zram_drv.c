@@ -53,6 +53,10 @@ static DEFINE_MUTEX(zram_index_mutex);
 
 static int zram_major;
 static const char *default_compressor = CONFIG_ZRAM_DEFAULT_COMP_ALGORITHM;
+#ifdef CONFIG_ZRAM_MULTI_COMP
+static const char *default_secondary_compressor =
+				CONFIG_ZRAM_DEFAULT_SECONDARY_COMP_ALGORITHM;
+#endif
 
 static bool is_lzorle;
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
@@ -3970,6 +3974,112 @@ release_init_lock:
 	up_read(&zram->init_lock);
 	return ret;
 }
+
+static int zram_recompress_interval = 300;
+static int zram_recompress_min_huge_pages = 64;
+static int zram_recompress_batch = 1024;
+module_param(zram_recompress_interval, int, 0644);
+module_param(zram_recompress_batch, int, 0644);
+
+static int zram_auto_recompress(void *p)
+{
+	struct zram *zram = (struct zram *)p;
+	struct zram_pp_ctl *ctl;
+	struct zram_pp_slot *pps;
+	struct page *page;
+	u64 max_pages;
+
+	set_freezable();
+
+	while (!kthread_should_stop()) {
+		cond_resched();
+		if (zram_recompress_interval <= 0) {
+			wait_event_freezable(zram->recomp_wait,
+					     kthread_should_stop());
+			break;
+		}
+		if (wait_event_freezable_timeout(zram->recomp_wait,
+				kthread_should_stop(),
+				zram_recompress_interval * HZ) > 0)
+			break;
+
+		if (zram->num_active_comps < ZRAM_SECONDARY_COMP + 1 ||
+		    atomic64_read(&zram->stats.huge_pages) <
+				zram_recompress_min_huge_pages ||
+		    atomic_read(&zram->pp_in_progress))
+			continue;
+
+		down_read(&zram->init_lock);
+		if (!init_done(zram) ||
+		    atomic_xchg(&zram->pp_in_progress, 1)) {
+			up_read(&zram->init_lock);
+			continue;
+		}
+
+		ctl = init_pp_ctl();
+		page = alloc_page(GFP_KERNEL);
+		if (!ctl || !page) {
+			release_pp_ctl(zram, ctl);
+			if (page)
+				__free_page(page);
+			atomic_set(&zram->pp_in_progress, 0);
+			up_read(&zram->init_lock);
+			continue;
+		}
+
+		scan_slots_for_recompress(zram, RECOMPRESS_HUGE,
+					  zram->num_active_comps, ctl);
+
+		max_pages = zram_recompress_batch;
+		while (max_pages && (pps = select_pp_slot(ctl))) {
+			int ret = 0;
+
+			zram_slot_lock(zram, pps->index);
+			if (zram_test_flag(zram, pps->index, ZRAM_PP_SLOT))
+				ret = recompress_slot(zram, pps->index, page,
+						      &max_pages, 0,
+						      ZRAM_SECONDARY_COMP,
+						      zram->num_active_comps);
+			zram_slot_unlock(zram, pps->index);
+			release_pp_slot(zram, pps);
+
+			if (ret)
+				break;
+			cond_resched();
+		}
+
+		__free_page(page);
+		release_pp_ctl(zram, ctl);
+		atomic_set(&zram->pp_in_progress, 0);
+		up_read(&zram->init_lock);
+	}
+
+	return 0;
+}
+
+static void zram_init_auto_recompress(struct zram *zram)
+{
+	struct sched_param param = { .sched_priority = 0 };
+
+	init_waitqueue_head(&zram->recomp_wait);
+	zram->recomp = kthread_run(zram_auto_recompress, zram, "%s_recomp",
+				   zram->disk->disk_name);
+	if (IS_ERR(zram->recomp)) {
+		pr_warn("Cannot create recompression thread for %s\n",
+			zram->disk->disk_name);
+		zram->recomp = NULL;
+		return;
+	}
+	sched_setscheduler(zram->recomp, SCHED_IDLE, &param);
+}
+
+static void zram_stop_auto_recompress(struct zram *zram)
+{
+	if (zram->recomp) {
+		kthread_stop(zram->recomp);
+		zram->recomp = NULL;
+	}
+}
 #endif
 
 static void zram_bio_discard(struct zram *zram, struct bio *bio)
@@ -4174,6 +4284,10 @@ static void zram_reset_device(struct zram *zram)
 	reset_bdev(zram);
 
 	comp_algorithm_set(zram, ZRAM_PRIMARY_COMP, default_compressor);
+#ifdef CONFIG_ZRAM_MULTI_COMP
+	zram->comp_algs[ZRAM_SECONDARY_COMP] =
+		kstrdup(default_secondary_compressor, GFP_KERNEL);
+#endif
 	up_write(&zram->init_lock);
 }
 
@@ -4483,6 +4597,10 @@ static int zram_add(void)
 	atomic_set(&zram->pp_in_progress, 0);
 	zram_comp_params_reset(zram);
 	comp_algorithm_set(zram, ZRAM_PRIMARY_COMP, default_compressor);
+#ifdef CONFIG_ZRAM_MULTI_COMP
+	zram->comp_algs[ZRAM_SECONDARY_COMP] =
+		kstrdup(default_secondary_compressor, GFP_KERNEL);
+#endif
 
 	/* Actual capacity set using sysfs (/sys/block/zram<id>/disksize */
 	set_capacity(zram->disk, 0);
@@ -4520,6 +4638,10 @@ static int zram_add(void)
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
 	if (!g_zram)
 		g_zram = zram;
+#endif
+
+#ifdef CONFIG_ZRAM_MULTI_COMP
+	zram_init_auto_recompress(zram);
 #endif
 
 	zram_debugfs_register(zram);
@@ -4560,6 +4682,9 @@ static int zram_remove(struct zram *zram)
 	stop_lru_writeback(zram);
 	if (g_zram == zram)
 		g_zram = NULL;
+#endif
+#ifdef CONFIG_ZRAM_MULTI_COMP
+	zram_stop_auto_recompress(zram);
 #endif
 	zram_debugfs_unregister(zram);
 

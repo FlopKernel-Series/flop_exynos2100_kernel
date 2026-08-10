@@ -238,5 +238,9 @@ struct zram {
 	struct zram_writeback_buffer *buf;
 #endif
 	atomic_t pp_in_progress;
+#ifdef CONFIG_ZRAM_MULTI_COMP
+	struct task_struct *recomp;
+	wait_queue_head_t recomp_wait;
+#endif
 };
 #endif

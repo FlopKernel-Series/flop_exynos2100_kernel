@@ -1241,6 +1241,12 @@ void zs_obj_write(struct zs_pool *pool, unsigned long handle,
 }
 EXPORT_SYMBOL_GPL(zs_obj_write);
 
+unsigned int zs_lookup_class_index(struct zs_pool *pool, unsigned int size)
+{
+	return get_size_class_index(size);
+}
+EXPORT_SYMBOL_GPL(zs_lookup_class_index);
+
 /**
  * zs_huge_class_size() - Returns the size (in bytes) of the first huge
  *                        zsmalloc &size_class.

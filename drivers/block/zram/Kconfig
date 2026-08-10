@@ -194,3 +194,9 @@ config ZRAM_MULTI_COMP
 	  re-compress pages using a potentially slower but more effective
 	  compression algorithm. Note, that IDLE page recompression
 	  requires ZRAM_MEMORY_TRACKING.
+
+config ZRAM_DEFAULT_SECONDARY_COMP_ALGORITHM
+	string "Default secondary ZRAM algorithm"
+	depends on ZRAM_MULTI_COMP
+	default "zstd" if ZRAM_BACKEND_ZSTD
+	default ZRAM_DEFAULT_COMP_ALGORITHM
