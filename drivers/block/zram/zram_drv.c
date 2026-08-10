@@ -1149,7 +1149,9 @@ static int zram_try_mark_page(struct zram *zram, u32 index)
 			zram_test_flag(zram, index, ZRAM_UNDER_PPR)) {
 		zram_slot_unlock(zram, index);
 		return ABORT;
-	} else if (zram_test_flag(zram, index, ZRAM_UNDER_WB)) {
+	} else if (zram_test_flag(zram, index, ZRAM_UNDER_WB) ||
+		   zram_test_flag(zram, index, ZRAM_WB) ||
+		   zram_test_flag(zram, index, ZRAM_SAME)) {
 		zram_slot_unlock(zram, index);
 		return SKIP;
 	}
@@ -1463,22 +1465,27 @@ static int zram_writeback_fill_page(struct zram *zram, u32 index,
 static void zram_writeback_clear_flag(struct zram *zram, u32 index)
 {
 	unsigned long flags;
+	bool under_wb;
 
 	zram_slot_lock(zram, index);
 	if (zram_allocated(zram, index)) {
+		under_wb = zram_test_flag(zram, index, ZRAM_UNDER_WB);
 		zram_clear_flag(zram, index, ZRAM_UNDER_WB);
 		zram_clear_flag(zram, index, ZRAM_IDLE);
 		zram_clear_flag(zram, index, ZRAM_UNDER_PPR);
 
-		/* putback halted entry to zram lru list */
-		spin_lock_irqsave(&zram->list_lock, flags);
-		if (!list_empty(&zram->table[index].lru_list))
-			list_move_tail(&zram->table[index].lru_list, &zram->list);
-		else
-			list_add_tail(&zram->table[index].lru_list, &zram->list);
-		spin_unlock_irqrestore(&zram->list_lock, flags);
-		zram_set_flag(zram, index, ZRAM_LRU);
-		atomic64_inc(&zram->stats.lru_pages);
+		if (under_wb) {
+			spin_lock_irqsave(&zram->list_lock, flags);
+			if (!list_empty(&zram->table[index].lru_list))
+				list_move_tail(&zram->table[index].lru_list, &zram->list);
+			else
+				list_add_tail(&zram->table[index].lru_list, &zram->list);
+			spin_unlock_irqrestore(&zram->list_lock, flags);
+			if (!zram_test_flag(zram, index, ZRAM_LRU)) {
+				zram_set_flag(zram, index, ZRAM_LRU);
+				atomic64_inc(&zram->stats.lru_pages);
+			}
+		}
 	}
 	zram_slot_unlock(zram, index);
 }
@@ -3443,6 +3450,7 @@ static int write_same_filled_page(struct zram *zram, unsigned long fill,
 				  u32 index)
 {
 	zram_slot_lock(zram, index);
+	zram_clear_flag(zram, index, ZRAM_UNDER_WB);
 	zram_set_flag(zram, index, ZRAM_SAME);
 	zram_set_handle(zram, index, fill);
 	zram_slot_unlock(zram, index);
@@ -3481,6 +3489,7 @@ static int write_incompressible_page(struct zram *zram, struct page *page,
 
 	zram_slot_lock(zram, index);
 	zram_free_page(zram, index);
+	zram_clear_flag(zram, index, ZRAM_UNDER_WB);
 	zram_set_flag(zram, index, ZRAM_HUGE);
 	zram_set_handle(zram, index, handle);
 	zram_set_obj_size(zram, index, PAGE_SIZE);
@@ -3557,6 +3566,7 @@ static int zram_write_page(struct zram *zram, struct page *page, u32 index)
 
 	zram_slot_lock(zram, index);
 	zram_free_page(zram, index);
+	zram_clear_flag(zram, index, ZRAM_UNDER_WB);
 	zram_set_handle(zram, index, handle);
 	zram_set_obj_size(zram, index, comp_len);
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
