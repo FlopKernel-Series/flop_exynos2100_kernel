@@ -173,13 +173,22 @@ static void ksu_init_slow_avc_audit_hook(void)
 //	ret = arm64_bl_patch(kallsyms_lookup_retry("audit_inode_permission"), 64 * sizeof(uint32_t), kallsyms_lookup_retry("slow_avc_audit"), (uintptr_t)ksu_slow_avc_audit_hook);
 //	pr_info("avc_spoof: hook on slow_avc_audit on audit_inode_permission ret: %d\n", ret);
 
-	ret = arm64_bl_patch(kallsyms_lookup_retry("avc_has_extended_perms"), 384 * sizeof(uint32_t), (uintptr_t)slow_avc_audit_fn, (uintptr_t)ksu_slow_avc_audit_hook);
+	uintptr_t symaddr = kallsyms_lookup_retry("avc_has_extended_perms");
+	if (!symaddr)
+		goto skip1;
+	ret = arm64_bl_patch(symaddr, ksu_get_ksym_size(symaddr, 384 * sizeof(uint32_t)), (uintptr_t)slow_avc_audit_fn, (uintptr_t)ksu_slow_avc_audit_hook);
 	pr_info("avc_spoof: hook on slow_avc_audit on avc_has_extended_perms ret: %d\n", ret);
-
-	ret = arm64_bl_patch(kallsyms_lookup_retry("avc_has_perm_flags"), 384 * sizeof(uint32_t), (uintptr_t)slow_avc_audit_fn, (uintptr_t)ksu_slow_avc_audit_hook);
+skip1:
+	symaddr = kallsyms_lookup_retry("avc_has_perm_flags");
+	if (!symaddr)
+		goto skip2;
+	ret = arm64_bl_patch(symaddr, ksu_get_ksym_size(symaddr, 384 * sizeof(uint32_t)), (uintptr_t)slow_avc_audit_fn, (uintptr_t)ksu_slow_avc_audit_hook);
 	pr_info("avc_spoof: hook on slow_avc_audit on avc_has_perm_flags ret: %d\n", ret);
-
-	ret = arm64_bl_patch(kallsyms_lookup_retry("avc_has_perm"), 384 * sizeof(uint32_t), (uintptr_t)slow_avc_audit_fn, (uintptr_t)ksu_slow_avc_audit_hook);
+skip2:
+	symaddr = kallsyms_lookup_retry("avc_has_perm");
+	if (!symaddr)
+		goto bail;
+	ret = arm64_bl_patch(symaddr, ksu_get_ksym_size(symaddr, 384 * sizeof(uint32_t)), (uintptr_t)slow_avc_audit_fn, (uintptr_t)ksu_slow_avc_audit_hook);
 	pr_info("avc_spoof: hook on slow_avc_audit on avc_has_perm ret: %d\n", ret);
 
 bail:

@@ -1,5 +1,3 @@
-#include "kernel_includes.h"
-
 #ifdef MODULE
 #ifndef CONFIG_ARM64
 #error "LKM is only supported on ARM64!"
@@ -19,6 +17,8 @@
 #error "LKM requires KALLSYMS_ALL!"
 #endif
 #endif // MODULE
+
+#include "kernel_includes.h"
 
 // uapi
 #include "include/uapi/app_profile.h"
@@ -81,8 +81,9 @@
 #include "downstream/arm64_branch_insn.h"
 #endif
 
-#include "downstream/tiny_sulog.h"
 #include "downstream/slow_avc_audit_defs.h"
+#include "downstream/tiny_sulog.h"
+#include "downstream/vmap_patch.h"
 
 // unity build
 #include "policy/allowlist.c"
