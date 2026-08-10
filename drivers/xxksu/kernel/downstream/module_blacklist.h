@@ -28,7 +28,7 @@ static int ksu_prepare_new_blacklist(uintptr_t blacklist_pptr)
 
 	// + 2 for extra , and \0
 	size_t new_len = old_len + strlen(modules) + 2;
-	char *new_blacklist = kzalloc(new_len, GFP_KERNEL); // free this sometime
+	char *new_blacklist = kzalloc(new_len, GFP_KERNEL); // yeah, unfreed, not a big deal tho
 	if (!new_blacklist)
 		return -ENOMEM;
 
@@ -44,31 +44,7 @@ write_fresh:
 	memcpy(new_blacklist, modules, strlen(modules));
 
 write_to_slot:
-	;
-	uintptr_t addr = (uintptr_t)blacklist_pptr;
-	uintptr_t base = addr & PAGE_MASK;
-	uintptr_t offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		return -EFAULT;
-
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return -ENOMEM;
-
-	void **target_slot = (void **)((uintptr_t)writable_addr + offset);
-
-	preempt_disable();
-	local_irq_disable();
-
-	WRITE_ONCE(*target_slot, new_blacklist);
-
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-	smp_mb();
+	ksu_write_to_readonly_slot((uintptr_t)blacklist_pptr, (uintptr_t)new_blacklist);
 
 	return 0x0;
 }

@@ -137,32 +137,8 @@ static void ksu_init_hook_transaction_ops_write()
 	pr_info("selinux_hide: found transaction_ops->write at 0x%lx \n", (uintptr_t)fops->write);
 	selinux_transaction_write_fn = fops->write;
 
-	unsigned long addr = (unsigned long)&fops->write;
-	unsigned long base = addr & PAGE_MASK;
-	unsigned long offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		goto bail_out;
-
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		goto bail_out;
-
-	void **target_slot = (void **)((unsigned long)writable_addr + offset);
-				
-	preempt_disable();
-	local_irq_disable();
-
-	WRITE_ONCE(*target_slot, ksu_selinux_transaction_write);
-
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-	smp_mb();
-
-	pr_info("selinux_hide: transaction_ops->write hijacked!\n");
+	int ret = ksu_write_to_readonly_slot((uintptr_t)&fops->write, (uintptr_t)ksu_selinux_transaction_write);
+	pr_info("selinux_hide: transaction_ops->write hijack ret: %d\n", ret);
 
 bail_out:
 	path_put(&path);
@@ -266,32 +242,8 @@ static void ksu_init_hook_sel_handle_status_ops_open()
 
 	sel_open_handle_status_fn = fops->open;
 
-	unsigned long addr = (unsigned long)&fops->open;
-	unsigned long base = addr & PAGE_MASK;
-	unsigned long offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		goto bail_out;
-
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		goto bail_out;
-
-	void **target_slot = (void **)((unsigned long)writable_addr + offset);
-				
-	preempt_disable();
-	local_irq_disable();
-
-	WRITE_ONCE(*target_slot, ksu_sel_open_handle_status);
-					
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-	smp_mb();
-
-	pr_info("selinux_hide: sel_handle_status_ops->open hijacked!\n");
+	int ret = ksu_write_to_readonly_slot((uintptr_t)&fops->open, (uintptr_t)ksu_sel_open_handle_status);
+	pr_info("selinux_hide: sel_handle_status_ops->open hijack ret: %d\n", ret);
 
 bail_out:
 	path_put(&path);

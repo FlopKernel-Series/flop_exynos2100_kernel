@@ -85,12 +85,11 @@ skip_anti_dup:
 	size_t old_sz = kallsyms_hash_array_capacity * sizeof(struct symbol_hash_entry);
 	size_t new_sz = new_cap * sizeof(struct symbol_hash_entry);
 
-	pr_info("%s: hash array resized! %ld -> %ld bytes \n", __func__, old_sz, new_sz);
-
 	void *new_array = old_kvrealloc(kallsyms_hash_array, old_sz, new_sz, GFP_KERNEL);
 	if (!new_array)
 		return;
 
+	pr_info("%s: hash array resized! %ld -> %ld bytes \n", __func__, old_sz, new_sz);
 	kallsyms_hash_array = new_array;
 	kallsyms_hash_array_capacity = new_cap;
 	entries = kallsyms_hash_array;
@@ -106,7 +105,33 @@ size_is_sufficient:
 __weak int sprint_symbol_no_offset(char *buffer, unsigned long address) { return sprint_symbol(buffer, address); }
 #endif
 
-static noinline __nocfi void dotted_kallsyms_build_hash_array(void)
+#ifdef MODULE // https://elixir.bootlin.com/linux/v7.2-rc4/source/kernel/kprobes.c#L1506
+static noinline __nocfi void ksu_kallsyms_lookup_size_offset(uintptr_t symaddr, unsigned long *sym_size, unsigned long *offset)
+{
+	static typeof(kallsyms_lookup_size_offset) *fn = NULL;
+	static bool already_resolved = false;
+
+	if (already_resolved)
+		goto skip_resolve;
+	
+	*(void **)&fn = kallsyms_lookup_name("kallsyms_lookup_size_offset");
+	already_resolved = true;
+
+skip_resolve:
+	if (!fn)
+		goto no_fn;
+
+	fn(symaddr, sym_size, offset);
+	return;
+
+no_fn:
+	*sym_size = 0;
+	*offset = 0;
+}
+#define kallsyms_lookup_size_offset ksu_kallsyms_lookup_size_offset
+#endif
+
+static noinline void dotted_kallsyms_build_hash_array(void)
 {
 	extern char _stext[], _etext[];
 	uintptr_t start = (uintptr_t)_stext;
@@ -122,16 +147,6 @@ static noinline __nocfi void dotted_kallsyms_build_hash_array(void)
 
 	char *symbol_buf = membuf;
 	char *symbol_cache = membuf + KSYM_SYMBOL_LEN;
-
-#ifdef MODULE // https://elixir.bootlin.com/linux/v7.2-rc4/source/kernel/kprobes.c#L1506
-	typeof(kallsyms_lookup_size_offset) *kallsyms_lookup_size_offset_fn = NULL;
-	*(void **)&kallsyms_lookup_size_offset_fn = kallsyms_lookup_name("kallsyms_lookup_size_offset");
-	bool enable_offset_scan = !!kallsyms_lookup_size_offset_fn;
-#else
-	extern int kallsyms_lookup_size_offset(unsigned long addr, unsigned long *symbolsize, unsigned long *offset);
-	#define kallsyms_lookup_size_offset_fn kallsyms_lookup_size_offset
-	bool enable_offset_scan = true;
-#endif
 
 	pr_info("%s: hash array init! \n", __func__);
 
@@ -182,7 +197,8 @@ step_up:
 
 	unsigned long sym_size = 0;
 	unsigned long offset = 0;
-	if (enable_offset_scan && kallsyms_lookup_size_offset_fn(curr, &sym_size, &offset) && sym_size > offset)
+	kallsyms_lookup_size_offset(curr, &sym_size, &offset);
+	if ((!!sym_size || !!offset) && sym_size > offset)
 		curr =  curr + (sym_size - offset); // we can do larger jumps
 	else
 		curr = curr + 4;
@@ -311,7 +327,6 @@ static inline uintptr_t kp_kallsyms_lookup_name(const char *name)
 // if called within kthread, will try to build a kallsyms hash array when everything failed!
 static noinline uintptr_t kallsyms_lookup_retry(const char *name)
 {
-	char namebuf[KSYM_NAME_LEN];
 	if (!name)
 		return 0x0;
 
@@ -359,9 +374,28 @@ skip_on_each_symbol:
 	return kallsyms_lookup_hashed_name(name);
 	
 found:
+	;
+	char namebuf[KSYM_NAME_LEN];
 	sprint_symbol_no_offset(namebuf, addr);
 	pr_info("%s: %s addr: 0x%lx \n", __func__, namebuf, addr);
 	return addr;
+}
+
+// ksu_get_ksym_size, return symbol size, return retfail if fail.
+static noinline size_t ksu_get_ksym_size(uintptr_t symbol_addr, ptrdiff_t retfail)
+{
+	size_t offset = 0;
+	size_t symbolsize = 0;
+
+	kallsyms_lookup_size_offset(symbol_addr, &symbolsize, &offset);
+
+	// means lookup failed, just return retfail
+	if (!symbolsize && !offset)
+		return retfail;
+
+	// pr_info("%s: symbolsize %d \n", __func__, symbolsize);
+
+	return symbolsize;
 }
 
 /*

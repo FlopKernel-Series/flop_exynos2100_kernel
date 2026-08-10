@@ -240,4 +240,22 @@ static __nocfi void *memset_explicit(void *s, int c, size_t count)
 
 #endif // !CONFIG_KSU_DEBUG
 
+/**
+ * redirect all dmesg/printk logging messages to kernel's no_printk macro.
+ * this is an option offerred to shut up KernelSU's routine logging.
+ *
+ */
+#if defined(CONFIG_KSU_NOPRINTK) && !defined(CONFIG_KSU_DEBUG)
+#define pr_emerg(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define pr_alert(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define pr_crit(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define pr_err(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define pr_warn(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define pr_notice(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define pr_info(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define pr_debug(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define pr_devel(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#define printk(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+#endif // CONFIG_KSU_NOPRINTK && !CONFIG_KSU_DEBUG
+
 #endif // __KSU_H_KERNEL_INCLUDES
