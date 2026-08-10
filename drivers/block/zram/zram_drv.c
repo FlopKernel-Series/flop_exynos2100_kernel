@@ -1570,17 +1570,20 @@ static void zram_writeback_done(struct zram *zram,
 
 		zram_free_page(zram, index);
 		zram_clear_flag(zram, index, ZRAM_UNDER_WB);
+		/*
+		 * Set the handle before the flag so a locked reader never
+		 * sees ZRAM_WB with a zero or stale handle.
+		 */
+		zram_set_handle(zram, index,
+				(blk_idx << (PAGE_SHIFT * 2)) |
+				(offset << PAGE_SHIFT) |
+				(size == PAGE_SIZE ? 0 : size));
 		zram_set_flag(zram, index, ZRAM_WB);
 		atomic64_add(size, &zram->stats.bd_size);
 		if (ppr) {
 			zram_set_flag(zram, index, ZRAM_PPR);
 			atomic64_add(size, &zram->stats.bd_ppr_size);
 		}
-		/* record element as "blk_idx|offset|size" */
-		if (size == PAGE_SIZE)
-			size = 0;
-		zram_set_handle(zram, index,
-				(blk_idx << (PAGE_SHIFT * 2)) | (offset << PAGE_SHIFT) | size);
 		zram_slot_unlock(zram, index);
 		atomic64_inc(&zram->stats.pages_stored);
 	}
@@ -2134,12 +2137,16 @@ static ssize_t writeback_store(struct device *dev,
 			goto next;
 
 		zram_free_page(zram, index);
-		zram_set_flag(zram, index, ZRAM_WB);
+		/*
+		 * Set the handle before the flag so a locked reader never
+		 * sees ZRAM_WB with a zero or stale handle.
+		 */
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
 		zram_set_handle(zram, index, blk_idx << (PAGE_SHIFT * 2));
 #else
 		zram_set_handle(zram, index, blk_idx);
 #endif
+		zram_set_flag(zram, index, ZRAM_WB);
 		blk_idx = 0;
 		atomic64_inc(&zram->stats.pages_stored);
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
@@ -3349,15 +3356,15 @@ static int zram_read_page(struct zram *zram, struct page *page, u32 index,
 	} else {
 		/*
 		 * The slot should be unlocked before reading from the backing
-		 * device.
+		 * device, but the handle must be read while the slot lock is
+		 * held: a concurrent slot modification could otherwise swap
+		 * the bdev encoding for a zsmalloc handle.
 		 */
-		zram_slot_unlock(zram, index);
-
 #ifdef CONFIG_ZRAM_LRU_WRITEBACK
 		{
 			unsigned long lru_handle;
 			unsigned long blk_idx;
-			bool ppr;
+			bool ppr, read_bdev;
 			struct bio_vec bvec;
 
 			atomic64_inc(&zram->stats.bd_objreads);
@@ -3370,9 +3377,14 @@ static int zram_read_page(struct zram *zram, struct page *page, u32 index,
 			}
 			lru_handle = zram_get_handle(zram, index);
 			blk_idx = lru_handle >> (PAGE_SHIFT * 2);
-			if (((lru_handle & (PAGE_SIZE - 1)) != 0) || ppr) {
+			read_bdev = ((lru_handle & (PAGE_SIZE - 1)) != 0) || ppr;
+			if (read_bdev) {
 				zram_set_flag(zram, index, ZRAM_READ_BDEV);
 				zram_inc_wb_table(zram, blk_idx);
+			}
+			zram_slot_unlock(zram, index);
+
+			if (read_bdev) {
 				bvec.bv_page = page;
 				bvec.bv_len = PAGE_SIZE;
 				bvec.bv_offset = 0;
@@ -3384,8 +3396,12 @@ static int zram_read_page(struct zram *zram, struct page *page, u32 index,
 			}
 		}
 #else
-		ret = read_from_bdev(zram, page, zram_get_handle(zram, index),
-				     parent);
+		{
+			unsigned long entry = zram_get_handle(zram, index);
+
+			zram_slot_unlock(zram, index);
+			ret = read_from_bdev(zram, page, entry, parent);
+		}
 #endif
 	}
 
