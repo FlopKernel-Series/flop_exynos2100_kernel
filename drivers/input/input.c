@@ -23,7 +23,7 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include <linux/rcupdate.h>
-#if defined(CONFIG_KSU_SUSFS) || defined(CONFIG_KSU_MANUAL_HOOK)
+#ifdef CONFIG_KSU_MANUAL_HOOK
 #include <linux/ksu_hook_compat.h>
 #endif
 #include <linux/workarounds.h>
@@ -384,18 +384,11 @@ extern int ksu_handle_input_handle_event(unsigned int *type,
 					 unsigned int *code, int *value);
 #endif
 
-#ifdef CONFIG_KSU_SUSFS
-#ifndef CONFIG_KSU_MANUAL_HOOK
-extern int ksu_handle_input_handle_event(unsigned int *type,
-					 unsigned int *code, int *value);
-#endif
-#endif
-
 static void input_handle_event(struct input_dev *dev,
 			       unsigned int type, unsigned int code, int value)
 {
 	int disposition = input_get_disposition(dev, type, code, &value);
-#if defined(CONFIG_KSU_MANUAL_HOOK) || defined(CONFIG_KSU_SUSFS)
+#ifdef CONFIG_KSU_MANUAL_HOOK
 	if (ksu_input_hook_active())
 		ksu_handle_input_handle_event(&type, &code, &value);
 #endif
