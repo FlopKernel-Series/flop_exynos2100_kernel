@@ -815,10 +815,6 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 			&pdata->drm_switch_predict.support, 2);
 	of_property_read_u32_array(np, "sbwc_enc_src_ctrl",
 			&pdata->sbwc_enc_src_ctrl.support, 2);
-	of_property_read_u32_array(np, "average_qp",
-			&pdata->average_qp.support, 2);
-	of_property_read_u32_array(np, "mv_search_mode",
-			&pdata->mv_search_mode.support, 2);
 	of_property_read_u32_array(np, "enc_idr_flag",
 			&pdata->enc_idr_flag.support, 2);
 	of_property_read_u32_array(np, "min_quality_mode",
@@ -858,9 +854,6 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 
 	/* HDR10+ num max window */
 	of_property_read_u32(np, "display_err_type", &pdata->display_err_type);
-
-	/* security ctrl */
-	of_property_read_u32(np, "security_ctrl", &pdata->security_ctrl);
 
 	/* output buffer Q framerate */
 	of_property_read_u32(np, "display_framerate", &pdata->display_framerate);

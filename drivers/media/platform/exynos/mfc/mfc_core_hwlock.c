@@ -18,7 +18,6 @@
 #include "mfc_core_pm.h"
 #include "mfc_core_run.h"
 #include "mfc_core_cmd.h"
-#include "mfc_core_hw_reg_api.h"
 
 #include "mfc_sync.h"
 #include "mfc_queue.h"

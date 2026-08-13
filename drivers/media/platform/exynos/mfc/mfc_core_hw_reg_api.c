@@ -39,7 +39,6 @@ void mfc_core_reset_mfc(struct mfc_core *core)
 void mfc_core_set_risc_base_addr(struct mfc_core *core,
 					enum mfc_buf_usage_type buf_type)
 {
-	struct mfc_dev *dev = core->dev;
 	struct mfc_special_buf *fw_buf;
 
 	fw_buf = &core->fw_buf;
@@ -47,15 +46,7 @@ void mfc_core_set_risc_base_addr(struct mfc_core *core,
 	if (buf_type == MFCBUF_DRM)
 		fw_buf = &core->drm_fw_buf;
 
-	if (dev->pdata->security_ctrl) {
-		if (buf_type == MFCBUF_DRM)
-			mfc_core_debug(2, "[MEMINFO][F/W] do not set secure base address\n");
-		else
-			MFC_CORE_WRITEL(fw_buf->daddr, MFC_REG_RISC_NONSECURE_BASE_ADDR);
-	} else {
-		MFC_CORE_WRITEL(fw_buf->daddr, MFC_REG_RISC_BASE_ADDRESS);
-	}
-
+	MFC_CORE_WRITEL(fw_buf->daddr, MFC_REG_RISC_BASE_ADDRESS);
 	mfc_core_debug(2, "[MEMINFO][F/W] %s Base Address : %#x\n",
 			buf_type == MFCBUF_DRM ? "DRM" : "NORMAL", (u32)fw_buf->daddr);
 	MFC_TRACE_CORE("%s F/W Base Address : %#x\n",
