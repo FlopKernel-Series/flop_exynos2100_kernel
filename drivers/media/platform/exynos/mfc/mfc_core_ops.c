@@ -637,21 +637,15 @@ err_open:
 
 void mfc_core_instance_cache_flush(struct mfc_core *core, struct mfc_ctx *ctx)
 {
-	int drm_switch = 0;
 	int state = atomic_read(&core->clk_ref);
 
 	if (!state)
 		mfc_core_pm_clock_on(core);
 
 	core->curr_core_ctx = ctx->num;
-
-	if (core->curr_core_ctx_is_drm != ctx->is_drm)
-		drm_switch = 1;
-
 	mfc_core_cache_flush(core, ctx->is_drm,
 			core->last_cmd_has_cache_flush ?
-			MFC_NO_CACHEFLUSH : MFC_CACHEFLUSH,
-			drm_switch);
+			MFC_NO_CACHEFLUSH : MFC_CACHEFLUSH);
 
 	if (!state)
 		mfc_core_pm_clock_off(core);

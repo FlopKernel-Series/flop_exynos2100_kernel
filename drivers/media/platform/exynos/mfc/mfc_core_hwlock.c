@@ -520,7 +520,7 @@ void mfc_core_cleanup_work_bit_and_try_run(struct mfc_core_ctx *core_ctx)
 }
 
 void mfc_core_cache_flush(struct mfc_core *core, int is_drm,
-		enum mfc_do_cache_flush do_cache_flush, int drm_switch)
+		enum mfc_do_cache_flush do_cache_flush)
 {
 	if (do_cache_flush == MFC_CACHEFLUSH) {
 		mfc_core_cmd_cache_flush(core);
@@ -535,21 +535,9 @@ void mfc_core_cache_flush(struct mfc_core *core, int is_drm,
 		mfc_core_debug(2, "F/W has already done cache flush with prediction\n");
 	}
 
+	mfc_core_pm_clock_off(core);
 	core->curr_core_ctx_is_drm = is_drm;
-
-	/* drm_switch may not occur when cache flush is required during migration. */
-	if (!drm_switch)
-		return;
-
-	if (is_drm) {
-		MFC_TRACE_CORE("Normal -> DRM\n");
-		mfc_core_debug(2, "Normal -> DRM need protection\n");
-		mfc_core_protection_on(core);
-	} else {
-		MFC_TRACE_CORE("DRM -> Normal\n");
-		mfc_core_debug(2, "Normal -> DRM\n");
-		mfc_core_protection_off(core);
-	}
+	mfc_core_pm_clock_on_with_base(core, (is_drm ? MFCBUF_DRM : MFCBUF_NORMAL));
 }
 
 /*
@@ -577,7 +565,8 @@ static int __mfc_nal_q_just_run(struct mfc_core *core, struct mfc_core_ctx *core
 
 			/* enable NAL QUEUE */
 			if (drm_switch)
-				mfc_core_cache_flush(core, ctx->is_drm, MFC_CACHEFLUSH, drm_switch);
+				mfc_core_cache_flush(core,
+						ctx->is_drm, MFC_CACHEFLUSH);
 
 			mfc_ctx_info("[NALQ] start NAL QUEUE\n");
 			mfc_core_nal_q_start(core, nal_q_handle);
@@ -835,7 +824,7 @@ int mfc_core_just_run(struct mfc_core *core, int new_ctx_index)
 	if (!MFC_FEATURE_SUPPORT(dev, dev->pdata->drm_switch_predict)
 			|| dev->debugfs.drm_predict_disable) {
 		if (drm_switch)
-			mfc_core_cache_flush(core, ctx->is_drm, MFC_CACHEFLUSH, drm_switch);
+			mfc_core_cache_flush(core, ctx->is_drm, MFC_CACHEFLUSH);
 	} else {
 		/* If Normal <-> Secure switch, check if cache flush was done */
 		if (drm_switch) {
@@ -844,8 +833,7 @@ int mfc_core_just_run(struct mfc_core *core, int new_ctx_index)
 					"Last command had No cache flush");
 			mfc_core_cache_flush(core, ctx->is_drm,
 					core->last_cmd_has_cache_flush ?
-					MFC_NO_CACHEFLUSH : MFC_CACHEFLUSH,
-					drm_switch);
+					MFC_NO_CACHEFLUSH : MFC_CACHEFLUSH);
 		}
 
 		/*
