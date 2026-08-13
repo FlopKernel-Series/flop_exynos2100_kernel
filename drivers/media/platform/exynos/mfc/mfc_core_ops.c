@@ -21,7 +21,6 @@
 
 #include "mfc_common.h"
 
-#include "mfc_core_ops.h"
 #include "mfc_core_hwlock.h"
 #include "mfc_core_pm.h"
 #include "mfc_core_run.h"
@@ -304,12 +303,6 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 	if (core->num_inst == 0) {
 		mfc_core_run_deinit_hw(core);
 
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
-		imgloader_shutdown(&core->mfc_imgloader_desc);
-#else
-		mfc_release_verify_fw(core);
-#endif
-
 		if (core->dev->debugfs.perf_boost_mode)
 			mfc_core_perf_boost_disable(core);
 
@@ -326,10 +319,6 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 
 		mfc_release_common_context(core);
 
-#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
-		__mfc_core_unprot_firmware(core, ctx);
-#endif
-
 		if (core->nal_q_handle)
 			mfc_core_nal_q_destroy(core, core->nal_q_handle);
 
@@ -338,6 +327,11 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_ctx_info("[MSR] MFC-%d will be reset\n", core->id);
 		}
 	}
+
+#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+	if (ctx->is_drm && (core->num_drm_inst == 0))
+		__mfc_core_unprot_firmware(core, ctx);
+#endif
 
 	mfc_core_qos_off(core, ctx);
 
@@ -429,19 +423,28 @@ int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 	mfc_create_queue(&core_ctx->src_buf_queue);
 
 	if (core->num_inst == 1) {
-		mfc_debug(2, "it is first instance in to core-%d\n", core->id);
+		/* Load the normal FW when any first instance */
+		mfc_debug(2, "it is first instance in core-%d\n", core->id);
+		ret = mfc_request_load_firmware(core, &core->fw_buf);
+		if (ret)
+			goto err_fw_load;
+	}
 
-		/* Load the FW */
-		ret = mfc_request_load_firmware(core);
+#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+	if (ctx->is_drm && (core->num_drm_inst == 1)) {
+		/* Load the secure FW when it is first DRM instance */
+		mfc_debug(2, "it is first DRM instance in core-%d\n", core->id);
+		ret = mfc_request_load_firmware(core, &core->drm_fw_buf);
 		if (ret)
 			goto err_fw_load;
 
-#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
 		ret = __mfc_core_prot_firmware(core, ctx);
 		if (ret)
-			goto err_fw_prot;
+			goto err_fw_load;
+	}
 #endif
 
+	if (core->num_inst == 1) {
 #if !IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 		mfc_core_debug(2, "power on\n");
 		ret = mfc_core_pm_power_on(core);
@@ -454,7 +457,7 @@ int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 		ret = __mfc_verify_fw(core, 0, core->fw_buf.paddr,
 				core->fw.fw_size, core->fw_buf.size);
 		if (ret < 0)
-			goto err_verify_fw;
+			goto err_init_core;
 #endif
 #endif
 
@@ -477,24 +480,14 @@ int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 
 err_init_core:
 #if !IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
-#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
-	mfc_release_verify_fw(core);
-
-err_verify_fw:
-#endif
 	mfc_core_pm_power_off(core);
 
 err_power_on:
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
 	__mfc_core_unprot_firmware(core, ctx);
+#endif
 
-err_fw_prot:
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
-	imgloader_shutdown(&core->mfc_imgloader_desc);
-	mfc_core_pm_power_off(core);
-#endif
-#endif
 err_fw_load:
 	core->core_ctx[ctx->num] = 0;
 	kfree(core->core_ctx[ctx->num]);
@@ -689,7 +682,7 @@ int mfc_core_instance_open(struct mfc_core *core, struct mfc_ctx *ctx)
 			return -EAGAIN;
 	} else if (ctx->type == MFCINST_ENCODER) {
 		if (__mfc_core_instance_open_enc(ctx, core_ctx))
-			return -ENOMEM;
+			return -EAGAIN;
 	} else {
 		mfc_err("invalid codec type: %d\n", ctx->type);
 		return -EINVAL;
@@ -1224,7 +1217,7 @@ int mfc_imgloader_mem_setup(struct imgloader_desc *desc, const u8 *fw_data, size
 
 	mfc_core_debug_enter();
 
-	ret = mfc_load_firmware(core, fw_data, fw_size);
+	ret = mfc_load_firmware(core, &core->fw_buf, fw_data, fw_size);
 	if (ret)
 		return ret;
 
@@ -1252,9 +1245,7 @@ int mfc_imgloader_verify_fw(struct imgloader_desc *desc, phys_addr_t fw_phys_bas
 		return ret;
 	}
 
-#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
 	ret = __mfc_verify_fw(core, desc->fw_id, fw_phys_base, fw_bin_size, fw_mem_size);
-#endif
 	if (ret)
 		mfc_core_pm_power_off(core);
 
@@ -1298,36 +1289,10 @@ int mfc_imgloader_deinit_image(struct imgloader_desc *desc)
 	return 0;
 }
 
-int mfc_imgloader_shutdown(struct imgloader_desc *desc)
-{
-	struct mfc_core *core = (struct mfc_core *)desc->dev->driver_data;
-
-	mfc_core_debug(2, "[F/W] release verify fw\n");
-
-	return 0;
-}
-
 struct imgloader_ops mfc_imgloader_ops = {
 	.mem_setup = mfc_imgloader_mem_setup,
 	.verify_fw = mfc_imgloader_verify_fw,
 	.blk_pwron = mfc_imgloader_blk_pwron,
 	.deinit_image = mfc_imgloader_deinit_image,
-	.shutdown = mfc_imgloader_shutdown,
 };
-
-#else
-#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
-int mfc_release_verify_fw(struct mfc_core *core)
-{
-	struct imgloader_desc *desc;
-
-	/* release the permission for fw region */
-	desc = &core->mfc_imgloader_desc;
-	exynos_release_subsystem_fw_stage2_ap(core->name, desc->fw_id);
-
-	mfc_core_debug(2, "[F/W] release verify fw\n");
-
-	return 0;
-}
-#endif
 #endif
