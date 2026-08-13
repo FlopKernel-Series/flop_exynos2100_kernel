@@ -24,8 +24,6 @@
 
 #include "mfc_mem.h"
 
-#include "mfc_utils.h"
-
 static int __mfc_alloc_common_context(struct mfc_core *core,
 			enum mfc_buf_usage_type buf_type)
 {
@@ -71,13 +69,13 @@ int mfc_alloc_common_context(struct mfc_core *core)
 	ret = __mfc_alloc_common_context(core, MFCBUF_NORMAL);
 	if (ret)
 		return ret;
-	mfc_core_change_fw_state(core, 0, MFC_CTX_ALLOC, 1);
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
-	ret = __mfc_alloc_common_context(core, MFCBUF_DRM);
-	if (ret)
-		return ret;
-	mfc_core_change_fw_state(core, 1, MFC_CTX_ALLOC, 1);
+	if (core->fw.drm_status) {
+		ret = __mfc_alloc_common_context(core, MFCBUF_DRM);
+		if (ret)
+			return ret;
+	}
 #endif
 
 	return ret;
@@ -108,11 +106,9 @@ static void __mfc_release_common_context(struct mfc_core *core,
 void mfc_release_common_context(struct mfc_core *core)
 {
 	__mfc_release_common_context(core, MFCBUF_NORMAL);
-	mfc_core_change_fw_state(core, 0, MFC_CTX_ALLOC, 0);
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
 	__mfc_release_common_context(core, MFCBUF_DRM);
-	mfc_core_change_fw_state(core, 1, MFC_CTX_ALLOC, 0);
 #endif
 }
 
@@ -718,9 +714,7 @@ int mfc_alloc_firmware(struct mfc_core *core)
 	if (mfc_iommu_map_firmware(core, fw_buf))
 		goto err_reserve_iova;
 
-	mfc_core_change_fw_state(core, 0, MFC_FW_ALLOC, 1);
-	MFC_TRACE_CORE("Normal F/W base %pad\n", &core->fw_buf.daddr);
-	mfc_core_info("[MEMINFO][F/W] MFC-%d FW normal: %pad(vaddr: %pK, paddr:%pap), size: %08zu\n",
+	mfc_core_info("[MEMINFO][F/W] MFC-%d FW normal: %pad(vaddr: %p, paddr:%pap), size: %08zu\n",
 			core->id, &core->fw_buf.daddr, core->fw_buf.vaddr, &core->fw_buf.paddr,
 			core->fw_buf.size);
 
@@ -745,8 +739,7 @@ int mfc_alloc_firmware(struct mfc_core *core)
 	}
 #endif
 
-	mfc_core_change_fw_state(core, 1, MFC_FW_ALLOC, 1);
-	mfc_core_info("[MEMINFO][F/W] MFC-%d FW DRM: %pad(vaddr: %pK paddr:%pap), size: %08zu\n",
+	mfc_core_info("[MEMINFO][F/W] MFC-%d FW DRM: %pad(vaddr: %p paddr:%pap), size: %08zu\n",
 			core->id, &core->drm_fw_buf.daddr,
 			core->drm_fw_buf.vaddr, &core->drm_fw_buf.paddr,
 			core->drm_fw_buf.size);
@@ -763,7 +756,6 @@ err_reserve_iova_secure:
 	mfc_mem_special_buf_free(dev, &core->drm_fw_buf);
 #endif
 err_reserve_iova:
-	mfc_core_change_fw_state(core, 0, MFC_FW_ALLOC, 0);
 	iommu_unmap(core->domain, fw_buf->daddr, fw_buf->map_size);
 	mfc_mem_special_buf_free(dev, &core->fw_buf);
 	return -ENOMEM;
@@ -794,9 +786,6 @@ int mfc_load_firmware(struct mfc_core *core, const u8 *fw_data, size_t fw_size)
 
 	/* cache flush for memcpy by CPU */
 	dma_sync_sgtable_for_device(core->device, core->fw_buf.sgt, DMA_TO_DEVICE);
-	mfc_core_debug(4, "[F/W] cache flush for normal FW region\n");
-
-	mfc_core_change_fw_state(core, 0, MFC_FW_LOADED, 1);
 
 	if (core->drm_fw_buf.vaddr) {
 		mfc_core_debug(4, "[F/W] memset before memcpy for secure fw\n");
@@ -806,9 +795,7 @@ int mfc_load_firmware(struct mfc_core *core, const u8 *fw_data, size_t fw_size)
 
 		/* cache flush for memcpy by CPU */
 		dma_sync_sgtable_for_device(core->device, core->drm_fw_buf.sgt, DMA_TO_DEVICE);
-		mfc_core_debug(4, "[F/W] cache flush for secure FW region\n");
-
-		mfc_core_change_fw_state(core, 1, MFC_FW_LOADED, 1);
+		mfc_core_debug(4, "[F/W] cache flush for secure region\n");
 	}
 
 	return 0;

@@ -1280,10 +1280,11 @@ int mfc_rm_instance_init(struct mfc_dev *dev, struct mfc_ctx *ctx)
 			continue;
 		}
 
-		if (!(core->fw.status & MFC_FW_ALLOC)) {
+		if (!core->fw.status) {
 			ret = mfc_alloc_firmware(core);
 			if (ret)
 				goto err_inst_init;
+			core->fw.status = 1;
 		}
 	}
 
