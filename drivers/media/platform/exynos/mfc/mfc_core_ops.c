@@ -11,13 +11,6 @@
  */
 
 #include <soc/samsung/exynos-smc.h>
-#include <linux/workarounds.h>
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
-#include <soc/samsung/imgloader.h>
-#endif
-#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
-#include <soc/samsung/exynos-s2mpu.h>
-#endif
 
 #include "mfc_common.h"
 
@@ -39,44 +32,15 @@
 #include "mfc_queue.h"
 #include "mfc_mem.h"
 
-int mfc_power_on_verify_fw(struct mfc_core *core, unsigned int fw_id,
-		phys_addr_t fw_phys_base, size_t fw_bin_size, size_t fw_mem_size)
-{
-	int ret = 0;
-#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
-	uint64_t ret64 = 0;
-#endif
-
-	mfc_core_debug(2, "power on\n");
-	ret = mfc_core_pm_power_on(core);
-	if (ret) {
-		mfc_core_err("Failed block power on, ret=%d\n", ret);
-		return ret;
-	}
-
-#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
-	/* Request F/W verification. This must be requested after power on */
-	ret64 = exynos_verify_subsystem_fw(core->name, fw_id,
-				fw_phys_base, fw_bin_size, fw_mem_size);
-	if (ret64) {
-		mfc_core_err("Failed F/W verification, ret=%llu\n", ret64);
-		return -EIO;
-	}
-
-	ret64 = exynos_request_fw_stage2_ap(core->name);
-	if (ret64) {
-		mfc_core_err("Failed F/W verification to S2MPU, ret=%llu\n", ret64);
-		return -EIO;
-	}
-#endif
-
-	return 0;
-}
-
 static int __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 {
 	struct mfc_dev *dev = core->dev;
 	int ret = 0;
+#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+	phys_addr_t protdesc_phys;
+	dma_addr_t protdesc_daddr;
+#endif
+
 	/* set meerkat timer */
 	mod_timer(&core->meerkat_timer, jiffies + msecs_to_jiffies(MEERKAT_TICK_INTERVAL));
 
@@ -94,11 +58,6 @@ static int __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 		mfc_core_err("DRM F/W buffer is not allocated\n");
 		core->fw.drm_status = 0;
 	} else {
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-		if (is_dma_buf_env()) {
-			phys_addr_t protdesc_phys;
-			dma_addr_t protdesc_daddr;
-
 		core->drm_fw_prot = kzalloc(sizeof(struct buffer_smc_prot_info), GFP_KERNEL);
 		if (!core->drm_fw_prot) {
 			mfc_core_err("no memory for drm_fw_prot\n");
@@ -126,12 +85,7 @@ static int __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_core_err("failed MFC DRM F/W prot region setting(%#x)\n", ret);
 			call_dop(core, dump_and_stop_debug_mode, core);
 			core->fw.drm_status = 0;
-			kfree(core->drm_fw_prot);
-			core->drm_fw_prot = NULL;
-			goto err_fw_load;
 		}
-		}
-#endif
 
 		/* Request buffer protection for DRM F/W */
 		ret = exynos_smc(SMC_DRM_PPMP_MFCFW_PROT,
@@ -140,7 +94,6 @@ static int __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_core_err("failed MFC DRM F/W prot(%#x)\n", ret);
 			call_dop(core, dump_and_stop_debug_mode, core);
 			core->fw.drm_status = 0;
-			goto err_fw_load;
 		} else {
 			core->fw.drm_status = 1;
 		}
@@ -204,21 +157,6 @@ err_common_ctx:
 			mfc_core_err("failed MFC DRM F/W unprot(%#x)\n", smc_ret);
 			call_dop(core, dump_and_stop_debug_mode, core);
 		}
-
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-		if (is_dma_buf_env() && core->drm_fw_prot) {
-			phys_addr_t protdesc_phys = virt_to_phys(core->drm_fw_prot);
-
-			smc_ret = exynos_smc(SMC_DRM_PPMP_UNPROT, protdesc_phys, 0, 0);
-			if (smc_ret != DRMDRV_OK) {
-				mfc_core_err("failed MFC DRM F/W prot region unset(%#x)\n",
-						smc_ret);
-				call_dop(core, dump_and_stop_debug_mode, core);
-			}
-			kfree(core->drm_fw_prot);
-			core->drm_fw_prot = NULL;
-		}
-#endif
 	}
 #endif
 
@@ -283,6 +221,9 @@ static int __mfc_wait_close_inst(struct mfc_core *core, struct mfc_ctx *ctx)
 static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+	phys_addr_t protdesc_phys = 0;
+#endif
 
 	mfc_clear_bit(ctx->num, &core->work_bits);
 
@@ -330,21 +271,16 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 				call_dop(core, dump_and_stop_debug_mode, core);
 			}
 
-#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
-			if (is_dma_buf_env() && core->drm_fw_prot) {
-				phys_addr_t protdesc_phys = virt_to_phys(core->drm_fw_prot);
-
-				/* Request buffer Secure-DVA unset */
-				ret = exynos_smc(SMC_DRM_PPMP_UNPROT, protdesc_phys, 0, 0);
-				if (ret != DRMDRV_OK) {
-					mfc_core_err("failed MFC DRM F/W prot region unset(%#x)\n", ret);
-					call_dop(core, dump_and_stop_debug_mode, core);
-				}
-
-				kfree(core->drm_fw_prot);
-				core->drm_fw_prot = NULL;
+			/* Request buffer Secure-DVA unset */
+			protdesc_phys = virt_to_phys(core->drm_fw_prot);
+			ret = exynos_smc(SMC_DRM_PPMP_UNPROT, protdesc_phys, 0, 0);
+			if (ret != DRMDRV_OK) {
+				mfc_core_err("failed MFC DRM F/W prot region unset(%#x)\n", ret);
+				call_dop(core, dump_and_stop_debug_mode, core);
 			}
-#endif
+
+			kfree(core->drm_fw_prot);
+			core->drm_fw_prot = NULL;
 		}
 #endif
 
@@ -1204,102 +1140,3 @@ int mfc_core_request_work(struct mfc_core *core, enum mfc_request_work work,
 
 	return 0;
 }
-
-#if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
-int mfc_imgloader_mem_setup(struct imgloader_desc *desc, const u8 *fw_data, size_t fw_size,
-	phys_addr_t *fw_phys_base, size_t *fw_bin_size, size_t *fw_mem_size)
-{
-	struct mfc_core *core = (struct mfc_core *)desc->dev->driver_data;
-
-	mfc_core_debug_enter();
-
-	mfc_core_debug(2, "[MEMINFO][F/W] loaded F/W Size: %zu\n", fw_size);
-
-	if (fw_size > core->fw_buf.size) {
-		mfc_core_err("[MEMINFO][F/W] MFC firmware(%zu) is too big to be loaded in memory(%zu)\n",
-				fw_size, core->fw_buf.size);
-		return -ENOMEM;
-	}
-
-	core->fw.fw_size = fw_size;
-
-	if (core->fw_buf.sgt == NULL || core->fw_buf.daddr == 0) {
-		mfc_core_err("[F/W] MFC firmware is not allocated or was not mapped correctly\n");
-		return -EINVAL;
-	}
-
-	/*  This adds to clear with '0' for firmware memory except code region. */
-	mfc_core_debug(4, "[F/W] memset before memcpy for normal fw\n");
-	memset((core->fw_buf.vaddr + fw_size), 0, (core->fw_buf.size - fw_size));
-	memcpy(core->fw_buf.vaddr, fw_data, fw_size);
-
-	/* cache flush for memcpy by CPU */
-	dma_sync_sg_for_device(core->device, core->fw_buf.sgt->sgl,
-		core->fw_buf.sgt->orig_nents, DMA_TO_DEVICE);
-
-	if (core->drm_fw_buf.vaddr) {
-		mfc_core_debug(4, "[F/W] memset before memcpy for secure fw\n");
-		memset((core->drm_fw_buf.vaddr + fw_size), 0, (core->drm_fw_buf.size - fw_size));
-		memcpy(core->drm_fw_buf.vaddr, fw_data, fw_size);
-		mfc_core_debug(4, "[F/W] copy firmware to secure region\n");
-
-		/* cache flush for memcpy by CPU */
-		dma_sync_sg_for_device(core->device, core->drm_fw_buf.sgt->sgl,
-				core->drm_fw_buf.sgt->orig_nents, DMA_TO_DEVICE);
-		mfc_core_debug(4, "[F/W] cache flush for secure region\n");
-	}
-
-	*fw_phys_base = core->fw_buf.paddr;
-	*fw_bin_size = fw_size;
-	*fw_mem_size = core->fw_buf.size;
-
-	mfc_core_debug_leave();
-
-	return 0;
-}
-
-int mfc_imgloader_verify_fw(struct imgloader_desc *desc, phys_addr_t fw_phys_base,
-	size_t fw_bin_size, size_t fw_mem_size)
-{
-	struct mfc_core *core = (struct mfc_core *)desc->dev->driver_data;
-	int ret = 0;
-
-	ret = mfc_power_on_verify_fw(core, desc->fw_id, fw_phys_base, fw_bin_size, fw_mem_size);
-
-	return ret;
-}
-
-int mfc_imgloader_blk_pwron(struct imgloader_desc *desc)
-{
-	struct mfc_core *core = (struct mfc_core *)desc->dev->driver_data;
-	int ret = 0;
-
-	mfc_core_debug(2, "power on\n");
-	ret = mfc_core_pm_power_on(core);
-	if (ret) {
-		mfc_core_err("Failed %s block power on, ret=%d\n", ret);
-		return ret;
-	}
-
-	return 0;
-}
-
-int mfc_imgloader_deinit_image(struct imgloader_desc *desc)
-{
-	struct mfc_core *core = (struct mfc_core *)desc->dev->driver_data;
-
-	if (mfc_core_pm_get_pwr_ref_cnt(core)) {
-		mfc_core_debug(2, "power off\n");
-		mfc_core_pm_power_off(core);
-	}
-
-	return 0;
-}
-
-struct imgloader_ops mfc_imgloader_ops = {
-	.mem_setup = mfc_imgloader_mem_setup,
-	.verify_fw = mfc_imgloader_verify_fw,
-	.blk_pwron = mfc_imgloader_blk_pwron,
-	.deinit_image = mfc_imgloader_deinit_image,
-};
-#endif
