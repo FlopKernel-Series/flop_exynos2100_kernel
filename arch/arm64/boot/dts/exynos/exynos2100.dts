@@ -14430,6 +14430,8 @@
 
 		ufs-pm-qos {
 			freq-int = <0x412f8>;
+			perf-int = <0x82208>;
+			perf-mif = <0x1ef1e0>;
 		};
 	};
 
