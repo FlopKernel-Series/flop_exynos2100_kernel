@@ -520,45 +520,22 @@ void mfc_core_cleanup_work_bit_and_try_run(struct mfc_core_ctx *core_ctx)
 }
 
 void mfc_core_cache_flush(struct mfc_core *core, int is_drm,
-		enum mfc_do_cache_flush do_cache_flush, int drm_switch, int reg_clear)
+		enum mfc_do_cache_flush do_cache_flush, int drm_switch)
 {
-	enum mfc_fw_status fw_status;
-
-	/*
-	 * Even if it is determined that the attribute of the previous instance
-	 * and the current instance have been changed, (= drm_switch)
-	 * there is no need to cache flush if the F/W of the previous instance is unloaded.
-	 */
-	if (drm_switch) {
-		if (is_drm)
-			fw_status = core->fw.status;
-		else
-			fw_status = core->fw.drm_status;
-
-		if (!(fw_status & MFC_FW_LOADED)) {
-			mfc_core_debug(2, "F/W has already un-loaded\n");
-			do_cache_flush = MFC_NO_CACHEFLUSH;
-		}
-	}
-
 	if (do_cache_flush == MFC_CACHEFLUSH) {
 		mfc_core_cmd_cache_flush(core);
-		if (mfc_wait_for_done_core(core, MFC_REG_R2H_CMD_CACHE_FLUSH_RET)) {
+		if (mfc_wait_for_done_core(core,
+				MFC_REG_R2H_CMD_CACHE_FLUSH_RET)) {
 			mfc_core_err("Failed to CACHE_FLUSH\n");
-			core->logging_data->cause |= (1 << MFC_CAUSE_FAIL_CACHE_FLUSH);
+			core->logging_data->cause |=
+				(1 << MFC_CAUSE_FAIL_CACHE_FLUSH);
 			call_dop(core, dump_and_stop_always, core);
 		}
 	} else if (do_cache_flush == MFC_NO_CACHEFLUSH) {
 		mfc_core_debug(2, "F/W has already done cache flush with prediction\n");
 	}
 
-	/* When init_hw(), reg_clear is required between cache flush and (un)protection */
-	if (reg_clear) {
-		mfc_core_reg_clear(core);
-		mfc_core_debug(2, "Done register clear\n");
-	}
-
-	mfc_core_change_attribute(core, is_drm);
+	core->curr_core_ctx_is_drm = is_drm;
 
 	/* drm_switch may not occur when cache flush is required during migration. */
 	if (!drm_switch)
@@ -570,7 +547,7 @@ void mfc_core_cache_flush(struct mfc_core *core, int is_drm,
 		mfc_core_protection_on(core);
 	} else {
 		MFC_TRACE_CORE("DRM -> Normal\n");
-		mfc_core_debug(2, "DRM -> Normal need un-protection\n");
+		mfc_core_debug(2, "Normal -> DRM\n");
 		mfc_core_protection_off(core);
 	}
 }
@@ -600,8 +577,7 @@ static int __mfc_nal_q_just_run(struct mfc_core *core, struct mfc_core_ctx *core
 
 			/* enable NAL QUEUE */
 			if (drm_switch)
-				mfc_core_cache_flush(
-					core, ctx->is_drm, MFC_CACHEFLUSH, drm_switch, 0);
+				mfc_core_cache_flush(core, ctx->is_drm, MFC_CACHEFLUSH, drm_switch);
 
 			mfc_ctx_info("[NALQ] start NAL QUEUE\n");
 			mfc_core_nal_q_start(core, nal_q_handle);
@@ -832,7 +808,7 @@ int mfc_core_just_run(struct mfc_core *core, int new_ctx_index)
 	if (core->curr_core_ctx_is_drm != ctx->is_drm)
 		drm_switch = 1;
 	else
-		mfc_core_change_attribute(core, ctx->is_drm);
+		core->curr_core_ctx_is_drm = ctx->is_drm;
 
 	mfc_debug(2, "drm_switch = %d, is_drm = %d\n", drm_switch, ctx->is_drm);
 
@@ -859,7 +835,7 @@ int mfc_core_just_run(struct mfc_core *core, int new_ctx_index)
 	if (!MFC_FEATURE_SUPPORT(dev, dev->pdata->drm_switch_predict)
 			|| dev->debugfs.drm_predict_disable) {
 		if (drm_switch)
-			mfc_core_cache_flush(core, ctx->is_drm, MFC_CACHEFLUSH, drm_switch, 0);
+			mfc_core_cache_flush(core, ctx->is_drm, MFC_CACHEFLUSH, drm_switch);
 	} else {
 		/* If Normal <-> Secure switch, check if cache flush was done */
 		if (drm_switch) {
@@ -869,7 +845,7 @@ int mfc_core_just_run(struct mfc_core *core, int new_ctx_index)
 			mfc_core_cache_flush(core, ctx->is_drm,
 					core->last_cmd_has_cache_flush ?
 					MFC_NO_CACHEFLUSH : MFC_CACHEFLUSH,
-					drm_switch, 0);
+					drm_switch);
 		}
 
 		/*

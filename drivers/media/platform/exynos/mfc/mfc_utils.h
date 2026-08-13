@@ -61,15 +61,6 @@ static inline void mfc_core_change_state(struct mfc_core *core, enum mfc_core_st
 	core->state = state;
 }
 
-static inline void mfc_core_change_attribute(struct mfc_core *core, int is_drm)
-{
-	MFC_TRACE_CORE("** ctx_is_drm %d -> %d\n",
-			core->curr_core_ctx_is_drm, is_drm);
-	mfc_core_debug(3, "curr_core_ctx_is_drm %d -> %d\n",
-			core->curr_core_ctx_is_drm, is_drm);
-	core->curr_core_ctx_is_drm = is_drm;
-}
-
 static inline void mfc_core_change_fw_state(struct mfc_core *core, int is_drm,
 		enum mfc_fw_status state, int set)
 {
@@ -181,50 +172,13 @@ static inline int mfc_check_mb_flag(struct mfc_buf *mfc_buf, enum mfc_mb_flag f)
 	return 0;
 }
 
+void mfc_core_handle_error(struct mfc_core *core);
+
 int mfc_check_vb_with_fmt(struct mfc_fmt *fmt, struct vb2_buffer *vb);
-unsigned int mfc_get_uncomp_format(struct mfc_ctx *ctx, u32 org_fmt);
-void mfc_set_linear_stride_size(struct mfc_ctx *ctx, struct mfc_raw_info *raw, struct mfc_fmt *fmt);
-void mfc_dec_calc_dpb_size(struct mfc_ctx *ctx, struct mfc_raw_info *raw, struct mfc_fmt *fmt);
+void mfc_set_linear_stride_size(struct mfc_ctx *ctx, struct mfc_fmt *fmt);
+void mfc_dec_calc_dpb_size(struct mfc_ctx *ctx);
 void mfc_enc_calc_src_size(struct mfc_ctx *ctx);
 void mfc_calc_base_addr(struct mfc_ctx *ctx, struct vb2_buffer *vb, struct mfc_fmt *fmt);
-
-static inline u32 mfc_dec_get_strm_size(struct mfc_ctx *ctx, struct mfc_buf *src_mb)
-{
-	struct vb2_plane *vb_plane;
-	struct mfc_dec *dec = ctx->dec_priv;
-	unsigned int strm_size;
-
-	/*
-	 * struct v4l2_plane data_offset is included in bytesused.
-	 * So the size of image is bytesused - data_offset from start of the plane.
-	 * And the dec->consumed is cumulate-decoded size.
-	 */
-	vb_plane = &src_mb->vb.vb2_buf.planes[0];
-	strm_size = vb_plane->bytesused - vb_plane->data_offset;
-	if (dec->consumed)
-		strm_size -= dec->consumed;
-
-	mfc_debug(2, "[STREAM] strm_size: %d (bytesused %d, data_offset %d, consumed %d)\n",
-			strm_size, vb_plane->bytesused, vb_plane->data_offset, dec->consumed);
-	return strm_size;
-}
-
-static inline int mfc_dec_get_strm_offset(struct mfc_ctx *ctx, struct mfc_buf *src_mb)
-{
-	struct vb2_plane *vb_plane;
-	struct mfc_dec *dec = ctx->dec_priv;
-	unsigned int offset;
-
-	vb_plane = &src_mb->vb.vb2_buf.planes[0];
-	offset = vb_plane->data_offset;
-	if (dec->consumed)
-		offset += dec->consumed;
-
-	mfc_debug(2, "[STREAM] offset: %d (bytesused %d, data_offset %d, consumed %d)\n",
-			offset, vb_plane->bytesused, vb_plane->data_offset, dec->consumed);
-
-	return offset;
-}
 
 static inline int mfc_dec_status_decoding(unsigned int dst_frame_status)
 {

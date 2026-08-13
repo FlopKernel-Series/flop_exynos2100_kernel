@@ -50,7 +50,6 @@ static int __mfc_core_prot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 	if (!core->drm_fw_buf.sgt) {
 		mfc_core_err("DRM F/W buffer is not allocated\n");
 		core->fw.drm_status = 0;
-		return 0;
 	}
 
 #if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
@@ -61,6 +60,7 @@ static int __mfc_core_prot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 		core->drm_fw_prot = kzalloc(sizeof(struct buffer_smc_prot_info), GFP_KERNEL);
 		if (!core->drm_fw_prot) {
 			mfc_core_err("no memory for drm_fw_prot\n");
+			core->fw.drm_status = 0;
 			return -ENOMEM;
 		}
 
@@ -82,24 +82,33 @@ static int __mfc_core_prot_firmware(struct mfc_core *core, struct mfc_ctx *ctx)
 		if (ret != DRMDRV_OK) {
 			mfc_core_err("failed MFC DRM F/W prot region setting(%#x)\n", ret);
 			call_dop(core, dump_and_stop_debug_mode, core);
+			core->fw.drm_status = 0;
 			kfree(core->drm_fw_prot);
 			core->drm_fw_prot = NULL;
 			return -EACCES;
 		}
+
 	}
 #endif
 
 	/* Request buffer protection for DRM F/W */
-	ret = exynos_smc(SMC_DRM_PPMP_MFCFW_PROT, core->drm_fw_buf.daddr, core->id * PROT_MFC1, 0);
+	ret = exynos_smc(SMC_DRM_PPMP_MFCFW_PROT, core->drm_fw_buf.daddr,
+			core->id * PROT_MFC1, 0);
 	if (ret != DRMDRV_OK) {
 		mfc_core_err("failed MFC DRM F/W prot(%#x)\n", ret);
 		call_dop(core, dump_and_stop_debug_mode, core);
 		core->fw.drm_status = 0;
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS)
+		if (is_dma_buf_env()) {
+			kfree(core->drm_fw_prot);
+			core->drm_fw_prot = NULL;
+		}
+#endif
 		return -EACCES;
-	} else {
-		mfc_debug(2, "DRM F/W region protected\n");
-		core->fw.drm_status = 1;
 	}
+
+	mfc_debug(2, "DRM F/W region protected\n");
+	core->fw.drm_status = 1;
 
 	mfc_core_change_fw_state(core, 1, MFC_FW_VERIFIED, 1);
 	mfc_core_debug_leave();
@@ -113,12 +122,14 @@ static void __mfc_core_unprot_firmware(struct mfc_core *core, struct mfc_ctx *ct
 
 	mfc_core_debug_enter();
 
-	if (!(core->fw.drm_status & MFC_FW_VERIFIED)) {
+	if (!core->fw.drm_status) {
 		mfc_ctx_info("DRM F/W region already unprotected\n");
 		return;
 	}
 
+	core->fw.drm_status = 0;
 	/* Request buffer unprotection for DRM F/W */
+	//ret = exynos_smc(SMC_DRM_PPMP_MFCFW_UNPROT, core->drm_fw_buf.daddr, 0, 0);
 	ret = exynos_smc(SMC_DRM_PPMP_MFCFW_UNPROT, core->drm_fw_buf.daddr, core->id * PROT_MFC1, 0);
 	if (ret != DRMDRV_OK) {
 		mfc_ctx_err("failed MFC DRM F/W unprot(%#x)\n", ret);
@@ -129,6 +140,7 @@ static void __mfc_core_unprot_firmware(struct mfc_core *core, struct mfc_ctx *ct
 	if (is_dma_buf_env() && core->drm_fw_prot) {
 		phys_addr_t protdesc_phys = virt_to_phys(core->drm_fw_prot);
 
+		/* Request buffer Secure-DVA unset */
 		ret = exynos_smc(SMC_DRM_PPMP_UNPROT, protdesc_phys, 0, 0);
 		if (ret != DRMDRV_OK) {
 			mfc_core_err("failed MFC DRM F/W prot region unset(%#x)\n", ret);
@@ -165,15 +177,14 @@ int __mfc_verify_fw(struct mfc_core *core, unsigned int fw_id,
 		return -EIO;
 	}
 
-	mfc_core_change_fw_state(core, 0, MFC_FW_VERIFIED, 1);
-
 	return 0;
 }
 #endif
 
-static void __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
+static int __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 {
 	struct mfc_dev *dev = core->dev;
+	int ret = 0;
 
 	/* set meerkat timer */
 	mod_timer(&core->meerkat_timer, jiffies + msecs_to_jiffies(MEERKAT_TICK_INTERVAL));
@@ -181,6 +192,25 @@ static void __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 	/* set MFC idle timer */
 	atomic_set(&core->hw_run_bits, 0);
 	mfc_core_change_idle_mode(core, MFC_IDLE_MODE_NONE);
+
+	ret = mfc_alloc_common_context(core);
+	if (ret < 0) {
+		mfc_core_err("Failed to alloc common context\n");
+		goto err_common_ctx;
+	}
+
+	if (dev->debugfs.dbg_enable)
+		mfc_alloc_dbg_info_buffer(core);
+
+	core->curr_core_ctx = ctx->num;
+	core->preempt_core_ctx = MFC_NO_INSTANCE_SET;
+	core->curr_core_ctx_is_drm = ctx->is_drm;
+
+	ret = mfc_core_run_init_hw(core);
+	if (ret) {
+		mfc_core_err("Failed to init mfc h/w\n");
+		goto err_hw_init;
+	}
 
 	if (core->has_llc && (core->llc_on_status == 0))
 		mfc_llc_enable(core);
@@ -191,15 +221,17 @@ static void __mfc_core_init(struct mfc_core *core, struct mfc_ctx *ctx)
 			mfc_core_err("[NALQ] Can't create nal q\n");
 	}
 
-	if (core->dev->debugfs.perf_boost_mode)
-		mfc_core_perf_boost_enable(core);
+	return ret;
 
-	if (!dev->fw_date)
-		dev->fw_date = core->fw.date;
-	else if (dev->fw_date > core->fw.date)
-		dev->fw_date = core->fw.date;
+err_hw_init:
+	mfc_release_common_context(core);
 
-	mfc_perf_init(core);
+err_common_ctx:
+	del_timer(&core->meerkat_timer);
+	del_timer(&core->mfc_idle_timer);
+
+	mfc_core_err("failed to init first instance\n");
+	return ret;
 }
 
 static int __mfc_wait_close_inst(struct mfc_core *core, struct mfc_ctx *ctx)
@@ -272,52 +304,14 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 		core->num_drm_inst--;
 	core->num_inst--;
 
-	/* Last normal instance */
-	if (!ctx->is_drm && ((core->num_inst - core->num_drm_inst) == 0)) {
-		/*
-		 * When if open and close directly without HW operation,
-		 * curr_core_ctx_is_drm can be true by other DRM instance.
-		 * At that time, do not cache flush about DRM firmware.
-		 * This is to cache flush the normal FW that will disappear(un-load)
-		 * for the next DRM operation after normal FW + HW operation.
-		 */
-		if (!core->curr_core_ctx_is_drm) {
-			core->curr_core_ctx = ctx->num;
-			mfc_core_cache_flush(core, ctx->is_drm, MFC_CACHEFLUSH, 0, 0);
-		}
-		mfc_core_change_fw_state(core, 0, MFC_FW_INITIALIZED, 0);
+	if (core->num_inst == 0) {
+		mfc_core_run_deinit_hw(core);
+
 #if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 		imgloader_shutdown(&core->mfc_imgloader_desc);
 #else
 		mfc_release_verify_fw(core);
 #endif
-		mfc_core_change_fw_state(core, 0, MFC_FW_LOADED, 0);
-	}
-
-	/* Last DRM instance */
-	if (ctx->is_drm && (core->num_drm_inst == 0)) {
-		/*
-		 * When if open and close directly without HW operation,
-		 * curr_core_ctx_is_drm can be true by other normal instance.
-		 * At that time, do not cache flush about normal firmware.
-		 * This is to cache flush the DRM FW that will disappear(un-load)
-		 * for the next normal operation after DRM FW + HW operation.
-		 */
-		if (core->curr_core_ctx_is_drm) {
-			core->curr_core_ctx = ctx->num;
-			mfc_core_cache_flush(core, ctx->is_drm, MFC_CACHEFLUSH, 0, 0);
-			mfc_core_protection_off(core);
-		}
-		mfc_core_change_fw_state(core, 1, MFC_FW_INITIALIZED, 0);
-#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
-		__mfc_core_unprot_firmware(core, ctx);
-#endif
-		mfc_core_change_attribute(core, 0);
-		mfc_core_change_fw_state(core, 1, MFC_FW_LOADED, 0);
-	}
-
-	if (core->num_inst == 0) {
-		mfc_core_run_deinit_hw(core);
 
 		if (core->dev->debugfs.perf_boost_mode)
 			mfc_core_perf_boost_disable(core);
@@ -332,6 +326,12 @@ static int __mfc_core_deinit(struct mfc_core *core, struct mfc_ctx *ctx)
 
 		if (core->dev->debugfs.dbg_enable)
 			mfc_release_dbg_info_buffer(core);
+
+		mfc_release_common_context(core);
+
+#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+		__mfc_core_unprot_firmware(core, ctx);
+#endif
 
 		if (core->nal_q_handle)
 			mfc_core_nal_q_destroy(core, core->nal_q_handle);
@@ -399,10 +399,9 @@ static int __mfc_force_close_inst(struct mfc_core *core, struct mfc_ctx *ctx)
 
 int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 {
+	struct mfc_dev *dev = core->dev;
 	struct mfc_core_ctx *core_ctx = NULL;
 	int ret = 0;
-	enum mfc_fw_status fw_status;
-	struct mfc_special_buf *fw_buf;
 
 	core->num_inst++;
 	if (ctx->is_drm)
@@ -442,60 +441,45 @@ int __mfc_core_instance_init(struct mfc_core *core, struct mfc_ctx *ctx)
 			goto err_power_on;
 		}
 
-		if (core->dev->debugfs.dbg_enable)
-			mfc_alloc_dbg_info_buffer(core);
-	}
-
-	/* Load and verify the FW */
-	if (ctx->is_drm) {
-		fw_buf = &core->drm_fw_buf;
-		fw_status = core->fw.drm_status;
-	} else {
-		fw_buf = &core->fw_buf;
-		fw_status = core->fw.status;
-	}
-
-	if (!(fw_status & MFC_FW_LOADED)) {
-		ret = mfc_request_load_firmware(core, fw_buf);
+		/* Load the FW */
+		ret = mfc_request_load_firmware(core);
 		if (ret)
 			goto err_fw_load;
-	}
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
-	if (ctx->is_drm && !(fw_status & MFC_FW_VERIFIED)) {
 		ret = __mfc_core_prot_firmware(core, ctx);
 		if (ret)
 			goto err_fw_prot;
-	}
 #endif
 
 #if !IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 #if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
-	if (!ctx->is_drm && !(fw_status & MFC_FW_VERIFIED)) {
 		ret = __mfc_verify_fw(core, 0, core->fw_buf.paddr,
 				core->fw.fw_size, core->fw_buf.size);
 		if (ret < 0)
 			goto err_verify_fw;
-	}
 #endif
 #endif
+		mfc_core_change_fw_state(core, 0, MFC_FW_VERIFIED, 1);
 
-
-	if (!(fw_status & MFC_FW_INITIALIZED)) {
-		core->curr_core_ctx = ctx->num;
-		core->preempt_core_ctx = MFC_NO_INSTANCE_SET;
-
-		ret = mfc_core_run_init_hw(core, ctx->is_drm);
+		ret = __mfc_core_init(core, ctx);
 		if (ret)
-			goto err_init_hw;
-	}
+			goto err_init_core;
 
-	if (core->num_inst == 1)
-		__mfc_core_init(core, ctx);
+		if (dev->debugfs.perf_boost_mode)
+			mfc_core_perf_boost_enable(core);
+
+		if (!dev->fw_date)
+			dev->fw_date = core->fw.date;
+		else if (dev->fw_date > core->fw.date)
+			dev->fw_date = core->fw.date;
+
+		mfc_perf_init(core);
+	}
 
 	return 0;
 
-err_init_hw:
+err_init_core:
 #if !IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
 #if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
 	mfc_release_verify_fw(core);
@@ -504,20 +488,14 @@ err_verify_fw:
 #endif
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
-	if (ctx->is_drm)
-		__mfc_core_unprot_firmware(core, ctx);
+	__mfc_core_unprot_firmware(core, ctx);
 
 err_fw_prot:
 #endif
 #if IS_ENABLED(CONFIG_EXYNOS_IMGLOADER)
-	if (!ctx->is_drm)
-		imgloader_shutdown(&core->mfc_imgloader_desc);
+	imgloader_shutdown(&core->mfc_imgloader_desc);
 #endif
-	mfc_core_change_fw_state(core, ctx->is_drm, MFC_FW_LOADED, 0);
-
 err_fw_load:
-	if (core->dev->debugfs.dbg_enable)
-		mfc_release_dbg_info_buffer(core);
 	mfc_core_pm_power_off(core);
 
 err_power_on:
@@ -774,7 +752,7 @@ void mfc_core_instance_cache_flush(struct mfc_core *core, struct mfc_ctx *ctx)
 	mfc_core_cache_flush(core, ctx->is_drm,
 			core->last_cmd_has_cache_flush ?
 			MFC_NO_CACHEFLUSH : MFC_CACHEFLUSH,
-			drm_switch, 0);
+			drm_switch);
 
 	if (!state)
 		mfc_core_pm_clock_off(core);
@@ -1029,6 +1007,7 @@ void mfc_core_instance_csd_parsing(struct mfc_core *core, struct mfc_ctx *ctx)
 	}
 
 	dec->consumed = 0;
+	dec->remained_size = 0;
 	core_ctx->check_dump = 0;
 	ctx->curr_src_index = -1;
 
@@ -1248,7 +1227,7 @@ int mfc_imgloader_mem_setup(struct imgloader_desc *desc, const u8 *fw_data, size
 
 	mfc_core_debug_enter();
 
-	ret = mfc_load_firmware(core, &core->fw_buf, fw_data, fw_size);
+	ret = mfc_load_firmware(core, fw_data, fw_size);
 	if (ret)
 		return ret;
 

@@ -69,7 +69,30 @@ static void __mfc_enc_uncomp_format(struct mfc_ctx *ctx)
 	u32 org_fmt = ctx->src_fmt->fourcc;
 	u32 uncomp_fmt = 0;
 
-	uncomp_fmt = mfc_get_uncomp_format(ctx, org_fmt);
+	switch (org_fmt) {
+		case V4L2_PIX_FMT_NV12M_SBWC_8B:
+			uncomp_fmt = V4L2_PIX_FMT_NV12M;
+			break;
+		case V4L2_PIX_FMT_NV21M_SBWC_8B:
+			uncomp_fmt = V4L2_PIX_FMT_NV21M;
+			break;
+		case V4L2_PIX_FMT_NV12N_SBWC_8B:
+			uncomp_fmt = V4L2_PIX_FMT_NV12N;
+			break;
+		case V4L2_PIX_FMT_NV12M_SBWC_10B:
+			if (ctx->mem_type_10bit)
+				uncomp_fmt = V4L2_PIX_FMT_NV12M_P010;
+			else
+				uncomp_fmt = V4L2_PIX_FMT_NV12M_S10B;
+			break;
+		case V4L2_PIX_FMT_NV12N_SBWC_10B:
+			uncomp_fmt = V4L2_PIX_FMT_NV12N_10B;
+			break;
+		default:
+			mfc_ctx_err("[SBWC] Cannot find uncomp format: %d\n", org_fmt);
+			break;
+	}
+
 	if (uncomp_fmt) {
 		enc->uncomp_fmt = __mfc_enc_find_format(ctx, uncomp_fmt);
 		if (enc->uncomp_fmt)
@@ -291,7 +314,6 @@ static void __mfc_enc_check_format(struct mfc_ctx *ctx)
 	ctx->is_422 = 0;
 	ctx->is_10bit = 0;
 	ctx->is_sbwc = 0;
-	ctx->rgb_bpp = 0;
 
 	switch (ctx->src_fmt->fourcc) {
 	case V4L2_PIX_FMT_NV16M_S10B:
@@ -309,7 +331,6 @@ static void __mfc_enc_check_format(struct mfc_ctx *ctx)
 		break;
 	case V4L2_PIX_FMT_NV12M_S10B:
 	case V4L2_PIX_FMT_NV12M_P010:
-	case V4L2_PIX_FMT_NV12N_P010:
 	case V4L2_PIX_FMT_NV21M_S10B:
 	case V4L2_PIX_FMT_NV21M_P010:
 		mfc_debug(2, "[FRAME][10BIT] is 10bit format\n");
@@ -339,23 +360,11 @@ static void __mfc_enc_check_format(struct mfc_ctx *ctx)
 		ctx->is_10bit = 1;
 		ctx->is_sbwc_lossy = 1;
 		break;
-	case V4L2_PIX_FMT_RGB24:
-		ctx->rgb_bpp = 24;
-		break;
-	case V4L2_PIX_FMT_RGB565:
-		ctx->rgb_bpp = 16;
-		break;
-	case V4L2_PIX_FMT_RGB32X:
-	case V4L2_PIX_FMT_BGR32:
-	case V4L2_PIX_FMT_ARGB32:
-	case V4L2_PIX_FMT_RGB32:
-		ctx->rgb_bpp = 32;
-		break;
 	default:
 		break;
 	}
-	mfc_debug(2, "[FRAME] 10bit: %d, 422: %d, rgb: %d, sbwc: %d lossy: %d\n",
-			ctx->is_10bit, ctx->is_422, ctx->rgb_bpp, ctx->is_sbwc, ctx->is_sbwc_lossy);
+	mfc_debug(2, "[FRAME] 10bit: %d, 422: %d, sbwc: %d lossy: %d\n",
+			ctx->is_10bit, ctx->is_422, ctx->is_sbwc, ctx->is_sbwc_lossy);
 }
 
 static int __mfc_enc_check_resolution(struct mfc_ctx *ctx)
@@ -571,7 +580,6 @@ static int mfc_enc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	struct mfc_fmt *fmt = NULL;
 	unsigned int fps;
 	int ret = 0;
-	int i;
 
 	mfc_debug_enter();
 
@@ -603,13 +611,11 @@ static int mfc_enc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	ctx->raw_buf.num_planes = ctx->src_fmt->num_planes;
 	ctx->img_width = pix_fmt_mp->width;
 	ctx->img_height = pix_fmt_mp->height;
+	ctx->buf_stride = pix_fmt_mp->plane_fmt[0].bytesperline;
 	ctx->mb_width = WIDTH_MB(ctx->img_width);
 	ctx->mb_height = HEIGHT_MB(ctx->img_height);
 	fps = MFC_MIN_FPS / 1000;
 	ctx->weighted_mb = ctx->mb_width * ctx->mb_height * fps;
-
-	for (i = 0; i < ctx->src_fmt->mem_planes; i++)
-		ctx->bytesperline[i] = pix_fmt_mp->plane_fmt[i].bytesperline;
 
 	__mfc_enc_check_format(ctx);
 
@@ -643,9 +649,8 @@ static int mfc_enc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	}
 
 	mfc_ctx_info("[FRAME] enc src pixelformat : %s\n", ctx->src_fmt->name);
-	mfc_ctx_info("[FRAME] resolution w: %d, h: %d, Y stride: %d, C stride: %d (mb: %ld)\n",
-			pix_fmt_mp->width, pix_fmt_mp->height,
-			ctx->bytesperline[0], ctx->bytesperline[1], ctx->weighted_mb);
+	mfc_ctx_info("[FRAME] resolution w: %d, h: %d, stride: %d (mb: %lld)\n",
+			pix_fmt_mp->width, pix_fmt_mp->height, ctx->buf_stride, ctx->weighted_mb);
 
 	/*
 	 * It should be keep till buffer size and stride was calculated.

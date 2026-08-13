@@ -529,7 +529,6 @@ struct mfc_core_lock {
 struct mfc_pm {
 	struct clk	*clock;
 	atomic_t	pwr_ref;
-	atomic_t	protect_ref;
 	struct device	*device;
 	spinlock_t	clklock;
 
@@ -544,7 +543,6 @@ enum mfc_fw_status {
 	MFC_CTX_ALLOC		= (1 << 1),	// 0x2
 	MFC_FW_LOADED		= (1 << 2),	// 0x4
 	MFC_FW_VERIFIED		= (1 << 3),	// 0x8
-	MFC_FW_INITIALIZED	= (1 << 4),	// 0x10
 };
 
 struct mfc_fw {
@@ -2092,7 +2090,8 @@ struct mfc_dec {
 	int crc_luma1;
 	int crc_chroma1;
 
-	unsigned int consumed;
+	unsigned long consumed;
+	unsigned long remained_size;
 	dma_addr_t y_addr_for_pb;
 
 	int sei_parse;
@@ -2127,7 +2126,7 @@ struct mfc_dec {
 	unsigned int decoding_order;
 	unsigned int frame_display_delay;
 
-	struct mfc_fmt *uncomp_fmt;
+	unsigned int uncomp_pixfmt;
 
 	/* for Dynamic DPB */
 	struct dpb_table dpb[MFC_MAX_DPBS];
@@ -2242,12 +2241,12 @@ struct mfc_ctx {
 	int mb_width;
 	int mb_height;
 	int dpb_count;
+	int buf_stride;
 	int rgb_bpp;
 
 	int min_dpb_size[3];
 	int min_dpb_size_2bits[3];
 
-	int bytesperline[3];
 	struct mfc_raw_info raw_buf;
 
 	enum mfc_queue_state capture_state;
