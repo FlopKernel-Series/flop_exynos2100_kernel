@@ -14,6 +14,8 @@
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 
+#include <linux/workarounds.h>
+
 #include "samsung-iommu.h"
 
 #define FLPD_SHAREABLE_FLAG	BIT(6)
@@ -1010,6 +1012,11 @@ samsung_sysmmu_get_resv_regions(struct device *dev, struct list_head *head)
 	struct device_node *curr_node, *target_node, *node;
 	struct platform_device *pdev;
 	int ret;
+
+	if (!is_dma_buf_env()) {
+		pr_info("Reserved iova mapping can't be registered on ION mode\n");
+		return;
+	}
 
 	target_node = of_parse_phandle(dev->of_node, "samsung,iommu-group", 0);
 	if (!target_node) {
