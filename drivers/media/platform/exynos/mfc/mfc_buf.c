@@ -18,6 +18,7 @@
 #include <soc/samsung/exynos-s2mpu.h>
 #endif
 #include <linux/firmware.h>
+#include <linux/workarounds.h>
 #include <trace/events/mfc.h>
 #include <linux/iommu.h>
 
@@ -95,7 +96,7 @@ static void __mfc_release_common_context(struct mfc_core *core,
 		ctx_buf = &core->drm_common_ctx_buf;
 #endif
 
-	mfc_mem_special_buf_free(ctx_buf);
+	mfc_mem_special_buf_free(core->dev, ctx_buf);
 	mfc_core_debug(2, "[MEMINFO] Release %s common context buffer\n",
 			buf_type == MFCBUF_DRM ? "secure" : "normal");
 
@@ -191,7 +192,7 @@ void mfc_release_instance_context(struct mfc_core_ctx *core_ctx)
 
 	mfc_core_debug_enter();
 
-	mfc_mem_special_buf_free(&core_ctx->instance_ctx_buf);
+	mfc_mem_special_buf_free(core->dev, &core_ctx->instance_ctx_buf);
 	mfc_core_debug(2, "[MEMINFO] Release the instance buffer ctx[%d]\n",
 			core_ctx->num);
 
@@ -451,12 +452,12 @@ void mfc_release_codec_buffers(struct mfc_core_ctx *core_ctx)
 	struct mfc_ctx *ctx = core_ctx->ctx;
 
 	if (core_ctx->codec_buffer_allocated) {
-		mfc_mem_special_buf_free(&core_ctx->codec_buf);
+		mfc_mem_special_buf_free(core->dev, &core_ctx->codec_buf);
 		core_ctx->codec_buffer_allocated = 0;
 	}
 
 	if (ctx->mv_buffer_allocated) {
-		mfc_mem_special_buf_free(&ctx->mv_buf);
+		mfc_mem_special_buf_free(core->dev, &ctx->mv_buf);
 		ctx->mv_buffer_allocated = 0;
 	}
 
@@ -474,7 +475,7 @@ int mfc_alloc_scratch_buffer(struct mfc_core_ctx *core_ctx)
 	mfc_debug_enter();
 
 	if (core_ctx->scratch_buffer_allocated) {
-		mfc_mem_special_buf_free(&core_ctx->scratch_buf);
+		mfc_mem_special_buf_free(core->dev, &core_ctx->scratch_buf);
 		core_ctx->scratch_buffer_allocated = 0;
 		mfc_debug(2, "[MEMINFO] Release the scratch buffer ctx[%d]\n",
 				core_ctx->num);
@@ -509,7 +510,7 @@ void mfc_release_scratch_buffer(struct mfc_core_ctx *core_ctx)
 
 	mfc_debug_enter();
 	if (core_ctx->scratch_buffer_allocated) {
-		mfc_mem_special_buf_free(&core_ctx->scratch_buf);
+		mfc_mem_special_buf_free(core_ctx->core->dev, &core_ctx->scratch_buf);
 		core_ctx->scratch_buffer_allocated = 0;
 		mfc_debug(2, "[MEMINFO] Release the scratch buffer ctx[%d]\n",
 				core_ctx->num);
@@ -544,7 +545,7 @@ void mfc_release_dbg_info_buffer(struct mfc_core *core)
 	if (!core->dbg_info_buf.dma_buf)
 		mfc_core_debug(2, "debug info buffer is already freed\n");
 
-	mfc_mem_special_buf_free(&core->dbg_info_buf);
+	mfc_mem_special_buf_free(core->dev, &core->dbg_info_buf);
 	mfc_core_debug(2, "[MEMINFO] Release the debug info buffer\n");
 }
 
@@ -631,7 +632,7 @@ void mfc_release_enc_roi_buffer(struct mfc_core_ctx *core_ctx)
 
 	for (i = 0; i < MFC_MAX_EXTRA_BUF; i++)
 		if (enc->roi_buf[i].dma_buf)
-			mfc_mem_special_buf_free(&enc->roi_buf[i]);
+			mfc_mem_special_buf_free(core_ctx->core->dev, &enc->roi_buf[i]);
 
 	mfc_debug(2, "[MEMINFO][ROI] Release the ROI buffer\n");
 }
@@ -677,7 +678,7 @@ void mfc_otf_release_stream_buf(struct mfc_ctx *ctx)
 	for (i = 0; i < OTF_MAX_BUF; i++) {
 		buf = &debug->stream_buf[i];
 		if (buf->dma_buf)
-			mfc_mem_special_buf_free(buf);
+			mfc_mem_special_buf_free(ctx->dev, buf);
 	}
 
 	mfc_debug(2, "[OTF][MEMINFO] Release the OTF stream buffer\n");
@@ -690,7 +691,7 @@ int mfc_alloc_firmware(struct mfc_core *core)
 	struct mfc_dev *dev = core->dev;
 	struct mfc_ctx_buf_size *buf_size;
 	struct mfc_special_buf *fw_buf;
-#if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
+#if IS_ENABLED(CONFIG_SAMSUNG_SECURE_IOVA)
 	unsigned long secure_daddr = 0;
 #endif
 
@@ -728,14 +729,19 @@ int mfc_alloc_firmware(struct mfc_core *core)
 		goto err_reserve_iova;
 	}
 
-	/* allocate Secure-DVA region */
-	secure_daddr = secure_iova_alloc(core->drm_fw_buf.size, EXYNOS_SECBUF_PROT_ALIGNMENTS);
-	if (!secure_daddr) {
-		mfc_core_err("DRM F/W buffer can not get IOVA!\n");
-		goto err_reserve_iova_secure;
-	}
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_SAMSUNG_SECURE_IOVA)
+	if (is_dma_buf_env()) {
+		/* allocate Secure-DVA region */
+		secure_daddr = secure_iova_alloc(core->drm_fw_buf.size,
+				EXYNOS_SECBUF_PROT_ALIGNMENTS);
+		if (!secure_daddr) {
+			mfc_core_err("DRM F/W buffer can not get IOVA!\n");
+			goto err_reserve_iova_secure;
+		}
 
-	core->drm_fw_buf.daddr = (dma_addr_t)secure_daddr;
+		core->drm_fw_buf.daddr = (dma_addr_t)secure_daddr;
+	}
+#endif
 
 	mfc_core_info("[MEMINFO][F/W] MFC-%d FW DRM: %pad(vaddr: %p paddr:%pap), size: %08zu\n",
 			core->id, &core->drm_fw_buf.daddr,
@@ -749,13 +755,11 @@ int mfc_alloc_firmware(struct mfc_core *core)
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
 err_reserve_iova_secure:
-	mfc_mem_special_buf_free(&core->drm_fw_buf);
-err_daddr:
-	iommu_unmap(core->domain, fw_buf->daddr, fw_buf->map_size);
+	mfc_mem_special_buf_free(core->dev, &core->drm_fw_buf);
 #endif
 err_reserve_iova:
 	iommu_unmap(core->domain, fw_buf->daddr, fw_buf->map_size);
-	mfc_mem_special_buf_free(&core->fw_buf);
+	mfc_mem_special_buf_free(core->dev, &core->fw_buf);
 	return -ENOMEM;
 }
 
@@ -850,13 +854,17 @@ int mfc_release_firmware(struct mfc_core *core)
 
 #if IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
 	/* free Secure-DVA region */
-	if (core->drm_fw_buf.daddr)
-		secure_iova_free(core->drm_fw_buf.daddr, core->drm_fw_buf.size);
-	core->drm_fw_buf.daddr = 0;
-	mfc_mem_special_buf_free(&core->drm_fw_buf);
+#if IS_ENABLED(CONFIG_DMABUF_SAMSUNG_HEAPS) && IS_ENABLED(CONFIG_SAMSUNG_SECURE_IOVA)
+	if (is_dma_buf_env()) {
+		if (core->drm_fw_buf.daddr)
+			secure_iova_free(core->drm_fw_buf.daddr, core->drm_fw_buf.size);
+		core->drm_fw_buf.daddr = 0;
+	}
+#endif
+	mfc_mem_special_buf_free(core->dev, &core->drm_fw_buf);
 #endif
 
-	mfc_mem_special_buf_free(&core->fw_buf);
+	mfc_mem_special_buf_free(core->dev, &core->fw_buf);
 
 	return 0;
 }
