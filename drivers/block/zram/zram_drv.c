@@ -2753,7 +2753,6 @@ static ssize_t __comp_algorithm_show(struct zram *zram, u32 prio, char *buf)
 
 static int __comp_algorithm_store(struct zram *zram, u32 prio, const char *buf)
 {
-#if 0
 	char *compressor;
 	size_t sz;
 
@@ -2784,7 +2783,6 @@ static int __comp_algorithm_store(struct zram *zram, u32 prio, const char *buf)
 
 	comp_algorithm_set(zram, prio, compressor);
 	up_write(&zram->init_lock);
-#endif
 	return 0;
 }
 
