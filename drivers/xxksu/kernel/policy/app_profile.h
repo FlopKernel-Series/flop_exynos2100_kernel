@@ -3,8 +3,14 @@
 
 #if defined(CONFIG_64BIT)
 #define TIF_KSU_DISABLE_ESCAPE_WITH_ROOT 63
+#define TIF_KSU_RESERVED_62 62
+#define TIF_KSU_RESERVED_61 61
+#define TIF_KSU_MANAGED	60
 #else
 #define TIF_KSU_DISABLE_ESCAPE_WITH_ROOT 31
+#define TIF_KSU_RESERVED_30 30
+#define TIF_KSU_RESERVED_29 29
+#define TIF_KSU_MANAGED	28
 #endif
 
 // Escalate current process to root with the appropriate profile

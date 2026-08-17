@@ -139,7 +139,7 @@ static noinline void dotted_kallsyms_build_hash_array(void)
 	uintptr_t iter_count = 0;
 	uintptr_t curr;
 
-	might_sleep();
+	cond_resched();
 
 	char *membuf __zoffstack(KSYM_SYMBOL_LEN * 2);
 	if (!membuf)
