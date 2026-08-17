@@ -336,7 +336,7 @@ jobs:
 
   upload-telegram:
     needs: repack-manager
-    if: github.event_name != 'pull_request' 
+    if: github.event_name != 'pull_request' && github.event_name != 'workflow_call'
     runs-on: ubuntu-latest
     strategy:
       matrix:
