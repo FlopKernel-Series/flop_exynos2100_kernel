@@ -100,6 +100,10 @@ static __always_inline bool is_su_allowed(const void **ptr_to_check)
 	if (likely(ksu_is_seccomp_enabled()))
 		return false;
 
+	// pass through tagged task from setuid hook
+	if (test_thread_flag(TIF_KSU_MANAGED))
+		goto check_ptr;
+
 	// see seccomp check above
 	// so if its root but not ksu domain, deny, see __ksu_is_allow_uid_for_current
 	// actually, we can likely skip this step?
@@ -112,19 +116,33 @@ static __always_inline bool is_su_allowed(const void **ptr_to_check)
 	goto check_ptr;
 
 uid_check:
-#ifndef CONFIG_KSU_ENABLE_FULL_UID_CHECKS
-// NOTE: shell has its seccomp disabled, so we only need to check for this thing
-// short-circuit if not shell! as we allow apps on setuid lsm by disabling seccomp
+#if defined(CONFIG_KSU_ENABLE_FULL_UID_CHECKS)
+	if (!__ksu_is_allow_uid(uid))
+		return false;
+#elif defined(CONFIG_KSU_SHELL_HAS_SU_ALWAYS)
+	/**
+	 * NOTE: if shell always has su anyway, and full uid checks are disabled, 
+	 * we can skip all these checks. this goto is for explicitness / code styel
+	 */
+	 goto check_ptr;
+	 __builtin_unreachable();
+#else /* default behavior */
+	/**
+	 * NOTE: shell has its seccomp disabled, so we only need
+	 * to check for this thing. short-circuit if not shell! 
+	 * as we allow apps on setuid lsm by disabling seccomp
+	 *
+	 */
 	if (likely(uid != 2000))
 		goto check_ptr;
-#endif
-	// use our noinline copy.
-	// only shell falls through this. 
-	// nbd that it opens up a stack frame
-	// having small code around here is worth
+
+	/**
+	 * use our noinline copy. only shell falls through this. nbd that
+	 * it opens up a stack frame .having small code around here is worth
+	 */
 	if (!__ksu_is_allow_uid_copy(uid))
 		return false;
-
+#endif /* default behavior */
 check_ptr:
 	// first check the pointer-to-pointer
 	if (unlikely(!ptr_to_check))

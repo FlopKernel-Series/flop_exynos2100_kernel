@@ -225,8 +225,9 @@ bool __ksu_is_allow_uid(uid_t uid)
 		return true;
 	}
 
-	if (IS_ENABLED(CONFIG_KSU_DEBUG) && unlikely(uid == SHELL_UID))
+	if (allow_shell && uid == SHELL_UID) {
 		return true;
+	}
 
 	rcu_read_lock();
 	hash_for_each_possible_rcu (allow_list, p, list, uid) {
@@ -301,8 +302,9 @@ struct root_profile *ksu_get_root_profile(uid_t uid)
 		goto use_default;
 	}
 
-	if (IS_ENABLED(CONFIG_KSU_DEBUG) && unlikely(uid == SHELL_UID))
+	if (allow_shell && uid == SHELL_UID) {
 		goto use_default;
+	}
 
 retry:
 	res = NULL;
