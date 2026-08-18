@@ -82,6 +82,7 @@ enum nfc_err_state {
  * PN544_SET_PWR(2): reset and power on with firmware download enabled
  */
 #define PN547_SET_PWR             _IOW(PN547_MAGIC, 0x01, uint64_t)
+#define PN547_SET_PWR_32          _IOW(PN547_MAGIC, 0x01, unsigned int)
 
 /*
  * SPI Request NFCC to enable p61 power, only in param
@@ -92,9 +93,11 @@ enum nfc_err_state {
  * argument value is 0x03
  */
 #define P61_SET_SPI_PWR          _IOW(PN547_MAGIC, 0x02, uint64_t)
+#define P61_SET_SPI_PWR_32       _IOW(PN547_MAGIC, 0x02, unsigned int)
 
 /* SPI or DWP can call this ioctl to get the current power state of P61 */
 #define P61_GET_PWR_STATUS       _IOR(PN547_MAGIC, 0x03, uint64_t)
+#define P61_GET_PWR_STATUS_32    _IOR(PN547_MAGIC, 0x03, unsigned int)
 
 /*
  * DWP side this ioctl will be called
@@ -102,27 +105,35 @@ enum nfc_err_state {
  * level 0 = Wired access is disalbed/stopped
  */
 #define P61_SET_WIRED_ACCESS     _IOW(PN547_MAGIC, 0x04, uint64_t)
+#define P61_SET_WIRED_ACCESS_32  _IOW(PN547_MAGIC, 0x04, unsigned int)
 
 /* NFC Init will call the ioctl to register the PID with the i2c driver */
 #define P547_SET_NFC_SERVICE_PID _IOW(PN547_MAGIC, 0x05, uint64_t)
+#define P547_SET_NFC_SERVICE_PID_32 _IOW(PN547_MAGIC, 0x05, unsigned int)
 
 /* NFC and SPI will call the ioctl to get the i2c/spi bus access */
 #define P547_GET_ESE_ACCESS      _IOW(PN547_MAGIC, 0x06, uint64_t)
+#define P547_GET_ESE_ACCESS_32   _IOW(PN547_MAGIC, 0x06, unsigned int)
 
 /* NFC and SPI will call the ioctl to update the power scheme */
 #define P547_SET_POWER_SCHEME    _IOW(PN547_MAGIC, 0x07, uint64_t)
+#define P547_SET_POWER_SCHEME_32 _IOW(PN547_MAGIC, 0x07, unsigned int)
 
 /* NFC will call the ioctl to release the svdd protection */
 #define P547_REL_SVDD_WAIT       _IOW(PN547_MAGIC, 0x08, uint64_t)
+#define P547_REL_SVDD_WAIT_32    _IOW(PN547_MAGIC, 0x08, unsigned int)
 
 /* SPI or DWP can call this ioctl to get the current power state of P61 */
 #define PN547_SET_DWNLD_STATUS   _IOW(PN547_MAGIC, 0x09, uint64_t)
+#define PN547_SET_DWNLD_STATUS_32 _IOW(PN547_MAGIC, 0x09, unsigned int)
 
 /* NFC will call the ioctl to release the dwp on/off protection */
 #define P547_REL_DWPONOFF_WAIT   _IOW(PN547_MAGIC, 0x0A, uint64_t)
+#define P547_REL_DWPONOFF_WAIT_32 _IOW(PN547_MAGIC, 0x0A, unsigned int)
 
 /* NFC HAL can call this ioctl to get the current IRQ state */
 #define PN547_GET_IRQ_STATE    _IOW(PN547_MAGIC, 0x0C, uint64_t)
+#define PN547_GET_IRQ_STATE_32 _IOW(PN547_MAGIC, 0x0C, unsigned int)
 
 #define NFC_I2C_LDO_ON	1
 #define NFC_I2C_LDO_OFF	0

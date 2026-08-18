@@ -1493,15 +1493,19 @@ long pn547_dev_ioctl(struct file *filp,
 	/* Free pass autobahn area, not protected. Use it carefullly. START */
 	switch (cmd) {
 	case P547_GET_ESE_ACCESS:
+	case P547_GET_ESE_ACCESS_32:
 		return (long)get_ese_lock(P61_STATE_WIRED, arg);
 		/*break;*/
 	case P547_REL_SVDD_WAIT:
+	case P547_REL_SVDD_WAIT_32:
 		return (long)release_svdd_wait();
 		/*break;*/
 	case P547_SET_NFC_SERVICE_PID:
+	case P547_SET_NFC_SERVICE_PID_32:
 		return (long)set_nfc_pid(arg);
 		/*break;*/
 	case P547_REL_DWPONOFF_WAIT:
+	case P547_REL_DWPONOFF_WAIT_32:
 		return (long)release_dwp_onoff();
 		/*break;*/
 	default:
@@ -1512,14 +1516,17 @@ long pn547_dev_ioctl(struct file *filp,
 	p61_access_lock(pn547_dev);
 	switch (cmd) {
 	case PN547_SET_PWR:
+	case PN547_SET_PWR_32:
 		ret = pn547_set_pwr(pn547_dev, arg);
 		break;
 
 	case P61_SET_SPI_PWR:
+	case P61_SET_SPI_PWR_32:
 		ret = pn547_p61_set_spi_pwr(pn547_dev, arg);
 		break;
 
 	case P61_GET_PWR_STATUS:
+	case P61_GET_PWR_STATUS_32:
 		current_state = P61_STATE_INVALID;
 		p61_get_access_state(pn547_dev, &current_state);
 		NFC_LOG_INFO("P61_GET_PWR_STATUS  = %x\n", current_state);
@@ -1528,6 +1535,7 @@ long pn547_dev_ioctl(struct file *filp,
 
 #if defined(FEATURE_PN80T) || defined(FEATURE_SN100X)
 	case PN547_SET_DWNLD_STATUS:
+	case PN547_SET_DWNLD_STATUS_32:
 		ret = set_jcop_download_state(arg);
 		if (ret < 0)
 			NFC_LOG_INFO("set_jcop_download_state failed");
@@ -1535,9 +1543,11 @@ long pn547_dev_ioctl(struct file *filp,
 #endif
 
 	case P61_SET_WIRED_ACCESS:
+	case P61_SET_WIRED_ACCESS_32:
 		ret = pn547_p61_set_wired_access(pn547_dev, arg);
 		break;
 	case PN547_GET_IRQ_STATE:
+	case PN547_GET_IRQ_STATE_32:
 		ret = gpio_get_value(pn547_dev->irq_gpio);
 		break;
 	default:
@@ -1549,6 +1559,7 @@ long pn547_dev_ioctl(struct file *filp,
 #else
 	switch (cmd) {
 	case PN547_SET_PWR:
+	case PN547_SET_PWR_32:
 		if (arg == 2) {
 			/* power on with firmware download (requires hw reset)
 			 */
