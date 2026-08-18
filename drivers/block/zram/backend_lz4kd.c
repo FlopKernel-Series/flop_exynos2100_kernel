@@ -58,8 +58,10 @@ static int lz4kd_compress(struct zcomp_params *params, struct zcomp_ctx *ctx,
 
 	ret = lz4kd_encode(zctx->state, req->src, req->dst, req->src_len,
 			   req->dst_len, 0);
-	if (ret <= 0)
-		return -EINVAL;
+	if (ret <= 0) {
+		req->dst_len = req->src_len;
+		return 0;
+	}
 
 	req->dst_len = ret;
 	return 0;
