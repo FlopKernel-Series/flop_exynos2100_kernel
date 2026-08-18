@@ -188,7 +188,7 @@ int vm_swappiness = 100;
  */
 unsigned long vm_total_pages;
 
-#define DEF_KSWAPD_THREADS_PER_NODE 2
+#define DEF_KSWAPD_THREADS_PER_NODE 1
 static int kswapd_threads = DEF_KSWAPD_THREADS_PER_NODE;
 static bool kswapd_threads_cmdline;
 static int __init kswapd_per_node_setup(char *str)
@@ -212,8 +212,8 @@ __setup("kswapd_per_node=", kswapd_per_node_setup);
  *
  * More than 3 threads causes over-eviction with no scalability gain.
  *
- *   <= 8 GB: 2 threads -- tight memory, minimize reclaim CPU overhead
- *   >  8 GB: 3 threads -- larger LRU lists benefit from parallel scanning
+ *   <= 8 GB: DEF_KSWAPD_THREADS_PER_NODE (1 thread)  -- tight memory, minimize reclaim CPU overhead
+ *   >  8 GB: DEF_KSWAPD_THREADS_PER_NODE + 1 (2 threads) -- larger LRU lists benefit from parallel scanning
  *
  * The kswapd_per_node= cmdline param overrides this for testing.
  */
@@ -227,9 +227,7 @@ static void __init kswapd_threads_init(void)
 	total_ram_mb = memblock_phys_mem_size() >> 20;
 
 	if (total_ram_mb > 8000)
-		kswapd_threads = 3;
-	else
-		kswapd_threads = 2;
+		kswapd_threads = DEF_KSWAPD_THREADS_PER_NODE + 1;
 
 	pr_info("kswapd: %lu MB RAM, using %d threads per node\n",
 		total_ram_mb, kswapd_threads);
