@@ -1424,7 +1424,6 @@ static void call_timer_fn(struct timer_list *timer,
 			  unsigned long baseclk)
 {
 	int count = preempt_count();
-	unsigned long long start_time;
 
 #ifdef CONFIG_LOCKDEP
 	/*
@@ -1446,10 +1445,7 @@ static void call_timer_fn(struct timer_list *timer,
 	lock_map_acquire(&lockdep_map);
 
 	trace_timer_expire_entry(timer, baseclk);
-	dbg_snapshot_irq_var(start_time);
-	dbg_snapshot_irq(DSS_FLAG_CALL_TIMER_FN, fn, NULL, 0, DSS_FLAG_IN);
 	fn(timer);
-	dbg_snapshot_irq(DSS_FLAG_CALL_TIMER_FN, fn, NULL, start_time, DSS_FLAG_OUT);
 	trace_timer_expire_exit(timer);
 
 	lock_map_release(&lockdep_map);
