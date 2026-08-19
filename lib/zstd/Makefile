@@ -2,7 +2,7 @@
 obj-$(CONFIG_ZSTD_COMPRESS) += zstd_compress.o
 obj-$(CONFIG_ZSTD_DECOMPRESS) += zstd_decompress.o
 
-ccflags-y += -O3
+ccflags-y += -O3 -funroll-loops
 
 zstd_compress-y := fse_compress.o huf_compress.o compress.o \
 		   entropy_common.o fse_decompress.o zstd_common.o
