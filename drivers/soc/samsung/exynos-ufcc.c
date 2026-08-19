@@ -618,6 +618,8 @@ static struct ufc_table_info *get_table_info(int ctrl_type)
  *********************************************************************/
 static void ufc_update_max_limit(void);
 static void ufc_update_min_limit(void);
+static void ufc_update_min_limit_wo_boost(void);
+static struct ufc_req user_ufc_req;
 
 /*
  * Blocked userspace throttlers should not leave a stale UFC max cap armed
@@ -632,20 +634,33 @@ static void ufc_reset_max_limit_state(void)
 
 static void ufc_clear_max_limit_state(void)
 {
-	if (ufc.last_max_input < 0 && ufc.last_max_strict_input < 0)
-		return;
-
 	ufc_reset_max_limit_state();
 	ufc_update_max_limit();
 }
 
-void exynos_ufc_clear_max_limit(void)
+static void ufc_clear_min_limit_state(void)
+{
+	ufc.last_min_wo_boost_input = 0;
+	ufc_update_min_limit_wo_boost();
+	ufc_update_request(&user_ufc_req, 0);
+	ufc_update_min_limit();
+}
+
+void exynos_ufc_clear_limits(bool reset_min)
 {
 	if (!freq_control_blocking_enabled())
 		return;
 
 	ufc.max_limit_protection_seen = true;
 	ufc_clear_max_limit_state();
+
+	if (reset_min)
+		ufc_clear_min_limit_state();
+}
+
+void exynos_ufc_clear_max_limit(void)
+{
+	exynos_ufc_clear_limits(min_freq_control_blocking_enabled());
 }
 
 static const char *ufc_task_control_reason(struct task_struct *tsk)
@@ -923,8 +938,6 @@ EXPORT_SYMBOL(ufc_update_request);
 /*********************************************************************
  *                          PM QOS CONTROL                           *
  *********************************************************************/
-static struct ufc_req user_ufc_req;
-
 static void ufc_update_min_limit(void)
 {
 	struct ufc_domain *ufc_dom;
@@ -1165,6 +1178,9 @@ static ssize_t cpufreq_min_limit_store(struct device *dev,
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
 
+	if (task_controls_min_frequencies(current))
+		return count;
+
 	ufc_update_request(&user_ufc_req, input);
 
 	return count;
@@ -1184,6 +1200,9 @@ static ssize_t cpufreq_min_limit_wo_boost_store(struct device *dev,
 
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
+
+	if (task_controls_min_frequencies(current))
+		return count;
 
 	ufc.last_min_wo_boost_input = input;
 	ufc_update_min_limit_wo_boost();

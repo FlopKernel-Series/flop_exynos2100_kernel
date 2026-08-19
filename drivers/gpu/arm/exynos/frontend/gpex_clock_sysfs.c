@@ -299,6 +299,9 @@ GPEX_STATIC ssize_t set_min_lock_dvfs(const char *buf, size_t count)
 {
 	int ret, clock = 0;
 
+	if (task_controls_min_frequencies(current))
+		return count;
+
 	if (sysfs_streq("0", buf)) {
 		clk_info->user_min_lock_input = 0;
 		gpex_clock_lock_clock(GPU_CLOCK_MIN_UNLOCK, SYSFS_LOCK, 0);
@@ -400,6 +403,9 @@ CREATE_SYSFS_KOBJECT_READ_FUNCTION(show_min_lock_dvfs_kobj)
 GPEX_STATIC ssize_t set_mm_min_lock_dvfs(const char *buf, size_t count)
 {
 	int ret, clock = 0;
+
+	if (task_controls_min_frequencies(current))
+		return count;
 
 	if (sysfs_streq("0", buf)) {
 		gpex_clock_lock_clock(GPU_CLOCK_MIN_UNLOCK, MM_LOCK, 0);
@@ -553,6 +559,12 @@ void gpex_reset_user_max_lock(void)
 		clk_info->user_max_lock_input = 0;
 		gpex_clock_lock_clock(GPU_CLOCK_MAX_UNLOCK, SYSFS_LOCK, 0);
 		gpex_clock_lock_clock(GPU_CLOCK_MAX_UNLOCK, PMQOS_LOCK, 0);
+
+		if (min_freq_control_blocking_enabled()) {
+			clk_info->user_min_lock_input = 0;
+			gpex_clock_lock_clock(GPU_CLOCK_MIN_UNLOCK, SYSFS_LOCK, 0);
+			gpex_clock_lock_clock(GPU_CLOCK_MIN_UNLOCK, PMQOS_LOCK, 0);
+		}
 	}
 }
 

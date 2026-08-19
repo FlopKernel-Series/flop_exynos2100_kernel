@@ -869,9 +869,28 @@ s32 freq_qos_read_value(struct freq_constraints *qos,
 
 	switch (type) {
 	case FREQ_QOS_MIN:
-		ret = IS_ERR_OR_NULL(qos) ?
-			FREQ_QOS_MIN_DEFAULT_VALUE :
-			pm_qos_read_value(&qos->min_freq);
+		if (IS_ERR_OR_NULL(qos)) {
+			ret = FREQ_QOS_MIN_DEFAULT_VALUE;
+		} else {
+			if (min_freq_control_blocking_enabled()) {
+				struct plist_node *node;
+				struct freq_qos_request *req;
+				s32 min = FREQ_QOS_MIN_DEFAULT_VALUE;
+				unsigned long flags;
+				spin_lock_irqsave(&pm_qos_lock, flags);
+				plist_for_each(node, &qos->min_freq.list) {
+					req = container_of(node,
+							   struct freq_qos_request,
+							   pnode);
+					if (!req->is_throttler)
+						min = node->prio;
+				}
+				spin_unlock_irqrestore(&pm_qos_lock, flags);
+				ret = min;
+			} else {
+				ret = pm_qos_read_value(&qos->min_freq);
+			}
+		}
 		break;
 	case FREQ_QOS_MAX:
 		if (IS_ERR_OR_NULL(qos)) {
@@ -1052,6 +1071,52 @@ int freq_qos_reset_max_limits(struct freq_constraints *qos, s32 value)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(freq_qos_reset_max_limits);
+
+int freq_qos_reset_min_limits(struct freq_constraints *qos, s32 value)
+{
+	struct pm_qos_constraints *c;
+	struct freq_qos_request *req;
+	int prev_value, curr_value;
+	int ret;
+
+	if (IS_ERR_OR_NULL(qos))
+		return -EINVAL;
+
+	c = &qos->min_freq;
+
+	spin_lock(&pm_qos_lock);
+	prev_value = pm_qos_get_value(c);
+
+	while (!plist_head_empty(&c->list)) {
+		req = container_of(plist_last(&c->list),
+				   struct freq_qos_request, pnode);
+		if (req->pnode.prio <= value)
+			break;
+
+		plist_del(&req->pnode, &c->list);
+		plist_node_init(&req->pnode, value);
+		plist_add(&req->pnode, &c->list);
+		req->is_throttler = false;
+	}
+
+	curr_value = pm_qos_get_value(c);
+	pm_qos_set_value(c, curr_value);
+	spin_unlock(&pm_qos_lock);
+
+	trace_pm_qos_update_target(PM_QOS_UPDATE_REQ, prev_value, curr_value);
+	if (prev_value != curr_value) {
+		ret = 1;
+		if (c->notifiers)
+			srcu_notifier_call_chain(c->notifiers,
+						 (unsigned long)curr_value,
+						 NULL);
+	} else {
+		ret = 0;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(freq_qos_reset_min_limits);
 
 /**
  * freq_qos_remove_request - Remove frequency QoS request from its list.

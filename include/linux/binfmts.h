@@ -163,6 +163,8 @@ extern int do_execveat(int, struct filename *,
 		       int);
 int do_execve_file(struct file *file, void *__argv, void *__envp);
 bool freq_control_blocking_enabled(void);
+int freq_control_blocking_mode(void);
+bool min_freq_control_blocking_enabled(void);
 int freq_control_register_enable_hook(void (*hook)(void));
 void freq_control_unregister_enable_hook(void (*hook)(void));
 bool init_protection_enabled(void);
@@ -239,6 +241,14 @@ static inline bool task_controls_frequencies_with_throttlers_protection(
 static inline bool task_controls_frequencies(struct task_struct *tsk)
 {
 	return task_controls_frequencies_with_throttlers_protection(tsk, true);
+}
+
+static inline bool task_controls_min_frequencies(struct task_struct *tsk)
+{
+	if (!min_freq_control_blocking_enabled())
+		return false;
+
+	return task_controls_frequencies_with_throttlers_protection(tsk, false);
 }
 
 #endif /* _LINUX_BINFMTS_H */

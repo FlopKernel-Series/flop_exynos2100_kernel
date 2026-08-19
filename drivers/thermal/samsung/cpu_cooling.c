@@ -30,6 +30,7 @@
 #include <linux/pm_qos.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
+#include <linux/binfmts.h>
 #include <soc/samsung/cpu_cooling.h>
 #include <soc/samsung/debug-snapshot.h>
 
@@ -466,6 +467,9 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 	if (WARN_ON(state > cpufreq_cdev->max_level))
 		return -EINVAL;
 
+	if (freq_control_blocking_enabled())
+		state = 0;
+
 	/* Check if the old cooling action is same as new cooling action */
 	if (cpufreq_cdev->cpufreq_state == state)
 		return 0;
@@ -784,6 +788,21 @@ skip_ect:
 	return 0;
 }
 
+static void exynos_cpu_cooling_reset_state(void)
+{
+	struct exynos_cpufreq_cooling_device *cpufreq_cdev;
+
+	mutex_lock(&cooling_list_lock);
+	list_for_each_entry(cpufreq_cdev, &cpufreq_cdev_list, node) {
+		cpufreq_cdev->cpufreq_state = 0;
+		blocking_notifier_call_chain(&cpu_notifier, cpufreq_cdev->policy->cpu,
+				&cpufreq_cdev->freq_table[0].frequency);
+		freq_qos_update_request(&cpufreq_cdev->qos_req,
+				cpufreq_cdev->freq_table[0].frequency);
+	}
+	mutex_unlock(&cooling_list_lock);
+}
+
 /**
  * __cpufreq_cooling_register - helper function to create cpufreq cooling device
  * @np: a valid struct device_node to the cooling device device tree node
@@ -914,6 +933,8 @@ __cpufreq_cooling_register(struct device_node *np,
 	mutex_lock(&cooling_list_lock);
 	list_add(&cpufreq_cdev->node, &cpufreq_cdev_list);
 	mutex_unlock(&cooling_list_lock);
+
+	freq_control_register_enable_hook(exynos_cpu_cooling_reset_state);
 
 	return cdev;
 

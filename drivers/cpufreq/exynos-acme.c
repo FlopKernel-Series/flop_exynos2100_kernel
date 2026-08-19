@@ -610,6 +610,9 @@ static ssize_t store_freq_qos_min(struct device *dev,
 	if (cpu < 0 || cpu >= NR_CPUS || freq < 0)
 		return -EINVAL;
 
+	if (task_controls_min_frequencies(current))
+		return count;
+
 	domain = find_domain(cpu);
 	if (!domain)
 		return -EINVAL;
@@ -742,6 +745,9 @@ static ssize_t exynos_fc_clamp_store(struct kobject *kobj,
 	if (!domain)
 		return -ENODEV;
 
+	if (task_controls_frequencies(current))
+		return count;
+
 	ret = kstrtouint(buf, 0, &freq);
 	if (ret)
 		return ret;
@@ -842,6 +848,9 @@ static ssize_t cpufreq_fops_write(struct file *filp, const char __user *buf,
 	if (task_controls_frequencies(current) && fops->req_type == FREQ_QOS_MAX)
 		return count;
 
+	if (task_controls_min_frequencies(current) && fops->req_type == FREQ_QOS_MIN)
+		return count;
+
 	freq_qos_update_request(req, value);
 
 	return count;
@@ -900,7 +909,10 @@ static int exynos_cpu_cooling_notifier(struct notifier_block *notifier,
 	if (!policy)
 		return NOTIFY_BAD;
 
-	freq = clamp_val(freq, domain->min_freq, domain->max_freq);
+	if (freq_control_blocking_enabled())
+		freq = domain->max_freq;
+	else
+		freq = clamp_val(freq, domain->min_freq, domain->max_freq);
 
 	/* update clipped_freq and DM constraint */
 	domain->clipped_freq = freq;
@@ -1609,6 +1621,22 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	return 0;
 }
 
+static void exynos_acme_reset_limits(void)
+{
+	struct exynos_cpufreq_domain *domain;
+
+	mutex_lock(&exynos_fc_lock);
+	exynos_fc_clamp_count = 0;
+	static_branch_disable(&exynos_fc_clamp_key);
+	list_for_each_entry(domain, &domains, list) {
+		WRITE_ONCE(domain->clamp_freq, 0);
+		WRITE_ONCE(domain->clamp_limit_freq, 0);
+		domain->clipped_freq = domain->max_freq;
+		update_dm_min_max(domain);
+	}
+	mutex_unlock(&exynos_fc_lock);
+}
+
 static int exynos_cpufreq_probe(struct platform_device *pdev)
 {
 	struct device_node *dn;
@@ -1697,6 +1725,8 @@ static int exynos_cpufreq_probe(struct platform_device *pdev)
 	cpu_cooling_notifier_register(&exynos_cpu_cooling_nb);
 
 	register_pm_notifier(&exynos_cpufreq_pm);
+
+	freq_control_register_enable_hook(exynos_acme_reset_limits);
 
 	pr_info("Initialized Exynos cpufreq driver\n");
 

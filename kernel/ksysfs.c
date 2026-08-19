@@ -185,18 +185,30 @@ static ssize_t rcu_normal_store(struct kobject *kobj,
 KERNEL_ATTR_RW(rcu_normal);
 #endif /* #ifndef CONFIG_TINY_RCU */
 
-static bool freq_control_blocking = false;
+static int freq_control_blocking = 0;
 static DEFINE_MUTEX(freq_control_hooks_lock);
-static void (*freq_control_enable_hooks[4])(void);
+static void (*freq_control_enable_hooks[8])(void);
 
-bool freq_control_blocking_enabled(void)
+int freq_control_blocking_mode(void)
 {
 	if (!init_protection_enabled())
-		return false;
+		return 0;
 
 	return READ_ONCE(freq_control_blocking);
 }
+EXPORT_SYMBOL_GPL(freq_control_blocking_mode);
+
+bool freq_control_blocking_enabled(void)
+{
+	return freq_control_blocking_mode() >= 1;
+}
 EXPORT_SYMBOL_GPL(freq_control_blocking_enabled);
+
+bool min_freq_control_blocking_enabled(void)
+{
+	return freq_control_blocking_mode() >= 2;
+}
+EXPORT_SYMBOL_GPL(min_freq_control_blocking_enabled);
 
 int freq_control_register_enable_hook(void (*hook)(void))
 {
@@ -268,10 +280,12 @@ static ssize_t throttlers_protection_show(struct kobject *kobj,
 					  struct kobj_attribute *attr,
 					  char *buf)
 {
-	return sprintf(buf, "%d\n", freq_control_blocking_enabled());
+	return sprintf(buf, "%d\n", freq_control_blocking_mode());
 }
 
+void __weak cpufreq_reset_limits(bool reset_min) {}
 void __weak cpufreq_reset_max_frequencies(void) {}
+void __weak exynos_ufc_clear_limits(bool reset_min) {}
 void __weak exynos_ufc_clear_max_limit(void) {}
 
 static ssize_t throttlers_protection_store(struct kobject *kobj,
@@ -279,23 +293,27 @@ static ssize_t throttlers_protection_store(struct kobject *kobj,
 					   const char *buf,
 					   size_t count)
 {
-	bool enable;
+	int mode;
 
 	if (!init_protection_enabled()) {
 		pr_info("throttlers protection locked disabled by init_protection=0\n");
 		return count;
 	}
 
-	if (kstrtobool(buf, &enable))
+	if (kstrtoint(buf, 10, &mode))
 		return -EINVAL;
 
-	WRITE_ONCE(freq_control_blocking, enable);
-	if (enable) {
-		exynos_ufc_clear_max_limit();
-		cpufreq_reset_max_frequencies();
+	if (mode < 0 || mode > 2)
+		return -EINVAL;
+
+	WRITE_ONCE(freq_control_blocking, mode);
+	if (mode >= 1) {
+		exynos_ufc_clear_limits(mode >= 2);
+		cpufreq_reset_limits(mode >= 2);
 		freq_control_run_enable_hooks();
 	}
-	pr_info("throttlers protection %s\n", enable ? "enabled" : "disabled");
+	pr_info("throttlers protection %s (mode %d)\n",
+		mode ? "enabled" : "disabled", mode);
 
 	return count;
 }

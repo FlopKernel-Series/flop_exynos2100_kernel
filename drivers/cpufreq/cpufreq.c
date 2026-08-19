@@ -731,6 +731,9 @@ static ssize_t store_scaling_min_freq(struct cpufreq_policy *policy,
 	if (ret != 1)
 		return -EINVAL;
 
+	if (task_controls_min_frequencies(current))
+		return count;
+
 	ret = freq_qos_update_request(policy->min_freq_req, val);
 	return ret >= 0 ? count : ret;
 }
@@ -2846,17 +2849,25 @@ static int __init cpufreq_core_init(void)
 module_param(off, int, 0444);
 core_initcall(cpufreq_core_init);
 
-void cpufreq_reset_max_frequencies(void)
+void cpufreq_reset_limits(bool reset_min)
 {
 	struct cpufreq_policy *policy;
 
 	cpus_read_lock();
 	for_each_active_policy(policy) {
 		down_write(&policy->rwsem);
+		if (reset_min)
+			freq_qos_reset_min_limits(&policy->constraints, policy->cpuinfo.min_freq);
 		freq_qos_reset_max_limits(&policy->constraints, policy->cpuinfo.max_freq);
 		refresh_frequency_limits(policy);
 		up_write(&policy->rwsem);
 	}
 	cpus_read_unlock();
+}
+EXPORT_SYMBOL_GPL(cpufreq_reset_limits);
+
+void cpufreq_reset_max_frequencies(void)
+{
+	cpufreq_reset_limits(min_freq_control_blocking_enabled());
 }
 EXPORT_SYMBOL_GPL(cpufreq_reset_max_frequencies);
