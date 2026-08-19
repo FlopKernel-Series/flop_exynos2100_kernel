@@ -60,8 +60,14 @@ config KSU_SYSCALL_HOOK
 
 endchoice
 
+if KSU_NEXT
 source "drivers/kernelsu/kernel/Kconfig"
+endif
 
+if KSU_SUKI
 source "drivers/sukisu/kernel/Kconfig"
+endif
 
+if KSU_XXKSU
 source "drivers/xxksu/kernel/Kconfig"
+endif
