@@ -393,8 +393,10 @@ void dbg_snapshot_ecc_dump(void)
 	case ARM_CPU_PART_HERA:
 		asm volatile ("HINT #16");
 		erridr_el1.reg = read_ERRIDR_EL1();
+#if 0
 		dev_emerg(dss_desc.dev, "ECC error check erridr_el1.NUM = [0x%lx]\n",
 				(unsigned long)erridr_el1.field.NUM);
+#endif
 
 		for (i = 0; i < (int)erridr_el1.field.NUM; i++) {
 #if IS_ENABLED(CONFIG_SEC_DEBUG_AUTO_COMMENT)
@@ -410,10 +412,12 @@ void dbg_snapshot_ecc_dump(void)
 
 			erxstatus_el1.reg = read_ERXSTATUS_EL1();
 			if (!erxstatus_el1.field.Valid) {
+#if 0
 				dev_emerg(dss_desc.dev,
 					"ERRSELR_EL1.SEL = %d, NOT Error, "
 					"ERXSTATUS_EL1 = [0x%lx]\n",
 					i, (unsigned long)erxstatus_el1.reg);
+#endif
 				continue;
 			}
 
@@ -529,7 +533,9 @@ static inline void dbg_snapshot_save_core(struct pt_regs *regs)
 		memcpy(core_reg, regs, sizeof(struct user_pt_regs));
 	}
 
+#if 0
 	dev_emerg(dss_desc.dev, "core register saved(CPU:%d)\n", cpu);
+#endif
 }
 
 static void dbg_snapshot_save_context(struct pt_regs *regs, bool stack_dump)
@@ -549,9 +555,13 @@ static void dbg_snapshot_save_context(struct pt_regs *regs, bool stack_dump)
 		dbg_snapshot_save_system(NULL);
 		dbg_snapshot_save_core(regs);
 		dbg_snapshot_ecc_dump();
+#if 0
 		dev_emerg(dss_desc.dev, "context saved(CPU:%d)\n", cpu);
 	} else
 		dev_emerg(dss_desc.dev, "skip context saved(CPU:%d)\n", cpu);
+#else
+	}
+#endif
 
 	#if 0
 	if (stack_dump)
@@ -689,11 +699,7 @@ static void show_extra_register_data(struct pt_regs *regs, int nbytes)
 	raw_spin_unlock_irqrestore(&dss_desc.ctrl_lock, flags);
 	#endif
 }
-#else
-static void show_extra_register_data(struct pt_regs *regs, int nbytes)
-{
-}
-#endif /* !IS_ENABLED(CONFIG_SEC_DEBUG) */
+#endif /* 0 */
 
 static int dbg_snapshot_die_handler(struct notifier_block *nb,
 				   unsigned long l, void *buf)
@@ -705,8 +711,10 @@ static int dbg_snapshot_die_handler(struct notifier_block *nb,
 		return NOTIFY_DONE;
 
 	dbg_snapshot_save_context(regs, false);
+#if 0
 	dbg_snapshot_set_item_enable("log_kevents", false);
 	show_extra_register_data(regs, 128);
+#endif
 
 	return NOTIFY_DONE;
 }

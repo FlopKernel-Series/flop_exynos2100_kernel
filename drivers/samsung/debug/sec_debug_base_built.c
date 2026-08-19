@@ -40,6 +40,7 @@ EXPORT_SYMBOL(secdbg_base_built_get_ncva);
 extern unsigned long long sea_incorrect_addr;
 #endif
 
+#if 0
 /*
  * dump a block of kernel memory from around the given address
  */
@@ -142,6 +143,7 @@ static void show_extra_register_data(struct pt_regs *regs, int nbytes)
 
 	pr_info("\n");
 }
+#endif
 
 static int secdbg_base_built_die_handler(struct notifier_block *nb,
 				   unsigned long l, void *buf)
@@ -152,8 +154,10 @@ static int secdbg_base_built_die_handler(struct notifier_block *nb,
 	if (!regs)
 		return NOTIFY_DONE;
 
+#if 0
 	if (!user_mode(regs))
 		show_extra_register_data(regs, 256);
+#endif
 
 	return NOTIFY_DONE;
 }

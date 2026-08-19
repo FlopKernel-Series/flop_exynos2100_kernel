@@ -98,9 +98,13 @@ static int notifier_call_chain(struct notifier_block **nl,
 			continue;
 		}
 #endif
+#if 0
 		notifier_call_print(nl, nb->notifier_call, 1);
+#endif
 		ret = nb->notifier_call(nb, val, v);
+#if 0
 		notifier_call_print(nl, nb->notifier_call, 3);
+#endif
 
 		if (nr_calls)
 			(*nr_calls)++;

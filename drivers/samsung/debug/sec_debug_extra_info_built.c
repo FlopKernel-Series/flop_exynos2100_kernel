@@ -258,8 +258,9 @@ static void set_item_val(const char *key, const char *fmt, ...)
 
 	p = get_item(key);
 	if (!p) {
+#if 0
 		pr_crit("%s: fail to find %s\n", __func__, key);
-
+#endif
 		return;
 	}
 
@@ -287,8 +288,9 @@ void secdbg_exin_set_fault(enum secdbg_exin_fault_type type,
 	phys_addr_t paddr = 0;
 
 	if (regs) {
+#if 0
 		pr_crit("%s = %s / 0x%lx\n", __func__, ftype_items[type], addr);
-
+#endif
 		set_item_val("FTYPE", "%s", ftype_items[type]);
 		set_item_val("FAULT", "0x%lx", addr);
 		set_item_val("PC", "%pS", regs->pc);
@@ -330,8 +332,9 @@ void secdbg_exin_set_regs(struct pt_regs *regs)
 	}
 
 	memset(fbuf, 0, MAX_ITEM_VAL_LEN);
-
+#if 0
 	pr_crit("%s: set regs\n", __func__);
+#endif
 
 	offset += sprintf(fbuf + offset, "pc:%llx/", regs->pc);
 	offset += sprintf(fbuf + offset, "sp:%llx/", regs->sp);
@@ -381,8 +384,9 @@ void secdbg_exin_set_backtrace(struct pt_regs *regs)
 	}
 
 	memset(fbuf, 0, MAX_ITEM_VAL_LEN);
-
+#if 0
 	pr_crit("%s\n", __func__);
+#endif
 
 	trace.max_entries = MAX_CALL_ENTRY;
 	trace.entries = entry;
