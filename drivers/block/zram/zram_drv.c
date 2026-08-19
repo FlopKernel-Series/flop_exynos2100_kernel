@@ -1073,16 +1073,19 @@ static bool is_bdev_avail(struct zram *zram)
 	u64 min_free_blocks;
 	int ret;
 
-	if (!zram->bdev->bd_disk)
+	if (!zram || !zram->bdev || !zram->bdev->bd_disk)
 		return false;
 
 	lo = zram->bdev->bd_disk->private_data;
-	if (!lo || !lo->lo_backing_file)
+	if (!lo || !lo->lo_backing_file || !lo->lo_backing_file->f_mapping)
 		return false;
 
 	inode = lo->lo_backing_file->f_mapping->host;
+	if (!inode || !inode->i_sb || !inode->i_sb->s_root)
+		return false;
+
 	root = inode->i_sb->s_root;
-	if (!root->d_sb->s_op->statfs)
+	if (!root->d_sb || !root->d_sb->s_op || !root->d_sb->s_op->statfs)
 		return false;
 
 	ret = root->d_sb->s_op->statfs(root, &statbuf);
@@ -1113,7 +1116,7 @@ static inline bool zram_throttle_writeback_size(struct zram *zram)
 
 static bool zram_wb_available(struct zram *zram)
 {
-	if (!is_bdev_avail(zram))
+	if (!zram || !is_bdev_avail(zram))
 		return false;
 
 	if (!zram->wb_table)
