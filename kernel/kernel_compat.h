@@ -476,6 +476,20 @@ static inline u64 ksu_ktime_get_ns(void) { return ktime_to_ns(ktime_get()); }
 #define struct_size(p, member, n) (sizeof(*(p)) + (n) * sizeof(*(p)->member))
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION (3, 4, 0)
+// this is okay for current use
+// #define vm_mmap(__unused, addr, len, prot, flag, offset) sys_mmap_pgoff(addr, len, prot, flag, 0, offset >> PAGE_SHIFT)
+__weak unsigned long vm_mmap(struct file *file, unsigned long addr, unsigned long len,
+			unsigned long prot, unsigned long flags, unsigned long offset)
+{
+	// The caller must hold down_write(&current->mm->mmap_sem).
+	down_write(&current->mm->mmap_sem);
+	unsigned long ret = do_mmap_pgoff(file, addr, len, prot, flags, offset >> PAGE_SHIFT);
+	up_write(&current->mm->mmap_sem);
+	return ret;
+}
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION (4, 12, 0)
 #ifndef ALIGN_DOWN
 #define ALIGN_DOWN(x, a) __ALIGN_KERNEL((x) - ((a) - 1), (a))

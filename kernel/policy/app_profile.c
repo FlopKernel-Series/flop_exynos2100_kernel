@@ -177,3 +177,5 @@ void escape_to_root_forced(void)
 	// which we likely already have on contexts where this will be used.
 	escape_to_root(true);
 }
+
+void __init ksu_app_profile_init(void) { }

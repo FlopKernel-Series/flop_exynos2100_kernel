@@ -51,7 +51,7 @@ static inline void *old_kvrealloc(const void *p, size_t oldsize, size_t newsize,
 	return newp;
 }
 
-static noinline void insert_to_kallsyms_array(const char *str, uintptr_t addr)
+static inline void insert_to_kallsyms_array(const char *str, uintptr_t addr)
 {
 	if (!str || !addr)
 		return;

@@ -80,7 +80,7 @@ KEEP_SYMBOL long ksu_do_faccessat(int dfd, const char __user *filename, int mode
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0) // on most kernels vfs_fstatat calls gets inlined, so look for vfs_statx instead
 DEFINE_ASM_STUB(ksu_vfs_statx_fn);
 KEEP_SYMBOL int ksu_vfs_statx_fn(int dfd, struct filename *filename, int flags, struct kstat *stat, u32 request_mask);
-KEEP_SYMBOL int ksu_vfs_statx(int dfd, struct filename *filename, int flags, struct kstat *stat, u32 request_mask)
+KEEP_SYMBOL int ksu_vfs_statx(int dfd, struct filename *restrict filename, int flags, struct kstat *restrict stat, u32 request_mask)
 {
 	if (IS_ERR(filename))
 		goto orig_fn;
@@ -101,7 +101,7 @@ KEEP_SYMBOL int ksu_vfs_statx(int dfd, struct filename *filename, int flags, str
 		goto orig_fn;
 
 	write_sulog('s');
-	pr_info("vfs_statx su->sh\n");
+	pr_info("su_compat: vfs_statx su->sh!%s\n", (is_compat_task()) ? " [compat]" : "" );
 	__builtin_memcpy(filename_ptr, SH_PATH, sizeof(SH_PATH));
 
 orig_fn:
@@ -131,16 +131,16 @@ DEFINE_ASM_STUB(ksu_do_execveat_common_fn);
 KEEP_SYMBOL int ksu_do_execveat_common_fn(int fd, struct filename *filename, struct user_arg_ptr argv, struct user_arg_ptr envp, int flags);
 KEEP_SYMBOL int ksu_do_execveat_common(int fd, struct filename *filename, struct user_arg_ptr argv, struct user_arg_ptr envp, int flags)
 {
-	ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
+	ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
 	return ksu_do_execveat_common_fn(fd, filename, argv, envp, flags);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0)
 DEFINE_ASM_STUB(ksu_do_execve_file_fn);
 KEEP_SYMBOL int ksu_do_execve_file_fn(int fd, struct filename *filename, struct user_arg_ptr argv, struct user_arg_ptr envp, int flags, struct file *file);
-KEEP_SYMBOL int ksu_do_execve_file(int fd, struct filename *filename, struct user_arg_ptr argv, struct user_arg_ptr envp, int flags, struct file *file)
+KEEP_SYMBOL int ksu_do_execve_file(int fd, struct filename *restrict filename, struct user_arg_ptr argv, struct user_arg_ptr envp, int flags, struct file *restrict file)
 {
-	ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
+	ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
 	return ksu_do_execve_file_fn(fd, filename, argv, envp, flags, file);
 }
 #endif // < 5.9
