@@ -872,6 +872,11 @@ void mfc_check_iova(struct mfc_dev *dev)
 	struct mfc_ctx *ctx;
 	unsigned long total_iova = 0;
 
+	if (!is_dma_buf_env()) {
+		dev->skip_lazy_unmap = 1;
+		return;
+	}
+
 	if (!pdata->iova_threshold)
 		return;
 
