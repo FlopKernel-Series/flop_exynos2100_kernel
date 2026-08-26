@@ -3,12 +3,7 @@ static bool ksu_kernel_umount_enabled __read_mostly = true;
 #else
 bool ksu_kernel_umount_enabled = true;
 #endif // #ifndef CONFIG_KSU_SUSFS
-static bool ksu_webview_zygote_umount_enabled = true;
-
-bool ksu_is_webview_zygote_umount_enabled(void)
-{
-	return READ_ONCE(ksu_webview_zygote_umount_enabled);
-}
+bool ksu_webview_zygote_umount_enabled __read_mostly = true;
 
 static int kernel_umount_feature_get(u64 *value)
 {
@@ -33,14 +28,14 @@ static const struct ksu_feature_handler kernel_umount_handler = {
 
 static int webview_zygote_umount_feature_get(u64 *value)
 {
-	*value = ksu_is_webview_zygote_umount_enabled() ? 1 : 0;
+	*value = ksu_webview_zygote_umount_enabled ? 1 : 0;
 	return 0;
 }
 
 static int webview_zygote_umount_feature_set(u64 value)
 {
 	bool enable = value != 0;
-	WRITE_ONCE(ksu_webview_zygote_umount_enabled, enable);
+	ksu_webview_zygote_umount_enabled = enable;
 	pr_info("webview_zygote_umount: set to %d\n", enable);
 	return 0;
 }
@@ -122,6 +117,9 @@ static inline int ksu_handle_umount(struct cred *new, const struct cred *old)
 		return 0;
 	}
 #endif // #if defined(CONFIG_KSU_SUSFS) || !defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
+
+	set_thread_flag(TIF_KSU_UNMOUNTABLE);
+
 	// umount the target mnt
 	pr_info("handle umount for uid: %d, pid: %d\n", new_uid, current->pid);
 
