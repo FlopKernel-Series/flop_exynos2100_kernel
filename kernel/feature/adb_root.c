@@ -104,8 +104,8 @@ envp_count_done:
 	 *	we offset by new envp at +128 bytes
 	 */
 
-	_Static_assert(sizeof(kLdPreload) < 64, "fix kLdLibraryPath offset");
-	_Static_assert((sizeof(kLdPreload) + sizeof(kLdLibraryPath)) < 128, "fix envp_array offset");
+	static_assert(sizeof(kLdPreload) < 64, "fix kLdLibraryPath offset");
+	static_assert((sizeof(kLdPreload) + sizeof(kLdLibraryPath)) < 128, "fix envp_array offset");
 
 	void __user *kLdPreload_p = (void __user *)mmap_page;
 	void __user *kLdLibraryPath_p = (void __user *)(mmap_page + 64);
