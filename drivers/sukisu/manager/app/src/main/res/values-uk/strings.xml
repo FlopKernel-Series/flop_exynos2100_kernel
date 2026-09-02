@@ -58,7 +58,6 @@
     <string name="reboot_download">Перезавантажити в режим Download</string>
     <string name="reboot_edl">Перезавантажити в режим EDL</string>
     <string name="about">Про додаток</string>
-    <string name="about_anime_character_sticker"><![CDATA[Зображення файлів з картинкою аніме-персонажа захищені авторськими правами %1$s, а права на торгову марку у зображеннях належать %2$s. Перш ніж використовувати ці файли, окрім дотримання %3$s, вам також необхідно дотримуватись авторизації обох авторів щодо використання цього художнього контенту.]]></string>
     <string name="get_source_code">Переглянути вихідний код</string>
     <string name="get_source_code_detail">Переглянути вихідний код на GitHub</string>
     <string name="join_telegram_group">Приєднатися до спільноти</string>
@@ -111,7 +110,7 @@
     <string name="profile_umount_modules">Розмонтувати модулі</string>
     <string name="failed_to_update_app_profile">Не вдалося оновити профіль додатка для %s</string>
     <string name="debug_version_notice">Ви використовуєте налагоджувальну збірку менеджера. Якщо ви не знаєте, що таке налагоджувальна версія, негайно перейдіть на випускну збірку.</string>
-    <string name="unofficial_version_notice">"Менеджер, який ви використовуєте, не є офіційним менеджером %s, і ви можете не отримати необхідних дозволів."</string>
+    <string name="unofficial_version_notice">Менеджер, який ви використовуєте, не є офіційним менеджером %s, і ви можете не отримати необхідних дозволів.</string>
     <string name="conflict_with_apatch">Виявлено APatch. Деякі функції можуть не працювати.</string>
     <string name="settings_umount_modules_default">Розмонтовувати модулі за замовчуванням</string>
     <string name="settings_umount_modules_default_summary">Глобальне значення за замовчуванням для \"Розмонтувати модулі\" у профілі додатка. Якщо ввімкнено, це видалить усі зміни системи, зроблені модулями, для додатків без встановленого профілю</string>
@@ -438,9 +437,6 @@
     <string name="susfs_status_variant">Варіант</string>
     <string name="susfs_status_enabled_features">Увімкнені функції</string>
     <string name="susfs_status_no_data">Немає даних</string>
-    <string name="susfs_standard_config_enabled">Збережена конфігурація</string>
-    <string name="susfs_standard_config_enabled_desc">Автоматично застосовувати збережену конфігурацію SUSFS під час завантаження.</string>
-    <string name="susfs_management_disabled_warning">Вбудоване керування SUSFS у Менеджері вимкнено.</string>
     <string name="susfs_standard_logging">Журнал</string>
     <string name="susfs_standard_logging_desc">Увімкнути журнал ядра SUSFS. Увімкнути перед повідомленням про помилку, пов\'язану з SUSFS.</string>
     <string name="susfs_standard_avc_log_spoofing">Підміна журналу AVC</string>

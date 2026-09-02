@@ -58,7 +58,6 @@
     <string name="reboot_download">重新啟動到 Download</string>
     <string name="reboot_edl">重新啟動到 EDL</string>
     <string name="about">關於</string>
-    <string name="about_anime_character_sticker"><![CDATA[有動漫人物貼圖嘅圖片版權為%1$s所有，圖像中嘅知識產權由%2$s 所有。喺使用呢啲檔案之前，除咗必須遵守 %3$s 以外，仲需要向上述兩者要求使用呢啲藝術內容嘅授權。]]></string>
     <string name="get_source_code">檢視原始碼</string>
     <string name="get_source_code_detail">喺 GitHub 上檢視原始碼</string>
     <string name="join_telegram_group">加入社區</string>
@@ -226,7 +225,7 @@
     <string name="slot_a">A 槽位</string>
     <string name="slot_b">B 槽位</string>
     <string name="selected_slot">已選擇槽位: %1$s</string>
-    <string name="current_slot">當前系統預設槽位：%1$s </string>
+    <string name="current_slot">當前系統預設槽位：%1$s</string>
     <string name="horizon_copy_failed">複製失敗</string>
     <string name="horizon_unknown_error">未知錯誤</string>
     <string name="flash_failed_message">刷寫失敗</string>
@@ -441,9 +440,6 @@
     <string name="susfs_status_variant">變體</string>
     <string name="susfs_status_enabled_features">已啟用功能</string>
     <string name="susfs_status_no_data">未有數據</string>
-    <string name="susfs_standard_config_enabled">已保存配置</string>
-    <string name="susfs_standard_config_enabled_desc">開機時自動套用已保存嘅 SUSFS 配置。</string>
-    <string name="susfs_management_disabled_warning">管理器內置 SUSFS 管理已停用。</string>
     <string name="susfs_standard_logging">日誌</string>
     <string name="susfs_standard_logging_desc">啟用 SUSFS 核心日誌。回報與 SUSFS 相關嘅錯誤前請先啟用呢個選項。</string>
     <string name="susfs_standard_avc_log_spoofing">AVC 日誌偽裝</string>

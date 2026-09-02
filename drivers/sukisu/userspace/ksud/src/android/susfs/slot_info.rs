@@ -206,7 +206,7 @@ fn extract_linux_version_line(buf: &[u8]) -> Option<(String, String)> {
 }
 
 fn find_all(haystack: &[u8], needle: &[u8]) -> Vec<usize> {
-    if needle.is_empty() || haystack.len() < needle.len() {
+    /*if needle.is_empty() || haystack.len() < needle.len() {
         return Vec::new();
     }
     let mut result = Vec::<usize>::new();
@@ -218,6 +218,6 @@ fn find_all(haystack: &[u8], needle: &[u8]) -> Vec<usize> {
         } else {
             i += 1;
         }
-    }
-    result
+    }*/
+    memchr::memmem::find_iter(haystack, needle).collect()
 }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="MissingTranslation">
     <string name="app_name" translatable="false">ReSukiSU</string>
     <string name="home">Home</string>
     <string name="learn_more">Learn more</string>
@@ -59,7 +60,7 @@
     <string name="reboot_download">Reboot to Download</string>
     <string name="reboot_edl">Reboot to EDL</string>
     <string name="about">About</string>
-    <string name="about_anime_character_sticker"><![CDATA[The images of the files with anime character sticker are copyrighted by %1$s, the Brand Intellectual Property in the images is owned by %2$s. Before using these files, in addition to complying with %3$s, you also need to comply with the authorization of the two authors to use these artistic contents.]]></string>
+    <string name="about_anime_character_sticker"><![CDATA[The icons are licensed under a special arrangement: drawn by 怡子曰曰, the copyright is held by 明风 OuO, and the vectorized icons are provided by this project.]]></string>
     <string name="get_source_code">Check for source code</string>
     <string name="get_source_code_detail">Check for source code on GitHub</string>
     <string name="join_telegram_group">Join community</string>
@@ -225,6 +226,8 @@
     <string name="settings_sucompat_summary">Allow root access via /system/bin/su, in new processes.</string>
     <string name="settings_kernel_umount">Module unmounting</string>
     <string name="settings_kernel_umount_summary">Unmount modules from kernel in App Profile</string>
+    <string name="settings_webview_zygote_umount">Unmount for WebView</string>
+    <string name="settings_webview_zygote_umount_summary">Prevent information leaks from WebView process but may break modules. Reboot to apply</string>
     <string name="feature_status_unsupported_summary">Kernel does not support this feature</string>
     <string name="settings_mode_disable_until_reboot">Disable until Reboot</string>
     <string name="settings_mode_disable_always">Always disable</string>

@@ -92,9 +92,7 @@
     <string name="direct_install">Instalacja bezpośrednia (zalecane)</string>
     <string name="select_file">Wybierz plik</string>
     <string name="install_inactive_slot">Zainstaluj do nieaktywnego slotu (po aktualizcji OTA)</string>
-    <string name="install_inactive_slot_warning">Po ponownym uruchomieniu Twoje urządzenie zostanie **ZMUSZONE** do uruchomia się z obecnie nieaktywnego slotu!
-\nUżyj tej opcji dopiero po zakończeniu aktualizacji OTA.
-\nCzy chcesz kontynuować?</string>
+    <string name="install_inactive_slot_warning">Po ponownym uruchomieniu Twoje urządzenie zostanie **ZMUSZONE** do uruchomia się z obecnie nieaktywnego slotu! \nUżyj tej opcji dopiero po zakończeniu aktualizacji OTA. \nCzy chcesz kontynuować?</string>
     <string name="install_next">Dalej</string>
     <string name="select_file_tip">Obraz partycji %1$s jest zalecany</string>
     <string name="select_kmi">Wybierz KMI</string>
@@ -194,7 +192,6 @@
     <string name="settings_custom_background">Niestandardowe tło aplikacji</string>
     <string name="sulog_filter_ioctl_grant_root">Udzielono root</string>
     <string name="sulog_event_dropped">Pominięto zdarzenie</string>
-    <string name="about_anime_character_sticker"><![CDATA[Prawa autorskie do obrazów plików zawierających naklejki z postaciami anime należą do %1$s, natomiast prawa własności intelektualnej do przedstawionych marek należą do %2$s. Przed użyciem tych plików, oprócz przestrzegania %3$s, należy również uzyskać zgodę obu właścicieli praw na wykorzystanie tych treści artystycznych.]]></string>
     <string name="open_source_license">Licencja Open Source</string>
     <string name="open_source_license_settings_description">Wyświetl zewnętrzne biblioteki open-source oraz ich licencje</string>
     <string name="settings_custom_background_summary">Wybierz obraz jako tło</string>
@@ -444,9 +441,6 @@
     <string name="susfs_status_variant">Wariant</string>
     <string name="susfs_status_enabled_features">Włączone funkcje</string>
     <string name="susfs_status_no_data">Brak danych</string>
-    <string name="susfs_standard_config_enabled">Trwała konfiguracja</string>
-    <string name="susfs_standard_config_enabled_desc">Automatycznie stosuj zapisaną konfigurację SUSFS podczas uruchamiania.</string>
-    <string name="susfs_management_disabled_warning">Wbudowany menadżer SUSFS jest wyłączony.</string>
     <string name="susfs_standard_logging">Logowanie</string>
     <string name="susfs_standard_logging_desc">Włącz logi SUSFS. Przed zgłoszeniem jakichkolwiek problemów, włącz logi SUSFS.</string>
     <string name="susfs_standard_avc_log_spoofing">Spoofing logów AVC</string>
