@@ -192,7 +192,6 @@ static __always_inline void ksu_sucompat_user_common(const char __user **filenam
 
 	if (likely((buf & 0x00FFFFFFFFFFFFFFUL) != (su_p[1] & 0x00FFFFFFFFFFFFFFUL)))
 		return;
-
 #else
 	if (get_user(buf, &fn_p[3]))
 		return;
@@ -316,21 +315,19 @@ static __always_inline void ksu_sucompat_kernel_common(int *restrict fd, void **
 	if (!!flags && !!*flags)
 		return;
 
-	// it seems this is actually the slowest part, we peek last word first to speed it up
-	// sugar prep
 	const char su[16] = SU_PATH;
 
-#if 0
-	unsigned __int128 *su128 = (unsigned __int128 *)su;
-	unsigned __int128 *fn128 = (unsigned __int128 *)*(char **)filename_ptr;
-	const unsigned __int128 mask = ((unsigned __int128)0x00FFFFFFFFFFFFFFULL << 64) | 0xFFFFFFFFFFFFFFFFULL;
+#if 0 // defined(KSU_HAS_INT128)
+	uint128_t *su128 = (uint128_t *)su;
+	uint128_t *fn128 = (uint128_t *)*(char **)filename_ptr;
+	const uint128_t mask = make128const(0x00FFFFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFFFULL);
 	if (likely((*fn128 & mask) != (*su128 & mask)))
 		return;
 #endif
+	// getname_flags pads this so nothing to worry about, dereference with confidence!
 	uint64_t *su_p = (uint64_t *)su;
 	uint64_t *fn_p = (uint64_t *)*(char **)filename_ptr;
 
-	// getname_flags pads this so nothing to worry about, dereference with confidence!
 	if (likely((fn_p[1] & 0x00FFFFFFFFFFFFFFULL) != (su_p[1] & 0x00FFFFFFFFFFFFFFULL)))
 		return;
 
