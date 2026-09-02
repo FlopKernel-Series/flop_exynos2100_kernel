@@ -58,7 +58,6 @@
     <string name="reboot_download">Download moduna yeniden başlat</string>
     <string name="reboot_edl">EDL moduna yeniden başlat</string>
     <string name="about">Hakkında</string>
-    <string name="about_anime_character_sticker"><![CDATA[Anime karakterinin çıkartmasının bulunduğu görüntülerin dosyalarının telif hakları %1$s mülkiyetindedir. Görüntülerdeki fikrî mülkiyet hakları ise %2$s mülkiyetindedir. Bu dosyaları kullanmadan önce hem %3$s \'a uymalı hem de bu iki eser sahibinden bu sanat eserlerini kullanmak için izin almanız gerekmektedir.]]></string>
     <string name="get_source_code">Kaynak kodunu görüntüle</string>
     <string name="get_source_code_detail">GitHub üzerinden kaynak kodunu görüntüle</string>
     <string name="join_telegram_group">Topluluğa katıl</string>
@@ -103,7 +102,7 @@
     <string name="profile_umount_modules">Modülleri bağlamayı kaldır</string>
     <string name="failed_to_update_app_profile">%s için Uygulama Profili güncellenemedi</string>
     <string name="debug_version_notice">Yöneticinin DEBUG sürümünü kullanıyorsunuz. Eğer DEBUG sürümünün ne anlama geldiğini bilmiyorsanız hemen RELEASE sürümüne geçin</string>
-    <string name="unofficial_version_notice">"Kullandığınız yönetici orijinal %s yöneticisi değil, kök erişimi alamayabilirsiniz."</string>
+    <string name="unofficial_version_notice">Kullandığınız yönetici orijinal %s yöneticisi değil, kök erişimi alamayabilirsiniz.</string>
     <string name="conflict_with_apatch">APatch tespit edildi, her şey çalışmayı durdurabilir.</string>
     <string name="settings_umount_modules_default">Modüllerin bağlantısını varsayılan olarak kes</string>
     <string name="settings_umount_modules_default_summary">Uygulama Profilindeki \"Modüllerin bağlantısını kes\" seçeneği için küresel varsayılan değer. Etkinleştirilirse, profili ayarlanmamış uygulamalar için sistemdeki tüm modül değişikliklerini kaldırır</string>
@@ -221,7 +220,7 @@
     <string name="slot_a">A Yuvası</string>
     <string name="slot_b">B Yuvası</string>
     <string name="selected_slot">Seçilen yuva: %1$s</string>
-    <string name="current_slot">Geçerli varsayılan sistem yuvası: %1$s </string>
+    <string name="current_slot">Geçerli varsayılan sistem yuvası: %1$s</string>
     <string name="horizon_copy_failed">Kopyalama başarısız</string>
     <string name="horizon_unknown_error">Bilinmeyen hata</string>
     <string name="flash_failed_message">Flash\'lama başarısız</string>
@@ -423,8 +422,6 @@
     <string name="susfs_status_version">SUSFS Sürümü</string>
     <string name="susfs_status_variant">Varyant</string>
     <string name="susfs_status_enabled_features">Etkinleştirilen Özellikler</string>
-    <string name="susfs_standard_config_enabled_desc">Önyükleme sırasında kaydedilmiş SUSFS yapılandırmasını otomatik olarak uygula.</string>
-    <string name="susfs_management_disabled_warning">Manager’daki yerleşik SUSFS yönetimi devre dışı bırakılmıştır.</string>
     <string name="susfs_standard_logging">Günlük Kayıtları</string>
     <string name="susfs_standard_logging_desc">SUSFS çekirdek günlüğünü etkinleştir. SUSFS ile ilgili hataları bildirmeden önce bunu etkinleştirin.</string>
     <string name="susfs_standard_avc_log_spoofing">AVC Günlüğü Sahteciliği</string>
@@ -533,6 +530,5 @@
     <string name="susfs_uid_scheme_unmounted_app">Bağlantısı Kesilmiş Uygulama</string>
     <string name="susfs_uid_scheme_unmounted">Bağlantısı Kesik</string>
     <string name="susfs_status_no_data">Veri Yok</string>
-    <string name="susfs_standard_config_enabled">Kalıcı Yapılandırma</string>
     <string name="susfs_tab_open_redirect">Yönlendirmeyi Aç</string>
 </resources>

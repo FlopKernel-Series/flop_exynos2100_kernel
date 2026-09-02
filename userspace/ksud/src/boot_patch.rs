@@ -478,7 +478,7 @@ pub struct BootPatchArgs {
     #[arg(
         long,
         value_name = "NAMES",
-        default_value = "vr,vklp,oplus_secure_guard,oplus_secure_guard_new"
+        default_value = "vr,vklp,oplus_secure_guard,oplus_secure_guard_new,mkp"
     )]
     block_modules: Option<String>,
 
@@ -814,9 +814,6 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
             println!("- Flashing new boot image");
             let bootdevice = boot_image_file.display().to_string();
             flash_partition(&bootdevice, &new_boot_bytes)?;
-            if ota {
-                post_ota()?;
-            }
             if ota {
                 post_ota()?;
             }
