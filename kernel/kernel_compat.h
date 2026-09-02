@@ -119,13 +119,6 @@ static void ksu_kvfree(const void *buf)
 #define kvfree ksu_kvfree
 #endif
 
-// basic stack offload.
-static inline void kvfree_byref(void *buf) { kvfree(*(void **)buf); }
-static inline void kfree_byref(void *buf) { kfree(*(void **)buf); }
-
-#define __offstack(size) __cleanup(kfree_byref) = kmalloc(size, GFP_KERNEL)
-#define __zoffstack(size) __cleanup(kfree_byref) = kzalloc(size, GFP_KERNEL)
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
 __weak long copy_from_kernel_nofault(void *dst, const void *src, size_t size)
 {
@@ -243,10 +236,8 @@ __weak int path_mount(const char *dev_name, struct path *path, const char *type_
 	if (!buf)
 		return -ENOMEM;
 
-	// -1 on the size as implicit null termination
-	// as we zero init the thing
 	char *realpath = d_path(path, buf, PATH_MAX - 1);
-	if (!(realpath && realpath != buf)) 
+	if (IS_ERR(realpath) || realpath == buf)
 		return -ENOENT;
 
 	mm_segment_t old_fs = get_fs();
@@ -272,15 +263,11 @@ __weak int path_mount(const char *dev_name, struct path *path, const char *type_
 __weak int path_umount(struct path *path, int flags)
 {
 	char buf[256] = {0};
-	int ret;
+	int ret = -ENOENT;
 
-	// -1 on the size as implicit null termination
-	// as we zero init the thing
 	char *usermnt = d_path(path, buf, sizeof(buf) - 1);
-	if (!(usermnt && usermnt != buf)) {
-		ret = -ENOENT;
+	if (IS_ERR(usermnt) || usermnt == buf)
 		goto out;
-	}
 
 	mm_segment_t old_fs = get_fs();
 	set_fs(KERNEL_DS);
@@ -425,8 +412,10 @@ struct dir_context { const filldir_t actor; loff_t pos; };
 __weak char *bin2hex(char *dst, const void *src, size_t count)
 {
 	const unsigned char *_src = src;
-	while (count--)
-		dst = pack_hex_byte(dst, *_src++);
+	while (count--) {
+		sprintf(dst, "%02x", *_src++);
+		dst = dst + 2;
+	}
 	return dst;
 }
 #endif
