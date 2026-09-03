@@ -223,8 +223,6 @@ getname_flags(const char __user *filename, int flags, int *empty)
 #ifdef CONFIG_NOMOUNT
 	if (!IS_ERR(result)) {
 		result = nomount_handle_getname(result);
-		if (IS_ERR(result))
-			return result;
 	}
 #endif
 	audit_getname(result);
@@ -271,8 +269,6 @@ getname_kernel(const char * filename)
 #ifdef CONFIG_NOMOUNT
 	if (!IS_ERR(result)) {
 		result = nomount_handle_getname(result);
-		if (IS_ERR(result))
-			return result;
 	}
 #endif
 	audit_getname(result);
