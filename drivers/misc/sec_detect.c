@@ -113,6 +113,7 @@ static inline void setup_camera_params(void)
 		break;
 	case SEC_O1S:
 		mcd_feat_flags[MCD_FEAT_TYPE_USU] = true;
+		mcd_feat_flags[MCD_FEAT_TYPE_USUV1] = true;
 		break;
 	case SEC_P3S:
 		mcd_feat_flags[MCD_FEAT_TYPE_USU] = true;
@@ -123,6 +124,7 @@ static inline void setup_camera_params(void)
 		break;
 	case SEC_T2S:
 		mcd_feat_flags[MCD_FEAT_TYPE_USU] = true;
+		mcd_feat_flags[MCD_FEAT_TYPE_USUV2] = true;
 		break;
 	default:
 		break;
