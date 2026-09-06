@@ -904,6 +904,14 @@ unsigned int check_ambient_temp(struct exynos_tmu_data *data)
 		if (amb_tz->amb_data[i].hotplug_disabled)
 			continue;
 
+		if (freq_control_blocking_enabled()) {
+			if (amb_tz->amb_data[i].is_cpu_hotplugged_out) {
+				exynos_cpuhp_request(amb_tz->amb_data[i].cpuhp_name, *cpu_possible_mask);
+				amb_tz->amb_data[i].is_cpu_hotplugged_out = false;
+			}
+			continue;
+		}
+
 		if (amb_tz->amb_data[i].is_cpu_hotplugged_out) {
 			if (temp < amb_tz->amb_data[i].hotplug_in_threshold) {
 
@@ -920,7 +928,7 @@ unsigned int check_ambient_temp(struct exynos_tmu_data *data)
 		}
 	}
 
-	if (temp > hotplug_threshold * 1000) {
+	if (!freq_control_blocking_enabled() && temp > hotplug_threshold * 1000) {
 		exynos_pm_qos_update_request(&amb_tz->mif_max_pm_qos, 2028000);
 		adv_tracer_s2d_set_enable(0);
 	} else {
@@ -2850,7 +2858,7 @@ static int hotplug_threshold_get(void *data, unsigned long long *val)
 
 static int hotplug_threshold_set(void *data, unsigned long long val)
 {
-	hotplug_threshold += val;
+	hotplug_threshold = 75 + val;
 
 	if (!amb_tz)
 		return 0;
