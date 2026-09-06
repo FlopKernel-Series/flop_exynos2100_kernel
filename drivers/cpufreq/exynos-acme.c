@@ -909,10 +909,7 @@ static int exynos_cpu_cooling_notifier(struct notifier_block *notifier,
 	if (!policy)
 		return NOTIFY_BAD;
 
-	if (freq_control_blocking_enabled())
-		freq = domain->max_freq;
-	else
-		freq = clamp_val(freq, domain->min_freq, domain->max_freq);
+	freq = clamp_val(freq, domain->min_freq, domain->max_freq);
 
 	/* update clipped_freq and DM constraint */
 	domain->clipped_freq = freq;
