@@ -106,15 +106,16 @@ static bool sensor_imx563_cis_is_wdr_mode_on(cis_shared_data *cis_data)
 	if (!is_vender_wdr_mode_on(cis_data))
 		return false;
 
-	if (mode < 0 || mode >= SENSOR_IMX563_MODE_MAX) {
+	if (mode >= (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3) ?
+			SENSOR_IMX563_MODE_MAX_4X : SENSOR_IMX563_MODE_MAX)) {
 		err("invalid mode(%d)!!", mode);
 		return false;
 	}
 
 	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3))
-		return sensor_imx563_support_wdr[mode];
-	else
 		return sensor_imx563_support_wdr_4x[mode];
+	else
+		return sensor_imx563_support_wdr[mode];
 }
 
 /*************************************************
@@ -147,7 +148,8 @@ static void sensor_imx563_set_integration_max_margin(u32 mode, cis_shared_data *
 {
 	WARN_ON(!cis_data);
 
-	if (mode < 0 || mode >= SENSOR_IMX563_MODE_MAX) {
+	if (mode >= (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3) ?
+			SENSOR_IMX563_MODE_MAX_4X : SENSOR_IMX563_MODE_MAX)) {
 		err("invalid mode(%d)!!", mode);
 	}
 
@@ -2278,7 +2280,7 @@ static int cis_imx563_probe(struct i2c_client *client,
 	rev = cis->cis_data->cis_rev;
 
 // #ifndef USE_CAMERA_IMX563_4000X3000
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
+	if (!sec_get_mcd_feat(MCD_FEAT_TYPE_USUV3)) {
 		if (strcmp(setfile, "default") == 0 ||
 				strcmp(setfile, "setA") == 0) {
 			probe_info("%s setfile_A\n", __func__);

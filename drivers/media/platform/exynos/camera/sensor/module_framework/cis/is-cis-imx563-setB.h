@@ -2344,7 +2344,7 @@ static const struct cam_mipi_sensor_mode sensor_imx563_setfile_B_mipi_sensor_mod
 		sensor_imx563_setfile_B_mipi_channel_binning,	ARRAY_SIZE(sensor_imx563_setfile_B_mipi_channel_binning),
 		sensor_imx563_setfile_B_mipi_setting_binning,	ARRAY_SIZE(sensor_imx563_setfile_B_mipi_setting_binning)
 	},
-	{ SENSOR_IMX563_3328X1872_120FPS,
+	{ SENSOR_IMX563_3328X1872_120FPS_4X,
 		sensor_imx563_setfile_B_mipi_channel_240fps,	ARRAY_SIZE(sensor_imx563_setfile_B_mipi_channel_240fps),
 		sensor_imx563_setfile_B_mipi_setting_all_60fps,	ARRAY_SIZE(sensor_imx563_setfile_B_mipi_setting_all_60fps)	/* Different settings by size */
 	},
@@ -2364,7 +2364,7 @@ static const struct cam_mipi_sensor_mode sensor_imx563_setfile_B_mipi_sensor_mod
 		sensor_imx563_setfile_B_mipi_channel_240fps,	ARRAY_SIZE(sensor_imx563_setfile_B_mipi_channel_240fps),
 		sensor_imx563_setfile_B_mipi_setting_240fps,	ARRAY_SIZE(sensor_imx563_setfile_B_mipi_setting_240fps)
 	},
-	{ SENSOR_IMX563_2800X2100_30FPS,
+	{ SENSOR_IMX563_2800X2100_30FPS_4X,
 		sensor_imx563_setfile_B_mipi_channel_all,	ARRAY_SIZE(sensor_imx563_setfile_B_mipi_channel_all),
 		sensor_imx563_setfile_B_mipi_setting_all,	ARRAY_SIZE(sensor_imx563_setfile_B_mipi_setting_all)
 	},
