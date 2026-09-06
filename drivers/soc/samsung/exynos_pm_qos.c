@@ -691,7 +691,7 @@ static inline int exynos_pm_qos_get_value(struct exynos_pm_qos_constraints *c)
 
 	switch (c->type) {
 	case EXYNOS_PM_QOS_MIN:
-		if (freq_control_blocking_enabled()) {
+		if (min_freq_control_blocking_enabled()) {
 			struct exynos_pm_qos_request *req;
 			int min = c->default_value;
 			plist_for_each(node, &c->list) {
@@ -708,7 +708,7 @@ static inline int exynos_pm_qos_get_value(struct exynos_pm_qos_constraints *c)
 		return plist_first(&c->list)->prio;
 
 	case EXYNOS_PM_QOS_MAX:
-		if (min_freq_control_blocking_enabled()) {
+		if (freq_control_blocking_enabled()) {
 			struct exynos_pm_qos_request *req;
 			int max = c->default_value;
 			plist_for_each(node, &c->list) {
