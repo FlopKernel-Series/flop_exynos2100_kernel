@@ -1250,6 +1250,8 @@ int csi_hw_s_phy_set(struct phy *phy, u32 lanes, u32 mipi_speed,
 			phy_cfg[0] |= CAMERA_CSI_C_PHY_CFG_RSU;
 		else if (usuv1)
 			phy_cfg[0] |= CAMERA_CSI_C_PHY_CFG_USU1;
+		else if (usuv2)
+			phy_cfg[0] |= CAMERA_CSI_C_PHY_CFG_USU2;
 		else if (usuv3)
 			phy_cfg[0] |= CAMERA_CSI_C_PHY_CFG_USU3;
 	}
