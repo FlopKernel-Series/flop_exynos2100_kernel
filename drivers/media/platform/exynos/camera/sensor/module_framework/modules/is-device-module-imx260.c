@@ -230,7 +230,7 @@ static int sensor_imx260_power_setpin(struct device *dev,
 #ifdef CONFIG_OIS_USE
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, gpio_none, "OIS_VDD_2.8V", PIN_REGULATOR, 0, 2000);
 	SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, gpio_none, "OIS_VM_2.8V", PIN_REGULATOR, 0, 0);
-#ifdef 
+#ifdef CAMERA_USE_OIS_VDD_1_8V
 	if (sec_get_mcd_feat(MCD_FEAT_TYPE_USU))
 		SET_PIN(pdata, SENSOR_SCENARIO_NORMAL, GPIO_SCENARIO_OFF, gpio_none, "OIS_VDD_1.8V", PIN_REGULATOR, 0, 0);
 #endif /* CAMERA_USE_OIS_VDD_1_8V */
