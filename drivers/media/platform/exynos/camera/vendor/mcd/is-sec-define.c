@@ -1173,11 +1173,12 @@ static int is_vender_replace_sensorid_with_second_sensorid(struct is_vender *ven
 
 	switch (position) {
 #if defined(CAMERA_UWIDE_DUALIZED)
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
-		case SENSOR_POSITION_REAR3:
+	case SENSOR_POSITION_REAR3:
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
 			specific->rear3_sensor_id = CAMERA_UWIDE_DUALIZED;
 			break;
-	}
+		}
+		fallthrough;
 #endif
 	default:
 		err("%s invalid module position(%d) or dualization not supported", __func__ , position);
@@ -1197,12 +1198,10 @@ static int is_vender_get_dualized_sensorid(struct is_vender *vender, int positio
 
 	switch (position) {
 #if defined(CAMERA_UWIDE_DUALIZED)
-	if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU)) {
-		case SENSOR_POSITION_REAR3:
+	case SENSOR_POSITION_REAR3:
+		if (sec_get_mcd_feat(MCD_FEAT_TYPE_RSU))
 			ret = CAMERA_UWIDE_DUALIZED;
-			break;
-	}
-
+		break;
 #endif
 	}
 	if (ret != SENSOR_NAME_NOTHING) {
