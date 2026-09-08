@@ -18,6 +18,7 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
+#include <linux/types.h>
 #include <linux/export.h>
 #include <linux/errno.h>
 

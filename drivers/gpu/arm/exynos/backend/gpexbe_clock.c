@@ -18,6 +18,7 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
+#include <linux/export.h>
 #include <soc/samsung/cal-if.h>
 
 #include <gpexbe_devicetree.h>
@@ -93,6 +94,7 @@ int gpexbe_clock_get_rate(void)
 {
 	return cal_dfs_get_rate(cal_id);
 }
+EXPORT_SYMBOL_GPL(gpexbe_clock_get_rate);
 
 int gpexbe_clock_init(void)
 {

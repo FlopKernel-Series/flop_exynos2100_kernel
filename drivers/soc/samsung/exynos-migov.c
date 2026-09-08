@@ -400,6 +400,8 @@ void migov_set_tunable_data(void)
 /******************************************************************************/
 /*                              Profile functions                             */
 /******************************************************************************/
+static void control_llc(int value);
+
 void migov_update_profile(void)
 {
 	struct domain_data *dom;

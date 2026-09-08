@@ -19,6 +19,7 @@
  */
 
 /* Implements */
+#include <linux/types.h>
 #include <linux/export.h>
 #include <gpexwa_interactive_boost.h>
 

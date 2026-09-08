@@ -18,6 +18,7 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  */
 
+#include <linux/types.h>
 #include <linux/notifier.h>
 #include <linux/ktime.h>
 
@@ -39,9 +40,7 @@ unsigned long exynos_stats_get_job_state_cnt(void)
 {
 	return tsg_info->input_job_nr_acc;
 }
-#if !IS_ENABLED(CONFIG_MALI_VERSION_SELECTOR)
 EXPORT_SYMBOL(exynos_stats_get_job_state_cnt);
-#endif
 
 int exynos_stats_get_gpu_cur_idx(void)
 {

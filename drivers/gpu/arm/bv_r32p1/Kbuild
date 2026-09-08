@@ -141,6 +141,10 @@ ccflags-y += \
 
 subdir-ccflags-y += $(ccflags-y)
 
+# Suppress all EXPORT_SYMBOL from this version module. This prevents non-selected modules from defining conflicting symbols.
+ccflags-y += -include $(srctree)/drivers/gpu/arm/mali_no_export.h
+
+
 #
 # Kernel Modules
 #
