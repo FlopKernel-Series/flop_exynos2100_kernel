@@ -11,8 +11,8 @@ MDIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 $(info -- KDIR: $(KDIR))
 $(info -- MDIR: $(MDIR))
 
-# compliant to last upstream kernel change as of 3497a56
-CFLAGS_ksu.o += -DKSU_VERSION=32603
+# compliant to last upstream kernel change as of aa08b39
+CFLAGS_ksu.o += -DKSU_VERSION=32628
 
 ifndef KSU_EXPECTED_SIZE
 KSU_EXPECTED_SIZE := 0x033b
@@ -108,6 +108,7 @@ CFLAGS_ksu.o += $(call cc-option, -Wno-format)
 CFLAGS_ksu.o += $(call cc-option, -Wno-macro-redefined)
 CFLAGS_ksu.o += $(call cc-option, -Wno-incompatible-pointer-types-discards-qualifiers)
 CFLAGS_ksu.o += $(call cc-option, -Wno-discarded-qualifiers)
+CFLAGS_ksu.o += $(call cc-option, -Wno-deprecated-octal-literals)
 
 # dont be too strict
 CFLAGS_REMOVE_ksu.o += -Werror
@@ -124,6 +125,17 @@ CFLAGS_REMOVE_ksu.o += -Oz
 CFLAGS_REMOVE_ksu.o += -Os
 CFLAGS_ksu.o += -O2
 endif
+
+# attempt to enable gnu17 up to gnu2y
+# we skip setting gnu11 and such due to "error: initializer element is not constant" on gcc 4.9
+# we skip gnu2x here due to its inconsistency
+CFLAGS_ksu.o += $(call cc-option, -std=gnu17)
+CFLAGS_ksu.o += $(call cc-option, -std=gnu23)
+CFLAGS_ksu.o += $(call cc-option, -std=gnu2y)
+
+#ifeq ($(shell $(CC) -v 2>&1 | grep -q 'clang'; echo $$?),0)
+# $(info -- KernelSU/CC: clang!)
+#endif
 
 # always inline atomics
 # clang and gcc CAN try to drop a runtime C11 atomics detector
