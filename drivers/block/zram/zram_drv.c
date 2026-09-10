@@ -1053,6 +1053,7 @@ static void read_from_bdev_async(struct zram *zram, struct page *page,
 	bio->bi_opf = parent->bi_opf;
 	bio->bi_iter.bi_sector = entry * (PAGE_SIZE >> 9);
 	__bio_add_page(bio, page, PAGE_SIZE, 0);
+	bio_set_dev(bio, zram->bdev);
 	bio_chain(bio, parent);
 	submit_bio(bio);
 }
