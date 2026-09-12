@@ -60,6 +60,7 @@ MKDTBOIMG="$(pwd)/build/dtb/mkdtboimg.py"
 
 FK_VER="v1.1.2"
 USE_CCACHE="${USE_CCACHE:-1}"
+USE_THINLTO_CACHE="${USE_THINLTO_CACHE:-0}"
 DO_TAR="${DO_TAR:-1}"
 DO_ZIP="${DO_ZIP:-1}"
 

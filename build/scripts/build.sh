@@ -20,6 +20,12 @@ build() {
     export LLVM=1
     export LLVM_IAS=1
     export ARCH=arm64
+    : "${USE_THINLTO_CACHE:=0}"
+    export USE_THINLTO_CACHE
+
+    if [ "$USE_THINLTO_CACHE" = "1" ]; then
+        log_info "ThinLTO cache enabled"
+    fi
 
     rm -rf "$MOD_OUTDIR" 2>/dev/null
 
@@ -37,6 +43,7 @@ build() {
         LLVM=1
         LLVM_IAS=1
         ARCH=arm64
+        USE_THINLTO_CACHE="$USE_THINLTO_CACHE"
         CROSS_COMPILE="${CCARM64_PREFIX:-aarch64-linux-gnu-}"
         CROSS_COMPILE_ARM32="${CCARM32_PREFIX:-arm-linux-gnueabi-}"
     )
