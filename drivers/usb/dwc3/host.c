@@ -149,7 +149,7 @@ int dwc3_host_init(struct dwc3 *dwc)
 	}
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		/* In data buf alloc */
 		xhci_data.in_data_addr = dma_alloc_coherent(dwc->dev,
 				(PAGE_SIZE * 256), &dma, GFP_KERNEL);

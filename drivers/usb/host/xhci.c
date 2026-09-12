@@ -738,7 +738,7 @@ int xhci_run(struct usb_hcd *hcd)
 			"ERST deq = 64'h%0lx", (unsigned long) temp_64);
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		temp_64 = xhci_read_64(xhci, &xhci->ir_set_audio->erst_dequeue);
 		temp_64 &= ~ERST_PTR_MASK;
 		xhci_info(xhci,	"ERST2 deq = 64'h%0lx", (unsigned long) temp_64);
@@ -752,7 +752,7 @@ int xhci_run(struct usb_hcd *hcd)
 	writel(temp, &xhci->ir_set->irq_control);
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		xhci_info(xhci, "// [USB Audio] Set the interrupt modulation register");
 		temp = readl(&xhci->ir_set_audio->irq_control);
 		temp &= ~ER_IRQ_INTERVAL_MASK;
@@ -778,7 +778,7 @@ int xhci_run(struct usb_hcd *hcd)
 	writel(ER_IRQ_ENABLE(temp), &xhci->ir_set->irq_pending);
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		temp = readl(&xhci->ir_set_audio->irq_pending);
 		xhci_info(xhci, "// [USB Audio] Enabling event ring interrupter %p by writing 0x%x to irq_pending",
 				xhci->ir_set_audio, (unsigned int) ER_IRQ_ENABLE(temp));
@@ -3057,7 +3057,7 @@ int xhci_check_bandwidth(struct usb_hcd *hcd, struct usb_device *udev)
 		goto command_cleanup;
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode())
+	if (!is_usb_aoffload_disabled())
 		xhci_set_deq(xhci, virt_dev->out_ctx,
 			LAST_CTX_TO_EP_NUM(le32_to_cpu(slot_ctx->dev_info)), udev);
 #endif
@@ -4033,7 +4033,7 @@ static void xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
 		return;
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode())
+	if (!is_usb_aoffload_disabled())
 		xhci_free_hw_info(hcd, udev);
 #endif
 
@@ -4486,7 +4486,7 @@ static int xhci_setup_device(struct usb_hcd *hcd, struct usb_device *udev,
 		       "Internal device address = %d",
 		       le32_to_cpu(slot_ctx->dev_state) & DEV_ADDR_MASK);
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode())
+	if (!is_usb_aoffload_disabled())
 		xhci_store_hw_info(hcd, udev);
 #endif
 out:

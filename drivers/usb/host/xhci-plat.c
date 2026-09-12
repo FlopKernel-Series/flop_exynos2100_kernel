@@ -486,7 +486,7 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		ret = of_property_read_u32(parent->of_node,
 					"xhci_use_uram_for_audio", &value);
 		if (ret == 0 && value == 1) {
@@ -547,8 +547,8 @@ skip_uram:
 		goto dealloc_usb2_hcd;
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (is_aosp_mode()) {
-		dev_info(&pdev->dev, "AOSP mode: disable USB Audio offloading\n");
+	if (is_usb_aoffload_disabled()) {
+		dev_info(&pdev->dev, "usb_aoffload_disable=1: disable USB Audio offloading\n");
 	} else {
 		ret = of_property_read_u32(parent->of_node,
 					"usb_audio_offloading", &value);

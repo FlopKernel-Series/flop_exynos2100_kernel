@@ -277,6 +277,35 @@ bool is_usb_sl_disabled(void)
 EXPORT_SYMBOL(is_usb_sl_disabled);
 #endif
 
+static bool usb_aoffload_disable;
+static char usb_aoffload_disable_default_arg[] = "usb_aoffload_disable=0";
+
+static int __init set_usb_aoffload_disable(char *val)
+{
+	int tmp = usb_aoffload_disable;
+
+	if (get_option(&val, &tmp))
+		usb_aoffload_disable = tmp != 0;
+
+	return 0;
+}
+__setup("usb_aoffload_disable=", set_usb_aoffload_disable);
+
+static void __init apply_usb_aoffload_disable_default(void)
+{
+	char *val;
+
+	val = strchr(usb_aoffload_disable_default_arg, '=');
+	if (val)
+		set_usb_aoffload_disable(val + 1);
+}
+
+bool is_usb_aoffload_disabled(void)
+{
+	return usb_aoffload_disable;
+}
+EXPORT_SYMBOL(is_usb_aoffload_disabled);
+
 static int __init set_uname_bpf_spoof(char *val)
 {
 	int tmp = uname_bpf_spoof;
@@ -1179,9 +1208,12 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_aosp_mode_default();
 	apply_usb_sl_disable_default();
 #endif
+	apply_usb_aoffload_disable_default();
 
 	pr_info("Workaround: aosp_mode=%s\n",
 		is_aosp_mode() ? "enabled" : "disabled");
+	pr_info("Workaround: usb_aoffload_disable=%s\n",
+		is_usb_aoffload_disabled() ? "enabled" : "disabled");
 	pr_info("Workaround: dma_buf_env=%s\n",
 		is_dma_buf_env() ? "enabled" : "disabled");
 

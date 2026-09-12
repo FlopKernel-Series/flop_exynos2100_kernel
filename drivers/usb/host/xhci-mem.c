@@ -317,7 +317,7 @@ static void xhci_segment_free(struct xhci_hcd *xhci, struct xhci_segment *seg)
 {
 	if (seg->trbs) {
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-		if (!is_aosp_mode()) {
+		if (!is_usb_aoffload_disabled()) {
 			/* Check URAM address for memory free */
 			if (seg->dma == EXYNOS_URAM_ABOX_EVT_RING_ADDR) {
 				iounmap(seg->trbs);
@@ -750,7 +750,7 @@ struct xhci_container_ctx *xhci_alloc_container_ctx(struct xhci_hcd *xhci,
 	flags &= ~(__GFP_DIRECT_RECLAIM);
 #endif
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		if (type != XHCI_CTX_TYPE_INPUT && xhci->exynos_uram_ctx_alloc == 0 &&
 				xhci->quirks & XHCI_USE_URAM_FOR_EXYNOS_AUDIO) {
 			/* Only first Device Context uses URAM */
@@ -796,7 +796,7 @@ void xhci_free_container_ctx(struct xhci_hcd *xhci,
 		return;
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		/* Ignore dma_pool_free if it is allocated from URAM */
 		if (ctx->dma != EXYNOS_URAM_DEVICE_CTX_ADDR)
 			dma_pool_free(xhci->device_pool, ctx->bytes, ctx->dma);
@@ -1836,7 +1836,7 @@ int xhci_endpoint_init(struct xhci_hcd *xhci,
 
 	/* Set up the endpoint ring */
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		if (xhci->quirks & XHCI_USE_URAM_FOR_EXYNOS_AUDIO) {
 			/* If URAM is not allocated, it try to allocate from URAM */
 			if (xhci->exynos_uram_isoc_out_alloc == 0 &&
@@ -1903,7 +1903,8 @@ int xhci_endpoint_init(struct xhci_hcd *xhci,
 		pr_info("udev = 0x%8x, Ep = 0x%x, desc = 0x%8x, deq = 0x8x\n",
 				udev, ep->desc.bEndpointAddress, &ep->desc, ep_ctx->deq);
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-		if (!is_aosp_mode())
+		/* g_hwinfo only exists when offloading is enabled. */
+		if (!is_usb_aoffload_disabled())
 #endif
 			xhci_usb_parse_endpoint(udev, &ep->desc, 0x100);
 	}
@@ -2229,7 +2230,7 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init, "Freed event ring");
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		if (xhci->quirks & XHCI_USE_URAM_FOR_EXYNOS_AUDIO)
 			iounmap(xhci->erst_audio.entries);
 		else
@@ -2285,7 +2286,7 @@ void xhci_mem_cleanup(struct xhci_hcd *xhci)
 			"Freed medium stream array pool");
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		if (xhci->quirks & XHCI_USE_URAM_FOR_EXYNOS_AUDIO) {
 			iounmap(xhci->dcbaa);
 			if (xhci->usb_audio_ctx_addr != NULL) {
@@ -2875,7 +2876,7 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 	 * "physically contiguous and 64-byte (cache line) aligned".
 	 */
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		if (xhci->quirks & XHCI_USE_URAM_FOR_EXYNOS_AUDIO) {
 			int i;
 
@@ -2982,7 +2983,7 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 	/* Set ir_set to interrupt register set 0 */
 	xhci->ir_set = &xhci->run_regs->ir_set[0];
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode())
+	if (!is_usb_aoffload_disabled())
 		xhci->ir_set_audio = &xhci->run_regs->ir_set[1];
 #endif
 	/*
@@ -3027,7 +3028,7 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 			"Wrote ERST address to ir_set 0.");
 
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
-	if (!is_aosp_mode()) {
+	if (!is_usb_aoffload_disabled()) {
 		xhci->save_addr = dma_pre_alloc_coherent(xhci,
 				sizeof(PAGE_SIZE), &dma, flags);
 		xhci->save_dma = dma;
