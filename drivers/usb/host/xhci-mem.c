@@ -1902,7 +1902,10 @@ int xhci_endpoint_init(struct xhci_hcd *xhci,
 	if (usb_endpoint_xfer_isoc(&ep->desc)) {
 		pr_info("udev = 0x%8x, Ep = 0x%x, desc = 0x%8x, deq = 0x8x\n",
 				udev, ep->desc.bEndpointAddress, &ep->desc, ep_ctx->deq);
-		xhci_usb_parse_endpoint(udev, &ep->desc, 0x100);
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+		if (!is_aosp_mode())
+#endif
+			xhci_usb_parse_endpoint(udev, &ep->desc, 0x100);
 	}
 
 	ep_ctx->tx_info = cpu_to_le32(EP_MAX_ESIT_PAYLOAD_LO(max_esit_payload) |
