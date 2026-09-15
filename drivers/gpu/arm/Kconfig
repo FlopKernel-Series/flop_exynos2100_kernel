@@ -42,7 +42,14 @@ config MALI_MIDGARD_R44P1
 	  Build the Mali Valhall r44p1 kernel-mode driver as a module.
 	  This produces mali_kbase_r44p1.ko.
 
-if MALI_MIDGARD_R38P0 || MALI_MIDGARD_R38P1 || MALI_MIDGARD_R44P1
+config MALI_MIDGARD_R54P3
+	tristate "Mali Valhall r54p3 driver"
+	default n
+	help
+	  Build the Mali Valhall r54p3 kernel-mode driver as a module.
+	  This produces mali_kbase_r54p3.ko.
+
+if MALI_MIDGARD_R38P0 || MALI_MIDGARD_R38P1 || MALI_MIDGARD_R44P1 || MALI_MIDGARD_R54P3
 
 config MALI_MIDGARD
 	tristate
@@ -54,6 +61,7 @@ config MALI_MIDGARD
 	default m if MALI_MIDGARD_R38P0
 	default m if MALI_MIDGARD_R38P1
 	default m if MALI_MIDGARD_R44P1
+	default m if MALI_MIDGARD_R54P3
 
 if MALI_MIDGARD
 
@@ -427,13 +435,13 @@ endif
 
 config MALI_VERSION_SELECTOR
 	bool
-	depends on MALI_MIDGARD_R38P0 || MALI_MIDGARD_R38P1 || MALI_MIDGARD_R44P1
+	depends on MALI_MIDGARD_R38P0 || MALI_MIDGARD_R38P1 || MALI_MIDGARD_R44P1 || MALI_MIDGARD_R54P3
 	default y
 	help
 	  Build the Mali version selector - a small helper that exports the
 	  version selected via FK_FEATURE_MALI_VERSION. Each Mali KMD module
 	  checks this in its probe and only binds if the version matches.
 
-endif # MALI_MIDGARD_R38P0 || MALI_MIDGARD_R38P1 || MALI_MIDGARD_R44P1
+endif # MALI_MIDGARD_R38P0 || MALI_MIDGARD_R38P1 || MALI_MIDGARD_R44P1 || MALI_MIDGARD_R54P3
 
 endmenu
