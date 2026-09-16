@@ -10,6 +10,7 @@
 
 #include <linux/cpu.h>
 #include <linux/device.h>
+#include <linux/jiffies.h>
 #include <linux/workqueue.h>
 #include <linux/moduleparam.h>
 
@@ -35,9 +36,11 @@ static struct {
 	struct work_struct work;
 	int cpu;
 	bool online;
+	unsigned long excluded_since;
 } ecs_prime_hp = {
 	.cpu = -1,
 	.online = true,
+	.excluded_since = 0,
 };
 
 // For easily disabling this feature
@@ -45,6 +48,11 @@ static bool ecs_prime_hotplug_enabled = true;
 module_param_named(ecs_prime_hotplug, ecs_prime_hotplug_enabled, bool, 0644);
 MODULE_PARM_DESC(ecs_prime_hotplug,
 		"Enable prime core hotplug in ECS");
+
+static unsigned int ecs_prime_off_delay_ms = 3000;
+module_param_named(ecs_prime_off_delay_ms, ecs_prime_off_delay_ms, uint, 0644);
+MODULE_PARM_DESC(ecs_prime_off_delay_ms,
+		"Delay before offlining an ECS-excluded prime core (ms)");
 
 #define MAX_ECS_STAGE	VENDOR_NR_CPUS
 
@@ -121,6 +129,19 @@ void ecs_sync_prime_hotplug(void)
 		return;
 
 	want_online = cpumask_test_cpu(ecs_prime_hp.cpu, &ecs.cpus);
+
+	if (want_online) {
+		WRITE_ONCE(ecs_prime_hp.excluded_since, 0);
+	} else {
+		unsigned long since = READ_ONCE(ecs_prime_hp.excluded_since);
+
+		if (!since) {
+			WRITE_ONCE(ecs_prime_hp.excluded_since, jiffies);
+			return;
+		}
+		if (time_before(jiffies, since + msecs_to_jiffies(ecs_prime_off_delay_ms)))
+			return;
+	}
 
 	if (want_online == READ_ONCE(ecs_prime_hp.online) &&
 	    want_online == cpu_online(ecs_prime_hp.cpu))
