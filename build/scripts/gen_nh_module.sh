@@ -23,48 +23,18 @@ FK_VER="$3"
 FIRMWARE_SRC_DIR="${4:-$KERNEL_DIR/build/nh/firmware}"
 MODULES_ORDER="$MODULES_DIR/modules.order"
 
-NETHUNTER_MODULES=(
-    "ar5523.ko"
-    "ath.ko"
-    "ath10k_core.ko"
-    "ath10k_usb.ko"
-    "ath6kl_core.ko"
-    "ath6kl_usb.ko"
-    "ath9k_common.ko"
-    "ath9k_htc.ko"
-    "ath9k_hw.ko"
-    "carl9170.ko"
-    "mt76-usb.ko"
-    "mt76.ko"
-    "mt76x0-common.ko"
-    "mt76x0u.ko"
-    "mt76x02-lib.ko"
-    "mt76x02-usb.ko"
-    "mt76x2-common.ko"
-    "mt76x2u.ko"
-    "mt7601u.ko"
-    "rt2500usb.ko"
-    "rt2800lib.ko"
-    "rt2800usb.ko"
-    "rt2x00lib.ko"
-    "rt2x00usb.ko"
-    "rt73usb.ko"
-    "rtl8187.ko"
-    "rtl8xxxu_git.ko"
-    "rtl8192c-common.ko"
-    "rtl8192cu.ko"
-    "rtl_usb.ko"
-    "rtlwifi.ko"
-    "rtw_8821c.ko"
-    "rtw_8821cu.ko"
-    "rtw_8822b.ko"
-    "rtw_8822bu.ko"
-    "rtw_8822c.ko"
-    "rtw_8822cu.ko"
-    "rtw_core.ko"
-    "rtw_usb.ko"
-    "mac80211.ko"
-)
+if [ -f "${SCRIPT_DIR}/../lib/nethunter_modules.sh" ]; then
+    # shellcheck source=../lib/nethunter_modules.sh
+    source "${SCRIPT_DIR}/../lib/nethunter_modules.sh"
+else
+    log_err "NetHunter module list not found: ${SCRIPT_DIR}/../lib/nethunter_modules.sh"
+    exit 1
+fi
+
+if [ "${#NETHUNTER_MODULES[@]}" -eq 0 ]; then
+    log_err "NetHunter module list is empty"
+    exit 1
+fi
 
 NETHUNTER_FIRMWARE_FILES=(
     "ar5523.bin"
