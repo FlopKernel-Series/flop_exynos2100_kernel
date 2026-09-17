@@ -718,7 +718,6 @@ struct mfc_debugfs {
 	unsigned int feature_option;
 	unsigned int regression_option;
 	unsigned int core_balance;
-	unsigned int sbwc_disable;
 	unsigned int sscd_report;
 };
 
@@ -1276,6 +1275,7 @@ struct mfc_dev {
 	/* Debugfs and dump */
 	struct mfc_debugfs debugfs;
 	struct mfc_dump_ops *dump_ops;
+	unsigned int sbwc_disable;
 
 	/* Instance migration worker */
 	struct workqueue_struct *migration_wq;

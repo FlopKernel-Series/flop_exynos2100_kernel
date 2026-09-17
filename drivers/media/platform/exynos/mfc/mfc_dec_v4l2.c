@@ -260,6 +260,17 @@ static void __mfc_dec_change_format(struct mfc_ctx *ctx)
 					ctx->dst_fmt = __mfc_dec_find_format(ctx, V4L2_PIX_FMT_NV12M_S10B);
 			}
 			break;
+		case V4L2_PIX_FMT_NV12N_SBWC_8B:
+		case V4L2_PIX_FMT_NV12N_SBWC_10B:
+			if (ctx->is_sbwc) {
+				ctx->dst_fmt = __mfc_dec_find_format(ctx, V4L2_PIX_FMT_NV12N_SBWC_10B);
+			} else {
+				if (dev->pdata->P010_decoding)
+					ctx->dst_fmt = __mfc_dec_find_format(ctx, V4L2_PIX_FMT_NV12M_P010);
+				else
+					ctx->dst_fmt = __mfc_dec_find_format(ctx, V4L2_PIX_FMT_NV12N_10B);
+			}
+			break;
 		default:
 			if (dev->pdata->P010_decoding)
 				ctx->dst_fmt = __mfc_dec_find_format(ctx, V4L2_PIX_FMT_NV12M_P010);

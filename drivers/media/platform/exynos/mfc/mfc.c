@@ -846,10 +846,10 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 
 	switch (get_default_sbwc_mode()) {
 	case FK_SBWC_MODE_NO_SBWC:
-		pdata->support_sbwc = 0;
+		mfc->sbwc_disable = 1;
 		break;
 	case FK_SBWC_MODE_NONE:
-		pdata->support_sbwc = 0;
+		mfc->sbwc_disable = 1;
 		pdata->support_sbwcl = 0;
 		break;
 	default:
@@ -1079,7 +1079,7 @@ static ssize_t support_sbwc_show(struct device *device,
 {
 	struct mfc_dev *dev = dev_get_drvdata(device);
 
-	return sprintf(buf, "%u\n", dev->pdata->support_sbwc);
+	return sprintf(buf, "%u\n", !dev->sbwc_disable);
 }
 
 static ssize_t support_sbwc_store(struct device *device,
@@ -1091,12 +1091,36 @@ static ssize_t support_sbwc_store(struct device *device,
 	if (kstrtouint(buf, 0, &val) || val > 1)
 		return -EINVAL;
 
-	dev->pdata->support_sbwc = val;
-	mfc_dev_info("support_sbwc set to %u\n", val);
+	dev->sbwc_disable = !val;
+	mfc_dev_info("support_sbwc set to %u (sbwc_disable=%u)\n", val, dev->sbwc_disable);
 
 	return count;
 }
 static DEVICE_ATTR_RW(support_sbwc);
+
+static ssize_t sbwc_disable_show(struct device *device,
+		struct device_attribute *attr, char *buf)
+{
+	struct mfc_dev *dev = dev_get_drvdata(device);
+
+	return sprintf(buf, "%u\n", dev->sbwc_disable);
+}
+
+static ssize_t sbwc_disable_store(struct device *device,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct mfc_dev *dev = dev_get_drvdata(device);
+	unsigned int val;
+
+	if (kstrtouint(buf, 0, &val) || val > 1)
+		return -EINVAL;
+
+	dev->sbwc_disable = val;
+	mfc_dev_info("sbwc_disable set to %u\n", val);
+
+	return count;
+}
+static DEVICE_ATTR_RW(sbwc_disable);
 
 static ssize_t support_sbwcl_show(struct device *device,
 		struct device_attribute *attr, char *buf)
@@ -1250,6 +1274,8 @@ static int mfc_probe(struct platform_device *pdev)
 
 	if (device_create_file(dev->device, &dev_attr_support_sbwc))
 		dev_err(&pdev->dev, "failed to create support_sbwc sysfs\n");
+	if (device_create_file(dev->device, &dev_attr_sbwc_disable))
+		dev_err(&pdev->dev, "failed to create sbwc_disable sysfs\n");
 	if (device_create_file(dev->device, &dev_attr_support_sbwcl))
 		dev_err(&pdev->dev, "failed to create support_sbwcl sysfs\n");
 
@@ -1298,6 +1324,7 @@ static int mfc_remove(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s++\n", __func__);
 	v4l2_info(&dev->v4l2_dev, "Removing %s\n", pdev->name);
 	device_remove_file(dev->device, &dev_attr_support_sbwc);
+	device_remove_file(dev->device, &dev_attr_sbwc_disable);
 	device_remove_file(dev->device, &dev_attr_support_sbwcl);
 	flush_workqueue(dev->butler_wq);
 	destroy_workqueue(dev->butler_wq);

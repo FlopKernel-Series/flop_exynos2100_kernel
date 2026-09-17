@@ -1545,7 +1545,7 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				ctx->is_sbwc = 0;
 				ctx->sbwc_disabled = 1;
 				mfc_ctx_info("[SBWC] disable sbwc, HDR10\n");
-			} else if (ctx->is_sbwc && dev->debugfs.sbwc_disable) {
+			} else if (ctx->is_sbwc && dev->sbwc_disable) {
 				ctx->is_sbwc = 0;
 				ctx->sbwc_disabled = 1;
 				mfc_ctx_info("[SBWC] disable sbwc, sbwc_disable command was set\n");

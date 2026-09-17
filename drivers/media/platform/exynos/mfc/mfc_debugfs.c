@@ -511,7 +511,7 @@ void mfc_init_debugfs(struct mfc_dev *dev)
 	debugfs->d_logging_option = debugfs_create_u32("logging_option",
 			0644, debugfs->root, &dev->debugfs.logging_option);
 	debugfs->d_sbwc_disable = debugfs_create_u32("sbwc_disable",
-			0644, debugfs->root, &dev->debugfs.sbwc_disable);
+			0644, debugfs->root, &dev->sbwc_disable);
 	debugfs->d_sscd_report = debugfs_create_u32("sscd_report",
 			0644, debugfs->root, &dev->debugfs.sscd_report);
 }
