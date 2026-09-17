@@ -1538,17 +1538,17 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 				(dev->pdata->sbwc_dec_max_width * dev->pdata->sbwc_dec_max_height))) {
 				ctx->is_sbwc = 0;
 				ctx->sbwc_disabled = 1;
-				mfc_debug(2, "[SBWC] disable sbwc, (%dx%d) > (%dx%d)\n",
+				mfc_ctx_info("[SBWC] disable sbwc, (%dx%d) > (%dx%d)\n",
 					ctx->img_width, ctx->img_height,
 					dev->pdata->sbwc_dec_max_width, dev->pdata->sbwc_dec_max_height);
 			} else if (ctx->is_sbwc && is_hdr10_sbwc_off) {
 				ctx->is_sbwc = 0;
 				ctx->sbwc_disabled = 1;
-				mfc_debug(2, "[SBWC] disable sbwc, HDR10\n");
+				mfc_ctx_info("[SBWC] disable sbwc, HDR10\n");
 			} else if (ctx->is_sbwc && dev->debugfs.sbwc_disable) {
 				ctx->is_sbwc = 0;
 				ctx->sbwc_disabled = 1;
-				mfc_debug(2, "[SBWC] disable sbwc, sbwc_disable command was set\n");
+				mfc_ctx_info("[SBWC] disable sbwc, sbwc_disable command was set\n");
 			}
 
 			/* Check number of sbwc instance */
@@ -1562,7 +1562,7 @@ static int __mfc_handle_seq_dec(struct mfc_core *core, struct mfc_ctx *ctx)
 					(num_sbwc_inst > dev->pdata->sbwc_dec_max_inst_num)) {
 				ctx->is_sbwc = 0;
 				ctx->sbwc_disabled = 1;
-				mfc_debug(2, "[SBWC] disable sbwc, num_sbwc_inst: %d/%d\n",
+				mfc_ctx_info("[SBWC] disable sbwc, num_sbwc_inst: %d/%d\n",
 						num_sbwc_inst,
 						dev->pdata->sbwc_dec_max_inst_num);
 			}
