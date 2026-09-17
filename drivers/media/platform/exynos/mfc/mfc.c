@@ -1061,6 +1061,54 @@ static int __mfc_tmu_notifier(struct notifier_block *nb, unsigned long state,
 }
 #endif
 
+static ssize_t support_sbwc_show(struct device *device,
+		struct device_attribute *attr, char *buf)
+{
+	struct mfc_dev *dev = dev_get_drvdata(device);
+
+	return sprintf(buf, "%u\n", dev->pdata->support_sbwc);
+}
+
+static ssize_t support_sbwc_store(struct device *device,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct mfc_dev *dev = dev_get_drvdata(device);
+	unsigned int val;
+
+	if (kstrtouint(buf, 0, &val) || val > 1)
+		return -EINVAL;
+
+	dev->pdata->support_sbwc = val;
+	mfc_dev_info("support_sbwc set to %u\n", val);
+
+	return count;
+}
+static DEVICE_ATTR_RW(support_sbwc);
+
+static ssize_t support_sbwcl_show(struct device *device,
+		struct device_attribute *attr, char *buf)
+{
+	struct mfc_dev *dev = dev_get_drvdata(device);
+
+	return sprintf(buf, "%u\n", dev->pdata->support_sbwcl);
+}
+
+static ssize_t support_sbwcl_store(struct device *device,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct mfc_dev *dev = dev_get_drvdata(device);
+	unsigned int val;
+
+	if (kstrtouint(buf, 0, &val) || val > 1)
+		return -EINVAL;
+
+	dev->pdata->support_sbwcl = val;
+	mfc_dev_info("support_sbwcl set to %u\n", val);
+
+	return count;
+}
+static DEVICE_ATTR_RW(support_sbwcl);
+
 /* MFC probe function */
 static int mfc_probe(struct platform_device *pdev)
 {
@@ -1187,6 +1235,11 @@ static int mfc_probe(struct platform_device *pdev)
 
 	mfc_init_debugfs(dev);
 
+	if (device_create_file(dev->device, &dev_attr_support_sbwc))
+		dev_err(&pdev->dev, "failed to create support_sbwc sysfs\n");
+	if (device_create_file(dev->device, &dev_attr_support_sbwcl))
+		dev_err(&pdev->dev, "failed to create support_sbwcl sysfs\n");
+
 #if IS_ENABLED(CONFIG_EXYNOS_THERMAL_V2)
 	dev->tmu_nb.notifier_call = __mfc_tmu_notifier;
 	exynos_tmu_isp_add_notifier(&dev->tmu_nb);
@@ -1231,6 +1284,8 @@ static int mfc_remove(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "%s++\n", __func__);
 	v4l2_info(&dev->v4l2_dev, "Removing %s\n", pdev->name);
+	device_remove_file(dev->device, &dev_attr_support_sbwc);
+	device_remove_file(dev->device, &dev_attr_support_sbwcl);
 	flush_workqueue(dev->butler_wq);
 	destroy_workqueue(dev->butler_wq);
 	flush_workqueue(dev->migration_wq);
