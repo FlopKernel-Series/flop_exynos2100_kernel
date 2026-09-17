@@ -198,6 +198,8 @@ static bool mass_storage_hack;
 static char mass_storage_hack_default_arg[] = "mass_storage_hack=0";
 static int selinux_mode = FK_SELINUX_MODE_DEFAULT;
 static char selinux_mode_default_arg[] = "selinux_mode=0";
+static int default_sbwc_mode = FK_SBWC_MODE_FULL;
+static char default_sbwc_mode_default_arg[] = "default_sbwc_mode=0";
 static bool init_protection = true;
 static char init_protection_default_arg[] = "init_protection=1";
 static bool init_debug;
@@ -377,6 +379,36 @@ static void __init apply_selinux_mode_default(void)
 		set_selinux_mode(val + 1);
 }
 
+static int __init set_default_sbwc_mode(char *val)
+{
+	int tmp = default_sbwc_mode;
+
+	if (get_option(&val, &tmp)) {
+		switch (tmp) {
+		case FK_SBWC_MODE_FULL:
+		case FK_SBWC_MODE_NO_SBWC:
+		case FK_SBWC_MODE_NONE:
+			default_sbwc_mode = tmp;
+			break;
+		default:
+			default_sbwc_mode = FK_SBWC_MODE_FULL;
+			break;
+		}
+	}
+
+	return 0;
+}
+__setup("default_sbwc_mode=", set_default_sbwc_mode);
+
+static void __init apply_default_sbwc_mode_default(void)
+{
+	char *val;
+
+	val = strchr(default_sbwc_mode_default_arg, '=');
+	if (val)
+		set_default_sbwc_mode(val + 1);
+}
+
 static int __init set_init_protection(char *val)
 {
 	int tmp = init_protection;
@@ -417,6 +449,12 @@ int get_selinux_mode(void)
 {
 	return selinux_mode;
 }
+
+int get_default_sbwc_mode(void)
+{
+	return default_sbwc_mode;
+}
+EXPORT_SYMBOL(get_default_sbwc_mode);
 
 bool init_protection_enabled(void)
 {
@@ -1200,6 +1238,7 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_uname_bpf_spoof_default();
 	apply_mass_storage_hack_default();
 	apply_selinux_mode_default();
+	apply_default_sbwc_mode_default();
 	apply_init_protection_default();
 	apply_init_debug_default();
 	apply_dma_buf_env_default();
@@ -1238,6 +1277,18 @@ asmlinkage __visible void __init start_kernel(void)
 		break;
 	default:
 		pr_info("Workaround: SelinuxMode Default\n");
+		break;
+	}
+
+	switch (get_default_sbwc_mode()) {
+	case FK_SBWC_MODE_NO_SBWC:
+		pr_info("Workaround: DefaultSbwcMode SBWC disabled, SBWCL enabled\n");
+		break;
+	case FK_SBWC_MODE_NONE:
+		pr_info("Workaround: DefaultSbwcMode SBWC disabled, SBWCL disabled\n");
+		break;
+	default:
+		pr_info("Workaround: DefaultSbwcMode SBWC enabled, SBWCL enabled\n");
 		break;
 	}
 

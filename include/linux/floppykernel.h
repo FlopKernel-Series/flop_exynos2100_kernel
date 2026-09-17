@@ -23,12 +23,19 @@ enum fk_feature_id {
 	FK_FEATURE_ENABLE_DMA_BUF = 8,
 	FK_FEATURE_MALI_VERSION = 9,
 	FK_FEATURE_USB_AOFFLOAD_DISABLE = 10,
+	FK_FEATURE_DEFAULT_SBWC_MODE = 11,
 };
 
 enum fk_selinux_mode {
 	FK_SELINUX_MODE_DEFAULT = 0,
 	FK_SELINUX_MODE_ENFORCING = 1,
 	FK_SELINUX_MODE_PERMISSIVE = 2,
+};
+
+enum fk_default_sbwc_mode {
+	FK_SBWC_MODE_FULL = 0,
+	FK_SBWC_MODE_NO_SBWC = 1,
+	FK_SBWC_MODE_NONE = 2,
 };
 
 struct prctl_fk_feature_state {
@@ -48,5 +55,6 @@ struct prctl_fk_feature_info {
 
 bool is_mass_storage_hack_enabled(void);
 int get_selinux_mode(void);
+int get_default_sbwc_mode(void);
 
 #endif /* _FLOPPYKERNEL_H */

@@ -1331,6 +1331,9 @@ static int fk_feature_get_state(u32 feature_id, u64 *value, bool *supported)
 		*supported = false;
 #endif
 		break;
+	case FK_FEATURE_DEFAULT_SBWC_MODE:
+		*value = get_default_sbwc_mode();
+		break;
 	default:
 		*supported = false;
 		break;
@@ -1439,6 +1442,14 @@ static int fk_feature_get_info_by_index(u32 index,
 		return 0;
 	}
 #endif
+	index--;
+	if (index == 0) {
+		info->feature_id = FK_FEATURE_DEFAULT_SBWC_MODE;
+		info->flags = PR_FK_FEATURE_SUPPORTED;
+		info->value = get_default_sbwc_mode();
+		strscpy(info->name, "default_sbwc_mode", sizeof(info->name));
+		return 0;
+	}
 
 	return -ENOENT;
 }
@@ -1485,6 +1496,9 @@ static int fk_feature_get_info_by_id(u32 feature_id,
 		break;
 	case FK_FEATURE_MALI_VERSION:
 		strscpy(info->name, "mali_version", sizeof(info->name));
+		break;
+	case FK_FEATURE_DEFAULT_SBWC_MODE:
+		strscpy(info->name, "default_sbwc_mode", sizeof(info->name));
 		break;
 	default:
 		return 0;

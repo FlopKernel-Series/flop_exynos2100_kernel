@@ -12,6 +12,7 @@
 
 #include <linux/module.h>
 #include <linux/device.h>
+#include <linux/floppykernel.h>
 #include <linux/platform_device.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
@@ -842,6 +843,18 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 	/* SBWC */
 	of_property_read_u32(np, "support_sbwc", &pdata->support_sbwc);
 	of_property_read_u32(np, "support_sbwcl", &pdata->support_sbwcl);
+
+	switch (get_default_sbwc_mode()) {
+	case FK_SBWC_MODE_NO_SBWC:
+		pdata->support_sbwc = 0;
+		break;
+	case FK_SBWC_MODE_NONE:
+		pdata->support_sbwc = 0;
+		pdata->support_sbwcl = 0;
+		break;
+	default:
+		break;
+	}
 
 	/* SBWC */
 	of_property_read_u32(np, "sbwc_dec_max_width", &pdata->sbwc_dec_max_width);
