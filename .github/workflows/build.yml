@@ -1,0 +1,518 @@
+name: Build FloppyKernel
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 5G
+    steps:
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Clean
+        uses: rokibhasansagar/slimhub_actions@main
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ccache-exynos2100
+          restore-keys: |
+            ccache-exynos2100-
+          save-always: true
+
+      - name: Prepare enviroment
+        run: |
+          sudo apt update
+          DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
+            brotli zip zstd tar lz4 cpio xz-utils flex bc kmod ccache binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
+          echo "${{ secrets.CHAT_ID }}" >> "../chat_ci"
+          echo "${{ secrets.TOKEN }}" >> "../bot_token"
+
+      - name: Restore toolchains
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../toolchains
+          key: toolchains-aosp
+          save-always: true
+
+      - name: Setup AOSP Clang toolchain
+        run: |
+          tc_dir="${{ github.workspace }}/../toolchains/aospclang"
+          list_url="$(grep -oP '^AOSP_LIST="\K[^"]+' build/scripts/tc.sh | head -n 1)"
+          want="$(curl -s "$list_url" | grep -oP 'href="[^"]*clang-r[0-9]+/' | grep -oP 'clang-r[0-9]+' | sort -V | tail -n1)"
+          if [ -n "$want" ] && [ -d "$tc_dir" ]; then
+            have="clang-$("$tc_dir/bin/clang" --version 2>/dev/null | grep -oP 'based on \Kr[0-9]+' | head -n1)"
+            if [ "$have" != "$want" ]; then
+              echo "Cached toolchain $have does not match $want, evicting"
+              rm -rf "$tc_dir"
+            fi
+          fi
+
+      - name: Build (KernelSU Next)
+        run: |
+          rm -f build/*.zip build/*.tar build/TARs_*.zip log.txt || true
+          rm -rf build/images || true
+          mkdir -p build/images
+          ./do_build.sh tkq
+
+      - name: Prepare artifacts (KernelSU Next)
+        id: artifacts_tk
+        run: |
+          set -e
+          shopt -s nullglob
+
+          short_sha="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          variant_name="KSUNext"
+
+          zips=(build/*.zip)
+          if [ ${#zips[@]} -ne 1 ]; then
+            echo "ERROR: expected exactly 1 flashable zip, got ${#zips[@]}";
+            ls -la build || true
+            exit 1
+          fi
+          zip_path="${zips[0]}"
+          zip_name="$(basename "$zip_path")"
+          zip_stem="${zip_name%.zip}"
+          echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "zip_name=$zip_name" >> "$GITHUB_OUTPUT"
+          echo "zip_stem=$zip_stem" >> "$GITHUB_OUTPUT"
+
+          tar_files=(build/*.tar)
+          if [ ${#tar_files[@]} -lt 1 ]; then
+            echo "ERROR: expected at least 1 tar, got 0";
+            ls -la build || true
+            exit 1
+          fi
+          tar_bundle="build/Floppy_TARs-${short_sha}-${variant_name}.zip"
+          rm -f "$tar_bundle"
+          zip -j -q "$tar_bundle" "${tar_files[@]}"
+          echo "tar_bundle_path=$tar_bundle" >> "$GITHUB_OUTPUT"
+          echo "tar_bundle_name=$(basename "$tar_bundle")" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare flashable payload (KernelSU Next)
+        run: |
+          rm -rf artifact_payload_tk
+          mkdir -p artifact_payload_tk
+          unzip -q "${{ steps.artifacts_tk.outputs.zip_path }}" -d artifact_payload_tk
+
+      - name: Upload flashable zip (KernelSU Next)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_tk.outputs.zip_stem }}
+          if-no-files-found: error
+          path: artifact_payload_tk/*
+          compression-level: 0
+
+      - name: Upload TAR bundle (KernelSU Next)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_tk.outputs.tar_bundle_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_tk.outputs.tar_bundle_path }}
+
+      - name: Upload flashable zip file (KSUNext)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_tk.outputs.zip_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_tk.outputs.zip_path }}
+
+      - name: Build (ReSukiSU)
+        run: |
+          rm -f build/*.zip build/*.tar build/TARs_*.zip log.txt || true
+          rm -rf build/images || true
+          mkdir -p build/images
+          ./do_build.sh tsq
+
+      - name: Prepare artifacts (ReSukiSU)
+        id: artifacts_ts
+        run: |
+          set -e
+          shopt -s nullglob
+
+          short_sha="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          variant_name="ReSukiSU"
+
+          zips=(build/*.zip)
+          if [ ${#zips[@]} -ne 1 ]; then
+            echo "ERROR: expected exactly 1 flashable zip, got ${#zips[@]}";
+            ls -la build || true
+            exit 1
+          fi
+          zip_path="${zips[0]}"
+          zip_name="$(basename "$zip_path")"
+          zip_stem="${zip_name%.zip}"
+          echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "zip_name=$zip_name" >> "$GITHUB_OUTPUT"
+          echo "zip_stem=$zip_stem" >> "$GITHUB_OUTPUT"
+
+          tar_files=(build/*.tar)
+          if [ ${#tar_files[@]} -lt 1 ]; then
+            echo "ERROR: expected at least 1 tar, got 0";
+            ls -la build || true
+            exit 1
+          fi
+          tar_bundle="build/Floppy_TARs-${short_sha}-${variant_name}.zip"
+          rm -f "$tar_bundle"
+          zip -j -q "$tar_bundle" "${tar_files[@]}"
+          echo "tar_bundle_path=$tar_bundle" >> "$GITHUB_OUTPUT"
+          echo "tar_bundle_name=$(basename "$tar_bundle")" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare flashable payload (ReSukiSU)
+        run: |
+          rm -rf artifact_payload_ts
+          mkdir -p artifact_payload_ts
+          unzip -q "${{ steps.artifacts_ts.outputs.zip_path }}" -d artifact_payload_ts
+
+      - name: Upload flashable zip (ReSukiSU)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_ts.outputs.zip_stem }}
+          if-no-files-found: error
+          path: artifact_payload_ts/*
+          compression-level: 0
+
+      - name: Upload TAR bundle (ReSukiSU)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_ts.outputs.tar_bundle_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_ts.outputs.tar_bundle_path }}
+
+      - name: Upload flashable zip file (ReSukiSU)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_ts.outputs.zip_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_ts.outputs.zip_path }}
+
+      - name: Build (XXKSU)
+        run: |
+          rm -f build/*.zip build/*.tar build/TARs_*.zip log.txt || true
+          rm -rf build/images || true
+          mkdir -p build/images
+          ./do_build.sh txq
+
+      - name: Prepare artifacts (XXKSU)
+        id: artifacts_tu
+        run: |
+          set -e
+          shopt -s nullglob
+
+          short_sha="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          variant_name="XXKSU"
+
+          zips=(build/*.zip)
+          if [ ${#zips[@]} -ne 1 ]; then
+            echo "ERROR: expected exactly 1 flashable zip, got ${#zips[@]}";
+            ls -la build || true
+            exit 1
+          fi
+          zip_path="${zips[0]}"
+          zip_name="$(basename "$zip_path")"
+          zip_stem="${zip_name%.zip}"
+          echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "zip_name=$zip_name" >> "$GITHUB_OUTPUT"
+          echo "zip_stem=$zip_stem" >> "$GITHUB_OUTPUT"
+
+          tar_files=(build/*.tar)
+          if [ ${#tar_files[@]} -lt 1 ]; then
+            echo "ERROR: expected at least 1 tar, got 0";
+            ls -la build || true
+            exit 1
+          fi
+          tar_bundle="build/Floppy_TARs-${short_sha}-${variant_name}.zip"
+          rm -f "$tar_bundle"
+          zip -j -q "$tar_bundle" "${tar_files[@]}"
+          echo "tar_bundle_path=$tar_bundle" >> "$GITHUB_OUTPUT"
+          echo "tar_bundle_name=$(basename "$tar_bundle")" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare flashable payload (XXKSU)
+        run: |
+          rm -rf artifact_payload_tu
+          mkdir -p artifact_payload_tu
+          unzip -q "${{ steps.artifacts_tu.outputs.zip_path }}" -d artifact_payload_tu
+
+      - name: Upload flashable zip (XXKSU)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_tu.outputs.zip_stem }}
+          if-no-files-found: error
+          path: artifact_payload_tu/*
+          compression-level: 0
+
+      - name: Upload TAR bundle (XXKSU)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_tu.outputs.tar_bundle_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_tu.outputs.tar_bundle_path }}
+
+      - name: Upload flashable zip file (XXKSU)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_tu.outputs.zip_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_tu.outputs.zip_path }}
+
+      - name: Build (Vanilla)
+        run: |
+          rm -f build/*.zip build/*.tar build/TARs_*.zip log.txt || true
+          rm -rf build/images || true
+          mkdir -p build/images
+          ./do_build.sh tq
+
+      - name: Prepare artifacts (Vanilla)
+        id: artifacts_t
+        run: |
+          set -e
+          shopt -s nullglob
+
+          short_sha="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          variant_name="Vanilla"
+
+          zips=(build/*.zip)
+          if [ ${#zips[@]} -ne 1 ]; then
+            echo "ERROR: expected exactly 1 flashable zip, got ${#zips[@]}";
+            ls -la build || true
+            exit 1
+          fi
+          zip_path="${zips[0]}"
+          zip_name="$(basename "$zip_path")"
+          zip_stem="${zip_name%.zip}"
+          echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "zip_name=$zip_name" >> "$GITHUB_OUTPUT"
+          echo "zip_stem=$zip_stem" >> "$GITHUB_OUTPUT"
+
+          tar_files=(build/*.tar)
+          if [ ${#tar_files[@]} -lt 1 ]; then
+            echo "ERROR: expected at least 1 tar, got 0";
+            ls -la build || true
+            exit 1
+          fi
+          tar_bundle="build/Floppy_TARs-${short_sha}-${variant_name}.zip"
+          rm -f "$tar_bundle"
+          zip -j -q "$tar_bundle" "${tar_files[@]}"
+          echo "tar_bundle_path=$tar_bundle" >> "$GITHUB_OUTPUT"
+          echo "tar_bundle_name=$(basename "$tar_bundle")" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare flashable payload (Vanilla)
+        run: |
+          rm -rf artifact_payload_t
+          mkdir -p artifact_payload_t
+          unzip -q "${{ steps.artifacts_t.outputs.zip_path }}" -d artifact_payload_t
+
+      - name: Upload flashable zip (Vanilla)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_t.outputs.zip_stem }}
+          if-no-files-found: error
+          path: artifact_payload_t/*
+          compression-level: 0
+
+      - name: Upload TAR bundle (Vanilla)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_t.outputs.tar_bundle_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_t.outputs.tar_bundle_path }}
+
+      - name: Upload flashable zip file (Vanilla)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_t.outputs.zip_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_t.outputs.zip_path }}
+
+      - name: Build NetHunter extras (Vanilla base)
+        run: |
+          ./build/scripts/build_nh.sh
+
+      - name: Prepare artifacts (NetHunter extras)
+        id: artifacts_nh
+        run: |
+          set -e
+          shopt -s nullglob
+
+          nh_zips=(build/nh/out/floppy2100_nethunter-extras-*.zip)
+          if [ ${#nh_zips[@]} -eq 0 ]; then
+            echo "ERROR: no NetHunter extras package found";
+            ls -la build/nh/out || true
+            exit 1
+          fi
+          nh_zip="$(ls -t "${nh_zips[@]}" | head -n 1)"
+          nh_name="$(basename "$nh_zip")"
+          echo "nh_path=$nh_zip" >> "$GITHUB_OUTPUT"
+          echo "nh_name=${nh_name%.zip}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload NetHunter extras
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifacts_nh.outputs.nh_name }}
+          if-no-files-found: error
+          path: ${{ steps.artifacts_nh.outputs.nh_path }}
+
+      - name: Upload NetHunter extras to Telegram
+        env:
+          TELEGRAM_CHAT_ID: ${{ secrets.CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          set -e
+          if [ -z "$TELEGRAM_CHAT_ID" ] || [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "Telegram secrets not set, skipping NetHunter Telegram upload"
+            exit 0
+          fi
+          source build/lib/log.sh
+          source build/scripts/upload.sh
+          FK_VER="$(grep -oP '^FK_VER="\K[^"]+' build/ckbuild.sh | head -n 1)"
+          FK_TYPE="Vanilla"
+          CODENAME="$(grep -oP '^CODENAME="\K[^"]+' build/ckbuild.sh | head -n 1)"
+          VANILLA_ZIP="${{ steps.artifacts_t.outputs.zip_path }}"
+          DATE="$(basename "$VANILLA_ZIP" | grep -oP '[0-9]{8}-[0-9]{4}(?=\.zip$)' || true)"
+          [ -n "$DATE" ] || DATE="$(date -u '+%Y%m%d-%H%M')"
+          ZIP_PATH="$(pwd)/$VANILLA_ZIP"
+          log_info "Uploading Nethunter Extras to Telegram"
+          tgs_nhmod "${{ steps.artifacts_nh.outputs.nh_path }}"
+
+      - name: Show ccache stats
+        run: ccache -s || true
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_payload
+
+      - name: Generate feature patchers
+        run: |
+          rm -rf ak3-patchers
+          git clone -q --branch patchers-floppy --depth 1 https://github.com/FlopKernel-Series/AnyKernel3-exynos2100 ak3-patchers
+          python3 ./ak3-patchers/generate_patchers.py
+          printf 'Generated %d patcher zip(s)\n' "$(find ak3-patchers/patcher_zips -type f -name '*.zip' | wc -l)"
+
+      - name: Publish release to artifacts repo
+        env:
+          GH_TOKEN: ${{ secrets.FLOPPY2100_CI_TOKEN }}
+        run: |
+          set -e
+          TARGET_REPO="FlopKernel-Series/floppy2100-ci"
+
+          sanitize() {
+            local s="$1"
+            s="${s//\//-}"
+            s="$(printf '%s' "$s" | tr -c 'A-Za-z0-9._\n-' '-')"
+            while [[ "$s" == *"--"* ]]; do
+              s="${s//--/-}"
+            done
+            while [[ "$s" == [.-]* ]]; do
+              s="${s#[.-]}"
+            done
+            while [[ "$s" == *[.-] ]]; do
+              s="${s%[.-]}"
+            done
+            printf '%s' "$s"
+          }
+
+          safe_branch="$(sanitize "$GITHUB_REF_NAME")"
+          [ -n "$safe_branch" ] || safe_branch="build"
+          short_sha="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          datestamp="$(date -u '+%Y%m%d')"
+          TAG="${safe_branch}-${datestamp}-${short_sha}"
+          echo "Release tag: $TAG"
+
+          mapfile -t files < <(find release_payload -type f \( -name '*.zip' ! -name 'Floppy_TARs-*.zip' \) | sort)
+          tmp_tars="$(mktemp -d)"
+          while IFS= read -r bundle; do
+            unzip -q "$bundle" -d "$tmp_tars"
+          done < <(find release_payload -type f -name 'Floppy_TARs-*.zip' | sort)
+          mapfile -t tars < <(find "$tmp_tars" -type f -name '*.tar' | sort)
+          files+=("${tars[@]}")
+          mapfile -t patchers < <(find ak3-patchers/patcher_zips -type f -name '*.zip' | sort)
+          files+=("${patchers[@]}")
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "ERROR: no release files found"
+            exit 1
+          fi
+          printf 'Attaching %d file(s)\n' "${#files[@]}"
+
+          REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          COMMIT_URL="${REPO_URL}/commit/${GITHUB_SHA}"
+          BRANCH_URL="${REPO_URL}/tree/${GITHUB_REF_NAME}"
+          RUN_URL="${REPO_URL}/actions/runs/${GITHUB_RUN_ID}"
+
+          prev_tag="$(gh release list --repo "$TARGET_REPO" --exclude-drafts --limit 100 --json tagName,createdAt 2>/dev/null | jq -r --arg cur "$TAG" --arg p "${safe_branch}-" '[sort_by(.createdAt) | reverse | .[].tagName | select(. != $cur and startswith($p))] | .[0] // empty')"
+          if [ -z "$prev_tag" ]; then
+            CHANGELOG_HEAD="Changelog"
+            CHANGELOG="First release from this branch in the pool — nothing to compare against yet."
+          else
+            prev_sha="$(printf '%s' "$prev_tag" | grep -oP '[0-9a-f]{7}$' || true)"
+            if [ -z "$prev_sha" ] || [ "$prev_sha" = "$short_sha" ]; then
+              CHANGELOG_HEAD="Changelog"
+              CHANGELOG="No new commits since ${prev_tag}."
+            elif cmp_json="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${prev_sha}...${GITHUB_SHA}" 2>/dev/null)"; then
+              ahead="$(printf '%s' "$cmp_json" | jq -r '.ahead_by // 0')"
+              if [ "$ahead" = "0" ]; then
+                CHANGELOG_HEAD="Changelog"
+                CHANGELOG="No new commits since ${prev_tag}."
+              else
+                CHANGELOG_HEAD="Changes since ${prev_tag} (${ahead} commit(s))"
+                CHANGELOG="$(printf '%s' "$cmp_json" | jq -r --arg ru "$REPO_URL" '[.commits[] | "- [" + .sha[0:7] + "](" + $ru + "/commit/" + .sha + ") " + (.commit.message | split("\n")[0])] | .[:30] | .[]')"
+                if [ "$ahead" -gt 30 ]; then
+                  CHANGELOG+="$(printf '\n- ...and %d more.' "$((ahead - 30))")"
+                fi
+              fi
+            else
+              CHANGELOG_HEAD="Changelog"
+              CHANGELOG="Could not compare ${prev_tag}...${short_sha} (commit history unavailable)."
+            fi
+          fi
+
+          printf -v NOTES 'FloppyKernel exynos2100 build from [%s](%s)\nBranch: [%s](%s)\nCommit: [`%s`](%s)\nRun: [workflow run](%s)\n\n## %s\n%s' \
+            "$REPO_NAME" "$REPO_URL" "$GITHUB_REF_NAME" "$BRANCH_URL" "$short_sha" "$COMMIT_URL" "$RUN_URL" "$CHANGELOG_HEAD" "$CHANGELOG"
+
+          if gh release view "$TAG" --repo "$TARGET_REPO" >/dev/null 2>&1; then
+            echo "Release $TAG exists, updating files and notes"
+            gh release upload "$TAG" --repo "$TARGET_REPO" --clobber "${files[@]}"
+            gh release edit "$TAG" --repo "$TARGET_REPO" --notes "$NOTES"
+          else
+            gh release create "$TAG" --repo "$TARGET_REPO" --title "$TAG" --notes "$NOTES" "${files[@]}"
+          fi
+
+          default_branch="$(gh api "repos/${GITHUB_REPOSITORY}" --jq .default_branch)"
+          safe_default="$(sanitize "$default_branch")"
+          [ -n "$safe_default" ] || safe_default="build"
+
+          list_json="$(gh release list --repo "$TARGET_REPO" --exclude-drafts --limit 100 --json tagName,createdAt)"
+          total="$(printf '%s' "$list_json" | jq 'length')"
+          echo "Releases in $TARGET_REPO: $total"
+
+          if [ "$total" -gt 10 ]; then
+            protected_list="$(printf '%s' "$list_json" | jq -r --arg p "${safe_default}-" '[sort_by(.createdAt) | reverse | .[].tagName | select(startswith($p))] | .[:5] | .[]')"
+            mapfile -t ordered < <(printf '%s' "$list_json" | jq -r 'sort_by(.createdAt) | .[].tagName')
+            to_delete=$((total - 10))
+            deleted=0
+            for tag in "${ordered[@]}"; do
+              [ "$deleted" -ge "$to_delete" ] && break
+              rest="${tag#"${safe_default}-"}"
+              if [ "$rest" != "$tag" ] && [[ "$rest" =~ ^[0-9]{8}-[0-9a-f]+$ ]] && printf '%s\n' "$protected_list" | grep -Fxq "$tag"; then
+                echo "Keeping protected release: $tag"
+                continue
+              fi
+              echo "Deleting oldest release: $tag"
+              gh release delete "$tag" --yes --cleanup-tag --repo "$TARGET_REPO" || echo "WARNING: failed to delete $tag"
+              deleted=$((deleted + 1))
+            done
+          fi
