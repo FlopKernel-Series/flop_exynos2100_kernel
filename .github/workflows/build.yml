@@ -435,7 +435,11 @@ jobs:
           mapfile -t files < <(find release_payload -type f \( -name '*.zip' ! -name 'Floppy_TARs-*.zip' \) | sort)
           tmp_tars="$(mktemp -d)"
           while IFS= read -r bundle; do
-            unzip -q "$bundle" -d "$tmp_tars"
+            if [[ "$bundle" == *-Vanilla.zip ]]; then
+              unzip -q "$bundle" -d "$tmp_tars"
+            else
+              unzip -q "$bundle" 'FloppyOneUI_*' 'FloppyAOSP_*' -d "$tmp_tars"
+            fi
           done < <(find release_payload -type f -name 'Floppy_TARs-*.zip' | sort)
           mapfile -t tars < <(find "$tmp_tars" -type f -name '*.tar' | sort)
           files+=("${tars[@]}")
