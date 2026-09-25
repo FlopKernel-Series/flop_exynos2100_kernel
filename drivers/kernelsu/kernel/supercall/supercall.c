@@ -25,7 +25,7 @@
 
 #include "tiny_sulog.h"
 
-#if defined(CONFIG_KSU_SUSFS_TRY_UMOUNT) && !defined(CONFIG_KSU_SUSFS)
+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 
 #ifndef __weak
 #define __weak __attribute__((weak))
