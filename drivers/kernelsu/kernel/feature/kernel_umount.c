@@ -22,6 +22,10 @@
 #include "ksu.h"
 #include "compat/kernel_compat.h"
 
+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+extern void susfs_try_umount(uid_t uid);
+#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+
 static bool ksu_kernel_umount_enabled = true;
 
 static int kernel_umount_feature_get(u64 *value)
@@ -79,7 +83,12 @@ static void ksu_sys_umount(const char *mnt, int flags)
 
 #endif
 
+// fs/susfs.c calls this for its try_umount list
+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+void try_umount(const char *mnt, int flags)
+#else
 static void try_umount(const char *mnt, int flags)
+#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 {
 	struct path path;
 	int err = kern_path(mnt, 0, &path);
@@ -103,6 +112,11 @@ static void umount_tw_func(struct callback_head *cb)
 {
 	struct umount_tw *tw = container_of(cb, struct umount_tw, cb);
 	const struct cred *saved = override_creds(ksu_cred);
+
+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+	// susfs try_umount paths go prior to ksu's default umount paths
+	susfs_try_umount(current_uid().val);
+#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 
     struct mount_entry *entry;
     down_read(&mount_list_lock);
