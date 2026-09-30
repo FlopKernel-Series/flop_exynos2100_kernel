@@ -2355,7 +2355,9 @@ static void shrink_active_list(unsigned long nr_to_scan,
 			nr_deactivate, nr_rotated, sc->priority, file);
 }
 
-unsigned long reclaim_pages(struct list_head *page_list)
+static unsigned long __reclaim_pages(struct list_head *page_list,
+				     struct mem_cgroup *memcg,
+				     bool may_writepage, bool may_swap)
 {
 	int nid = -1;
 	unsigned long nr_reclaimed = 0;
@@ -2365,9 +2367,10 @@ unsigned long reclaim_pages(struct list_head *page_list)
 	struct scan_control sc = {
 		.gfp_mask = GFP_KERNEL,
 		.priority = DEF_PRIORITY,
-		.may_writepage = 1,
+		.may_writepage = may_writepage,
 		.may_unmap = 1,
-		.may_swap = 1,
+		.may_swap = may_swap,
+		.target_mem_cgroup = memcg,
 	};
 
 	while (!list_empty(page_list)) {
@@ -2409,6 +2412,18 @@ unsigned long reclaim_pages(struct list_head *page_list)
 	}
 
 	return nr_reclaimed;
+}
+
+unsigned long reclaim_pages(struct list_head *page_list)
+{
+	return __reclaim_pages(page_list, NULL, true, true);
+}
+
+unsigned long reclaim_pages_memcg(struct list_head *page_list,
+				  struct mem_cgroup *memcg,
+				  bool may_writepage, bool may_swap)
+{
+	return __reclaim_pages(page_list, memcg, may_writepage, may_swap);
 }
 
 /*

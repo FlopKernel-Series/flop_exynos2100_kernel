@@ -369,6 +369,9 @@ extern int remove_mapping(struct address_space *mapping, struct page *page);
 extern unsigned long vm_total_pages;
 
 extern unsigned long reclaim_pages(struct list_head *page_list);
+extern unsigned long reclaim_pages_memcg(struct list_head *page_list,
+				  struct mem_cgroup *memcg,
+				  bool may_writepage, bool may_swap);
 #ifdef CONFIG_NUMA
 extern int node_reclaim_mode;
 extern int sysctl_min_unmapped_ratio;
