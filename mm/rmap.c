@@ -541,9 +541,9 @@ struct anon_vma *page_lock_anon_vma_read(struct page *page,
 		goto out;
 	}
 
-	if (kshrink_lruvecd_do_page_trylock(page, NULL, NULL)) {
-		if (rwc)
-			rwc->contended = true;
+	if (rwc && rwc->allow_defer &&
+	    kshrink_lruvecd_do_page_trylock(page, NULL, NULL)) {
+		rwc->contended = true;
 		anon_vma = NULL;
 		goto out;
 	}
@@ -869,6 +869,7 @@ int page_referenced(struct page *page,
 		.arg = (void *)&pra,
 		.anon_lock = page_lock_anon_vma_read,
 		.try_lock = true,
+		.allow_defer = true,
 	};
 
 	*vm_flags = 0;
@@ -1766,6 +1767,7 @@ bool try_to_unmap(struct page *page, enum ttu_flags flags)
 		.arg = (void *)flags,
 		.done = page_not_mapped,
 		.anon_lock = page_lock_anon_vma_read,
+		.allow_defer = flags & TTU_KSHRINK_DEFER,
 	};
 
 	/*
@@ -1949,7 +1951,8 @@ static void rmap_walk_file(struct page *page, struct rmap_walk_control *rwc,
 	pgoff_start = page_to_pgoff(page);
 	pgoff_end = pgoff_start + hpage_nr_pages(page) - 1;
 	if (!locked) {
-		if (kshrink_lruvecd_do_page_trylock(page, &mapping->i_mmap_rwsem,
+		if (rwc->allow_defer &&
+		    kshrink_lruvecd_do_page_trylock(page, &mapping->i_mmap_rwsem,
 						    &got_lock)) {
 			if (!got_lock) {
 				rwc->contended = true;

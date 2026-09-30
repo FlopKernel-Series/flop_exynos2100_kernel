@@ -1451,8 +1451,10 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 
 			if (unlikely(PageTransHuge(page)))
 				flags |= TTU_SPLIT_HUGE_PMD;
-			if (!ignore_references)
+			if (!ignore_references) {
 				kshrink_lruvecd_page_trylock_set(page);
+				flags |= TTU_KSHRINK_DEFER;
+			}
 			if (!try_to_unmap(page, flags)) {
 				stat->nr_unmap_fail += nr_pages;
 				if (!was_swapbacked && PageSwapBacked(page))

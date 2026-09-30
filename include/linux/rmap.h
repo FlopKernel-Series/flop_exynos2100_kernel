@@ -117,6 +117,7 @@ enum ttu_flags {
 					 * caller holds it */
 	TTU_SPLIT_FREEZE	= 0x100, /* freeze pte under splitting thp */
 	TTU_SYNC		= 0x200, /* avoid racy checks with PVMW_SYNC */
+	TTU_KSHRINK_DEFER	= 0x400, /* let kshrink_lruvecd defer on contention */
 };
 
 #ifdef CONFIG_MMU
@@ -275,6 +276,7 @@ int page_mapped_in_vma(struct page *page, struct vm_area_struct *vma);
  * arg: passed to rmap_one() and invalid_vma()
  * try_lock: bail out if the rmap lock is contended
  * contended: indicate the rmap traversal bailed out due to lock contention
+ * allow_defer: let kshrink_lruvecd defer the walk on lock contention
  * rmap_one: executed on each vma where page is mapped
  * done: for checking traversing termination condition
  * anon_lock: for getting anon_lock by optimized way rather than default
@@ -284,6 +286,7 @@ struct rmap_walk_control {
 	void *arg;
 	bool try_lock;
 	bool contended;
+	bool allow_defer;
 	/*
 	 * Return false if page table scanning in rmap_walk should be stopped.
 	 * Otherwise, return true.
