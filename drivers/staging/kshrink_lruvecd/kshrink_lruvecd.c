@@ -19,8 +19,6 @@
 #include <linux/wait.h>
 
 #define KSHRINK_LRUVECD_HIGH		0x1000
-#define KSHRINK_LRUVECD_DELAY_BIT	8
-#define KSHRINK_LRUVECD_SKIP_BIT	9
 
 static LIST_HEAD(lru_inactive);
 static struct task_struct *shrink_lruvec_tsk;
@@ -60,7 +58,7 @@ static inline void kshrink_lruvecd_set_delay(struct page *page)
 	if (unlikely(!page_ext))
 		return;
 
-	set_bit(KSHRINK_LRUVECD_DELAY_BIT, &page_ext->flags);
+	set_bit(PAGE_EXT_KSHRINK_LRUVECD_DELAY, &page_ext->flags);
 }
 
 static inline void kshrink_lruvecd_clear_delay(struct page *page)
@@ -70,7 +68,7 @@ static inline void kshrink_lruvecd_clear_delay(struct page *page)
 	if (unlikely(!page_ext))
 		return;
 
-	clear_bit(KSHRINK_LRUVECD_DELAY_BIT, &page_ext->flags);
+	clear_bit(PAGE_EXT_KSHRINK_LRUVECD_DELAY, &page_ext->flags);
 }
 
 static inline bool kshrink_lruvecd_test_clear_delay(struct page *page)
@@ -80,7 +78,8 @@ static inline bool kshrink_lruvecd_test_clear_delay(struct page *page)
 	if (unlikely(!page_ext))
 		return false;
 
-	return test_and_clear_bit(KSHRINK_LRUVECD_DELAY_BIT, &page_ext->flags);
+	return test_and_clear_bit(PAGE_EXT_KSHRINK_LRUVECD_DELAY,
+				 &page_ext->flags);
 }
 
 static inline void kshrink_lruvecd_set_skipped(struct page *page)
@@ -90,7 +89,7 @@ static inline void kshrink_lruvecd_set_skipped(struct page *page)
 	if (unlikely(!page_ext))
 		return;
 
-	set_bit(KSHRINK_LRUVECD_SKIP_BIT, &page_ext->flags);
+	set_bit(PAGE_EXT_KSHRINK_LRUVECD_SKIP, &page_ext->flags);
 }
 
 static inline void kshrink_lruvecd_clear_skipped(struct page *page)
@@ -100,7 +99,7 @@ static inline void kshrink_lruvecd_clear_skipped(struct page *page)
 	if (unlikely(!page_ext))
 		return;
 
-	clear_bit(KSHRINK_LRUVECD_SKIP_BIT, &page_ext->flags);
+	clear_bit(PAGE_EXT_KSHRINK_LRUVECD_SKIP, &page_ext->flags);
 }
 
 static inline bool kshrink_lruvecd_test_clear_skipped(struct page *page)
@@ -110,7 +109,8 @@ static inline bool kshrink_lruvecd_test_clear_skipped(struct page *page)
 	if (unlikely(!page_ext))
 		return false;
 
-	return test_and_clear_bit(KSHRINK_LRUVECD_SKIP_BIT, &page_ext->flags);
+	return test_and_clear_bit(PAGE_EXT_KSHRINK_LRUVECD_SKIP,
+				 &page_ext->flags);
 }
 
 static inline bool kshrink_lruvecd_skipped(struct page *page)
@@ -120,7 +120,7 @@ static inline bool kshrink_lruvecd_skipped(struct page *page)
 	if (unlikely(!page_ext))
 		return false;
 
-	return test_bit(KSHRINK_LRUVECD_SKIP_BIT, &page_ext->flags);
+	return test_bit(PAGE_EXT_KSHRINK_LRUVECD_SKIP, &page_ext->flags);
 }
 
 static void add_to_lruvecd_inactive_list(struct page *page)

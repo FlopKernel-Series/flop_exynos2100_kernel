@@ -23,6 +23,8 @@ enum page_ext_flags {
 	PAGE_EXT_YOUNG,
 	PAGE_EXT_IDLE,
 #endif
+	PAGE_EXT_KSHRINK_LRUVECD_DELAY,
+	PAGE_EXT_KSHRINK_LRUVECD_SKIP,
 };
 
 /*
