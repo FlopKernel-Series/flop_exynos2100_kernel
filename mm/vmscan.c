@@ -1506,6 +1506,8 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			case PAGE_ACTIVATE:
 				goto activate_locked;
 			case PAGE_SUCCESS:
+				/* the keep jumps below bypass the keep_locked drain */
+				kshrink_lruvecd_page_trylock_clear(page);
 				if (PageWriteback(page))
 					goto keep;
 				if (PageDirty(page))
@@ -1788,6 +1790,9 @@ int __isolate_lru_page_prepare(struct page *page, isolate_mode_t mode)
 	if ((mode & ISOLATE_UNMAPPED) && page_mapped(page))
 		return ret;
 
+	/* Stale defer state from a previous scan must not escape. */
+	kshrink_lruvecd_page_trylock_clear(page);
+
 	return 0;
 }
 
@@ -1997,6 +2002,7 @@ int isolate_lru_page(struct page *page)
 		lruvec = lock_page_lruvec_irq(page);
 		del_page_from_lru_list(page, lruvec);
 		unlock_page_lruvec_irq(lruvec);
+		kshrink_lruvecd_page_trylock_clear(page);
 		ret = 0;
 	}
 
@@ -4873,6 +4879,8 @@ static bool isolate_page(struct lruvec *lruvec, struct page *page, struct scan_c
 
 	success = lru_gen_del_page(lruvec, page, true);
 	VM_WARN_ON_ONCE_PAGE(!success, page);
+
+	kshrink_lruvecd_page_trylock_clear(page);
 
 	return true;
 }
