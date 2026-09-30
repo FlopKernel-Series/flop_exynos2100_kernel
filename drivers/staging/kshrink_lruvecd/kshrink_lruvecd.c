@@ -25,6 +25,8 @@
 static LIST_HEAD(lru_inactive);
 static struct task_struct *shrink_lruvec_tsk;
 static bool kshrink_lruvecd_setup;
+static bool kshrink_lruvecd_enabled = true;
+module_param_named(enabled, kshrink_lruvecd_enabled, bool, 0644);
 static atomic_t shrink_lruvec_runnable = ATOMIC_INIT(0);
 static unsigned long shrink_lruvec_pages;
 static unsigned long shrink_lruvec_pages_max;
@@ -215,7 +217,7 @@ retry_reclaim:
 
 void kshrink_lruvecd_page_trylock_set(struct page *page)
 {
-	if (unlikely(!kshrink_lruvecd_setup))
+	if (unlikely(!kshrink_lruvecd_setup || !kshrink_lruvecd_enabled))
 		return;
 
 	kshrink_lruvecd_clear_skipped(page);
@@ -241,7 +243,7 @@ bool kshrink_lruvecd_do_page_trylock(struct page *page,
 	if (got_lock)
 		*got_lock = false;
 
-	if (unlikely(!kshrink_lruvecd_setup))
+	if (unlikely(!kshrink_lruvecd_setup || !kshrink_lruvecd_enabled))
 		return false;
 
 	if (!kshrink_lruvecd_test_clear_delay(page))
@@ -320,10 +322,12 @@ static int kshrink_lruvecd_status_show(struct seq_file *m, void *unused)
 {
 	seq_printf(m,
 		   "kshrink_lruvecd_setup: %s\n"
+		   "kshrink_lruvecd_enabled: %s\n"
 		   "shrink_lruvec_pages: %lu\n"
 		   "shrink_lruvec_handle_pages: %lu\n"
 		   "shrink_lruvec_pages_max: %lu\n\n",
 		   kshrink_lruvecd_setup ? "enable" : "disable",
+		   kshrink_lruvecd_enabled ? "enable" : "disable",
 		   shrink_lruvec_pages,
 		   shrink_lruvec_handle_pages,
 		   shrink_lruvec_pages_max);

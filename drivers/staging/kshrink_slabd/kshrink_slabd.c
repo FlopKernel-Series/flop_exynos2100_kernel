@@ -33,6 +33,8 @@ struct kshrink_slabd_params {
 
 static struct task_struct *kshrink_slabd_tsk;
 static bool kshrink_slabd_setup;
+static bool kshrink_slabd_enabled = true;
+module_param_named(enabled, kshrink_slabd_enabled, bool, 0644);
 static wait_queue_head_t kshrink_slabd_wait;
 static DEFINE_SPINLOCK(kshrink_slabd_lock);
 static struct kshrink_slabd_params kshrink_slabd = {
@@ -161,7 +163,7 @@ bool kshrink_slabd_bypass(gfp_t gfp_mask, int nid,
 	unsigned long curr_jiffies;
 	unsigned long diff_jiffies;
 
-	if (unlikely(!kshrink_slabd_setup))
+	if (unlikely(!kshrink_slabd_setup || !kshrink_slabd_enabled))
 		return false;
 
 	curr_jiffies = jiffies;
