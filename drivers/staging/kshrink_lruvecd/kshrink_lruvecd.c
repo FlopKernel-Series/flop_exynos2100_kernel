@@ -241,8 +241,9 @@ static int shrink_lruvecd(void *unused)
 retry_reclaim:
 		spin_lock_irq(&lru_inactive_lock);
 		if (list_empty(&lru_inactive)) {
-			spin_unlock_irq(&lru_inactive_lock);
+			/* Clear under the lock or a queueing wakeup is lost. */
 			atomic_set(&shrink_lruvec_runnable, 0);
+			spin_unlock_irq(&lru_inactive_lock);
 			continue;
 		}
 
