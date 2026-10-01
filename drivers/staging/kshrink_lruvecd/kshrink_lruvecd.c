@@ -9,6 +9,7 @@
 #include <linux/init.h>
 #include <linux/kshrink_lruvecd.h>
 #include <linux/kthread.h>
+#include <linux/memcontrol.h>
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/page_ext.h>
@@ -19,6 +20,14 @@
 #include <linux/wait.h>
 
 #define KSHRINK_LRUVECD_HIGH		0x1000
+#define KSHRINK_LRUVECD_MAX_GROUPS	8
+
+struct kshrink_lruvecd_group {
+	struct list_head pages;
+	struct mem_cgroup *memcg;
+	bool may_writepage;
+	bool may_swap;
+};
 
 static LIST_HEAD(lru_inactive);
 static struct task_struct *shrink_lruvec_tsk;
@@ -222,8 +231,11 @@ static void bind_kshrink_lruvecd_cpus(void)
 
 static int shrink_lruvecd(void *unused)
 {
-	LIST_HEAD(tmp_lru_inactive);
+	struct kshrink_lruvecd_group groups[KSHRINK_LRUVECD_MAX_GROUPS];
 	struct page *page, *next;
+	LIST_HEAD(tmp_lru_inactive);
+	LIST_HEAD(leftover);
+	int ngroups, g;
 
 	current->flags |= PF_MEMALLOC | PF_SWAPWRITE | PF_KSWAPD;
 	set_freezable();
@@ -250,11 +262,62 @@ retry_reclaim:
 		list_for_each_entry_safe(page, next, &lru_inactive, lru) {
 			list_move(&page->lru, &tmp_lru_inactive);
 			shrink_lruvec_pages -= hpage_nr_pages(page);
-			shrink_lruvec_handle_pages += hpage_nr_pages(page);
 		}
 		spin_unlock_irq(&lru_inactive_lock);
 
-		reclaim_pages(&tmp_lru_inactive);
+		ngroups = 0;
+		list_for_each_entry_safe(page, next, &tmp_lru_inactive, lru) {
+			struct mem_cgroup *memcg = page_memcg(page);
+			bool may_writepage, may_swap;
+
+			/* Root behaves as global reclaim. */
+			if (memcg && mem_cgroup_is_root(memcg))
+				memcg = NULL;
+
+			kshrink_lruvecd_get_policy(page, &may_writepage,
+						   &may_swap);
+
+			for (g = 0; g < ngroups; g++) {
+				if (groups[g].memcg == memcg &&
+				    groups[g].may_writepage == may_writepage &&
+				    groups[g].may_swap == may_swap)
+					break;
+			}
+
+			if (g == ngroups) {
+				if (ngroups == KSHRINK_LRUVECD_MAX_GROUPS) {
+					list_move(&page->lru, &leftover);
+					continue;
+				}
+				INIT_LIST_HEAD(&groups[ngroups].pages);
+				groups[ngroups].memcg = memcg;
+				groups[ngroups].may_writepage = may_writepage;
+				groups[ngroups].may_swap = may_swap;
+				if (memcg)
+					css_get(&memcg->css);
+				ngroups++;
+			}
+
+			list_move(&page->lru, &groups[g].pages);
+			shrink_lruvec_handle_pages += hpage_nr_pages(page);
+		}
+
+		for (g = 0; g < ngroups; g++) {
+			reclaim_pages_memcg(&groups[g].pages, groups[g].memcg,
+					    groups[g].may_writepage,
+					    groups[g].may_swap);
+			if (groups[g].memcg)
+				mem_cgroup_put(groups[g].memcg);
+		}
+
+		/* Spill excess groups back to the queue head for the next pass. */
+		if (!list_empty(&leftover)) {
+			spin_lock_irq(&lru_inactive_lock);
+			list_for_each_entry_safe(page, next, &leftover, lru)
+				add_to_lruvecd_inactive_list(page);
+			spin_unlock_irq(&lru_inactive_lock);
+		}
+
 		goto retry_reclaim;
 	}
 
