@@ -7,10 +7,12 @@
 #include <linux/module.h>
 #include <linux/cpufreq.h>
 #include <linux/freezer.h>
+#include <linux/hash.h>
 #include <linux/init.h>
 #include <linux/jiffies.h>
 #include <linux/kshrink_slabd.h>
 #include <linux/kthread.h>
+#include <linux/log2.h>
 #include <linux/memcontrol.h>
 #include <linux/sched.h>
 #include <linux/spinlock.h>
@@ -18,6 +20,12 @@
 #include <linux/wait.h>
 
 #define KSHRINK_SLABD_NAME "kshrink_slabd"
+#define KSHRINK_SLABD_STAMPS 64
+
+struct kshrink_slabd_stamp {
+	struct mem_cgroup *memcg;
+	unsigned long at;
+};
 
 struct kshrink_slabd_params {
 	struct mem_cgroup *memcg;
@@ -42,29 +50,52 @@ static inline bool is_kshrink_slabd_task(struct task_struct *tsk)
 	return kshrink_slabd_tsk && tsk->pid == kshrink_slabd_tsk->pid;
 }
 
+/* Slot collisions share a window and can only relax the limit. */
+static struct kshrink_slabd_stamp kshrink_slabd_stamps[KSHRINK_SLABD_STAMPS];
+
+/* kshrink_slabd_lock held */
+static bool kshrink_slabd_rate_ok(struct mem_cgroup *memcg)
+{
+	unsigned long now = jiffies;
+	unsigned int slot = hash_long((unsigned long)memcg,
+				      ilog2(KSHRINK_SLABD_STAMPS));
+	struct kshrink_slabd_stamp *stamp = &kshrink_slabd_stamps[slot];
+
+	if (stamp->memcg == memcg && now - stamp->at < HZ)
+		return false;
+
+	stamp->memcg = memcg;
+	stamp->at = now;
+	return true;
+}
+
 static bool wakeup_kshrink_slabd(gfp_t gfp_mask, int nid,
 				 struct mem_cgroup *memcg, int priority)
 {
 	unsigned long flags;
+	bool queued = false;
 
 	if (memcg && !mem_cgroup_is_root(memcg) &&
 	    !css_tryget_online(&memcg->css))
 		return false;
 
 	spin_lock_irqsave(&kshrink_slabd_lock, flags);
-	if (atomic_read(&kshrink_slabd.runnable) == 1) {
-		spin_unlock_irqrestore(&kshrink_slabd_lock, flags);
+	if (atomic_read(&kshrink_slabd.runnable) == 0 &&
+	    kshrink_slabd_rate_ok(memcg)) {
+		kshrink_slabd.gfp_mask = gfp_mask;
+		kshrink_slabd.nid = nid;
+		kshrink_slabd.memcg = memcg;
+		kshrink_slabd.priority = priority;
+		atomic_set(&kshrink_slabd.runnable, 1);
+		queued = true;
+	}
+	spin_unlock_irqrestore(&kshrink_slabd_lock, flags);
+
+	if (!queued) {
 		if (memcg && !mem_cgroup_is_root(memcg))
 			mem_cgroup_put(memcg);
 		return false;
 	}
-
-	kshrink_slabd.gfp_mask = gfp_mask;
-	kshrink_slabd.nid = nid;
-	kshrink_slabd.memcg = memcg;
-	kshrink_slabd.priority = priority;
-	atomic_set(&kshrink_slabd.runnable, 1);
-	spin_unlock_irqrestore(&kshrink_slabd_lock, flags);
 
 	wake_up_interruptible(&kshrink_slabd_wait);
 
@@ -155,18 +186,10 @@ static int kshrink_slabd_thread(void *unused)
 bool kshrink_slabd_bypass(gfp_t gfp_mask, int nid,
 			  struct mem_cgroup *memcg, int priority)
 {
-	static unsigned long prev_jiffies;
-	unsigned long curr_jiffies;
-	unsigned long diff_jiffies;
-
 	if (unlikely(!kshrink_slabd_setup || !kshrink_slabd_enabled))
 		return false;
 
-	curr_jiffies = jiffies;
-	diff_jiffies = curr_jiffies - READ_ONCE(prev_jiffies);
-	WRITE_ONCE(prev_jiffies, curr_jiffies);
-
-	if (is_kshrink_slabd_task(current) || diff_jiffies < HZ)
+	if (is_kshrink_slabd_task(current))
 		return false;
 
 	return wakeup_kshrink_slabd(gfp_mask, nid, memcg, priority);
