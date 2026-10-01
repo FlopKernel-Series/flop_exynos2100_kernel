@@ -19,10 +19,6 @@
 
 #define KSHRINK_SLABD_NAME "kshrink_slabd"
 
-extern unsigned long shrink_slab(gfp_t gfp_mask, int nid,
-				 struct mem_cgroup *memcg,
-				 int priority);
-
 struct kshrink_slabd_params {
 	struct mem_cgroup *memcg;
 	gfp_t gfp_mask;
