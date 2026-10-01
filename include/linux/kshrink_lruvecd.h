@@ -10,7 +10,8 @@ struct page_ext_operations;
 struct rw_semaphore;
 
 #ifdef CONFIG_KSHRINK_LRUVECD
-void kshrink_lruvecd_page_trylock_set(struct page *page);
+void kshrink_lruvecd_page_trylock_set(struct page *page,
+				      bool may_writepage, bool may_swap);
 void kshrink_lruvecd_page_trylock_clear(struct page *page);
 bool kshrink_lruvecd_page_trylock_get_result(struct page *page);
 bool kshrink_lruvecd_do_page_trylock(struct page *page,
@@ -22,7 +23,8 @@ void kshrink_lruvecd_handle_failed_page_trylock(struct list_head *page_list);
 extern struct page_ext_operations kshrink_lruvecd_page_ext_ops;
 #endif
 #else
-static inline void kshrink_lruvecd_page_trylock_set(struct page *page)
+static inline void kshrink_lruvecd_page_trylock_set(struct page *page,
+					      bool may_writepage, bool may_swap)
 {
 }
 

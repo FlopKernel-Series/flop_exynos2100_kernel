@@ -123,6 +123,53 @@ static inline bool kshrink_lruvecd_skipped(struct page *page)
 	return test_bit(PAGE_EXT_KSHRINK_LRUVECD_SKIP, &page_ext->flags);
 }
 
+static inline void kshrink_lruvecd_set_policy(struct page *page,
+					      bool may_writepage, bool may_swap)
+{
+	struct page_ext *page_ext = kshrink_lruvecd_lookup_page_ext(page);
+
+	if (unlikely(!page_ext))
+		return;
+
+	if (may_writepage)
+		set_bit(PAGE_EXT_KSHRINK_LRUVECD_WRITEPAGE, &page_ext->flags);
+	else
+		clear_bit(PAGE_EXT_KSHRINK_LRUVECD_WRITEPAGE, &page_ext->flags);
+
+	if (may_swap)
+		set_bit(PAGE_EXT_KSHRINK_LRUVECD_SWAP, &page_ext->flags);
+	else
+		clear_bit(PAGE_EXT_KSHRINK_LRUVECD_SWAP, &page_ext->flags);
+}
+
+static inline void kshrink_lruvecd_clear_policy(struct page *page)
+{
+	struct page_ext *page_ext = kshrink_lruvecd_lookup_page_ext(page);
+
+	if (unlikely(!page_ext))
+		return;
+
+	clear_bit(PAGE_EXT_KSHRINK_LRUVECD_WRITEPAGE, &page_ext->flags);
+	clear_bit(PAGE_EXT_KSHRINK_LRUVECD_SWAP, &page_ext->flags);
+}
+
+static inline void kshrink_lruvecd_get_policy(struct page *page,
+					      bool *may_writepage,
+					      bool *may_swap)
+{
+	struct page_ext *page_ext = kshrink_lruvecd_lookup_page_ext(page);
+
+	if (unlikely(!page_ext)) {
+		*may_writepage = true;
+		*may_swap = true;
+		return;
+	}
+
+	*may_writepage = test_bit(PAGE_EXT_KSHRINK_LRUVECD_WRITEPAGE,
+				 &page_ext->flags);
+	*may_swap = test_bit(PAGE_EXT_KSHRINK_LRUVECD_SWAP, &page_ext->flags);
+}
+
 static void add_to_lruvecd_inactive_list(struct page *page)
 {
 	list_move(&page->lru, &lru_inactive);
@@ -215,7 +262,8 @@ retry_reclaim:
 	return 0;
 }
 
-void kshrink_lruvecd_page_trylock_set(struct page *page)
+void kshrink_lruvecd_page_trylock_set(struct page *page,
+				      bool may_writepage, bool may_swap)
 {
 	if (unlikely(!kshrink_lruvecd_setup || !kshrink_lruvecd_enabled))
 		return;
@@ -227,6 +275,7 @@ void kshrink_lruvecd_page_trylock_set(struct page *page)
 		return;
 	}
 
+	kshrink_lruvecd_set_policy(page, may_writepage, may_swap);
 	kshrink_lruvecd_set_delay(page);
 }
 
@@ -234,6 +283,7 @@ void kshrink_lruvecd_page_trylock_clear(struct page *page)
 {
 	kshrink_lruvecd_clear_delay(page);
 	kshrink_lruvecd_clear_skipped(page);
+	kshrink_lruvecd_clear_policy(page);
 }
 
 bool kshrink_lruvecd_do_page_trylock(struct page *page,

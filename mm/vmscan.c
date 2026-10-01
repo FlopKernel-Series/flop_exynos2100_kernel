@@ -1113,7 +1113,7 @@ static enum page_references page_check_references(struct page *page,
 	unsigned long vm_flags;
 	bool trylock_fail;
 
-	kshrink_lruvecd_page_trylock_set(page);
+	kshrink_lruvecd_page_trylock_set(page, sc->may_writepage, sc->may_swap);
 	referenced_ptes = page_referenced(page, 1, sc->target_mem_cgroup,
 					  &vm_flags);
 	referenced_page = TestClearPageReferenced(page);
@@ -1452,7 +1452,8 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			if (unlikely(PageTransHuge(page)))
 				flags |= TTU_SPLIT_HUGE_PMD;
 			if (!ignore_references) {
-				kshrink_lruvecd_page_trylock_set(page);
+				kshrink_lruvecd_page_trylock_set(page, sc->may_writepage,
+								 sc->may_swap);
 				flags |= TTU_KSHRINK_DEFER;
 			}
 			if (!try_to_unmap(page, flags)) {
@@ -2299,7 +2300,8 @@ static void shrink_active_list(unsigned long nr_to_scan,
 			}
 		}
 
-		kshrink_lruvecd_page_trylock_set(page);
+		kshrink_lruvecd_page_trylock_set(page, sc->may_writepage,
+						 sc->may_swap);
 		/* Referenced or rmap lock contention: rotate */
 		if (page_referenced(page, 0, sc->target_mem_cgroup,
 				     &vm_flags) != 0) {
