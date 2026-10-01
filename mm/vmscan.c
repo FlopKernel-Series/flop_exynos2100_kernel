@@ -5105,6 +5105,9 @@ retry:
 	reclaimed = shrink_page_list(&list, pgdat, sc, 0, &stat, false);
 	sc->nr_reclaimed += reclaimed;
 
+	/* Harvest before the rejection loop or deferred pages get marked hot. */
+	kshrink_lruvecd_handle_failed_page_trylock(&list);
+
 	list_for_each_entry_safe_reverse(page, next, &list, lru) {
 		if (!page_evictable(page)) {
 			list_del(&page->lru);
