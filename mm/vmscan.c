@@ -2777,7 +2777,7 @@ static ssize_t kswapd_threads_store(struct kobject *kobj,
 				    struct kobj_attribute *attr,
 				    const char *buf, size_t count)
 {
-	int threads, nid, err;
+	int threads, nid, err, old_threads;
 
 	err = kstrtoint(buf, 10, &threads);
 	if (err || threads < 1 || threads > MAX_KSWAPD_THREADS)
@@ -2790,6 +2790,8 @@ static ssize_t kswapd_threads_store(struct kobject *kobj,
 		return count;
 	}
 
+	old_threads = kswapd_threads;
+
 	/* Stop all currently running kswapd threads */
 	for_each_node_state(nid, N_MEMORY)
 		kswapd_per_node_stop(nid);
@@ -2797,14 +2799,34 @@ static ssize_t kswapd_threads_store(struct kobject *kobj,
 	WRITE_ONCE(kswapd_threads, threads);
 
 	/* Restart with the new thread count */
-	for_each_node_state(nid, N_MEMORY)
-		kswapd_per_node_run(nid);
+	for_each_node_state(nid, N_MEMORY) {
+		err = kswapd_per_node_run(nid);
+		if (err)
+			goto rollback;
+	}
 
 	pr_info("kswapd: reconfigured to %d threads per node\n", kswapd_threads);
 
 	mutex_unlock(&kswapd_threads_mutex);
 
 	return count;
+
+rollback:
+	pr_err("kswapd: failed to switch to %d threads per node: %d\n",
+	       threads, err);
+
+	/* Fall back to the previous thread count */
+	for_each_node_state(nid, N_MEMORY)
+		kswapd_per_node_stop(nid);
+
+	WRITE_ONCE(kswapd_threads, old_threads);
+
+	for_each_node_state(nid, N_MEMORY)
+		kswapd_per_node_run(nid);
+
+	mutex_unlock(&kswapd_threads_mutex);
+
+	return err;
 }
 
 static struct kobj_attribute kswapd_threads_attr =
