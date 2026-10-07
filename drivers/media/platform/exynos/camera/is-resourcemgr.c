@@ -1089,8 +1089,9 @@ int is_heap_mem_free(struct is_resourcemgr *resourcemgr)
 	if (minfo->pb_heap_rta)
 		CALL_VOID_BUFOP(minfo->pb_heap_rta, free, minfo->pb_heap_rta);
 
-	minfo->pb_taaisp_s = NULL;
-	minfo->pb_medrc_s = NULL;
+	/* secure buffers are freed by is_resourcemgr_deinit_secure_mem() */
+	minfo->pb_heap_ddk = NULL;
+	minfo->pb_heap_rta = NULL;
 	minfo->kvaddr_heap_ddk = 0;
 	minfo->kvaddr_heap_rta = 0;
 

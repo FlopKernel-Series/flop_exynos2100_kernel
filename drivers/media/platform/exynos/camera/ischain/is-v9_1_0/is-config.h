@@ -131,7 +131,7 @@
 
 #define USE_ONE_BINARY
 #define USE_RTA_BINARY
-#define DISABLE_DDK_HEAP_FREE	1
+/* #define DISABLE_DDK_HEAP_FREE	1 */	/* free DDK/RTA heap on camera power-down */
 #define USE_BINARY_PADDING_DATA_ADDED	/* for DDK signature */
 #define USE_DDK_SHUT_DOWN_FUNC
 #define ENABLE_IRQ_MULTI_TARGET
