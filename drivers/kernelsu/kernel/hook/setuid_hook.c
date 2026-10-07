@@ -12,7 +12,9 @@
 #include <linux/uaccess.h>
 #include <linux/uidgid.h>
 
+#include "policy/app_profile.h"
 #include "policy/allowlist.h"
+#include "policy/app_profile.h"
 #include "hook/setuid_hook.h"
 #include "klog.h" // IWYU pragma: keep
 #include "manager/manager_identity.h"
@@ -26,8 +28,6 @@
 #include <linux/workqueue.h>
 #include "selinux/selinux.h"
 #endif // #ifdef CONFIG_KSU_SUSFS
-
-extern void disable_seccomp(struct task_struct *tsk);
 
 #ifdef CONFIG_KSU_SUSFS
 extern u32 susfs_zygote_sid;
@@ -115,7 +115,7 @@ int ksu_handle_setresuid(uid_t old_uid, uid_t new_uid)
             ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
         }
 #else
-		disable_seccomp(current);
+		disable_seccomp();
 #endif
 
 #ifdef KSU_KPROBES_HOOK
@@ -133,7 +133,7 @@ int ksu_handle_setresuid(uid_t old_uid, uid_t new_uid)
             ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
         }
 #else
-		disable_seccomp(current);
+		disable_seccomp();
 #endif
 
 #ifdef KSU_KPROBES_HOOK
