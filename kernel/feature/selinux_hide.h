@@ -230,9 +230,8 @@ static bool ksu_should_destroy_context(char *str)
 	}
 } // scope--
 
-check_rule:;
-	// double strstr
-	char *str2 = strchr(str, ' ');
+check_rule:; // double strstr
+	const char *str2 = strnchr(str, 128, ' ');
 	if (!str2)
 		return false;
 
@@ -249,7 +248,7 @@ check_rule:;
 		const char *tgt_rule = src_rule + src_sz;
 		size_t tgt_sz = strlen(tgt_rule) + 1;
 
-		if (strstr(str, src_rule) && strstr(str2, tgt_rule))
+		if (strnstr(str, src_rule, str2 - str) && strstr(str2, tgt_rule))
 			return true;
 
 		offset = offset + src_sz + tgt_sz;
