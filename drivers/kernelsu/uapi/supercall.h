@@ -9,8 +9,7 @@
 // 2: allowlist v4 root profile flags
 // 3: scoped su-session driver fd
 // 4: add KSU_GET_INFO_FLAG_BUNDLED
-// 5: add EVENT_SERVICES with a start/skip result
-#define KERNEL_SU_UAPI_VERSION 5
+#define KERNEL_SU_UAPI_VERSION 4
 
 /* Magic numbers for reboot hook to install fd */
 #define KSU_INSTALL_MAGIC1 0xDEADBEEF
