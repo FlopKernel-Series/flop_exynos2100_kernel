@@ -516,6 +516,35 @@ bool is_dma_buf_env(void)
 }
 EXPORT_SYMBOL(is_dma_buf_env);
 
+static bool panel_legacy_mode;
+static char panel_legacy_mode_default_arg[] = "panel_legacy_mode=0";
+
+static int __init set_panel_legacy_mode(char *val)
+{
+	int tmp = panel_legacy_mode;
+
+	if (get_option(&val, &tmp))
+		panel_legacy_mode = !!tmp;
+
+	return 0;
+}
+__setup("panel_legacy_mode=", set_panel_legacy_mode);
+
+static void __init apply_panel_legacy_mode_default(void)
+{
+	char *val;
+
+	val = strchr(panel_legacy_mode_default_arg, '=');
+	if (val)
+		set_panel_legacy_mode(val + 1);
+}
+
+bool is_panel_legacy_mode(void)
+{
+	return panel_legacy_mode;
+}
+EXPORT_SYMBOL(is_panel_legacy_mode);
+
 static void __init apply_mali_version_default(void)
 {
 	char *val;
@@ -1242,6 +1271,7 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_init_protection_default();
 	apply_init_debug_default();
 	apply_dma_buf_env_default();
+	apply_panel_legacy_mode_default();
 	apply_mali_version_default();
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 	apply_aosp_mode_default();
@@ -1297,6 +1327,9 @@ asmlinkage __visible void __init start_kernel(void)
 
 	pr_info("Workaround: InitDebugInjector %s\n",
 		is_init_debug_enabled() ? "Enabled" : "Disabled");
+
+	pr_info("Workaround: PanelLegacyMode %s\n",
+		is_panel_legacy_mode() ? "Enabled (real 60/120Hz)" : "Disabled (HW TE SKIP)");
 
 	/*
 	 * These use large bootmem allocations and must precede

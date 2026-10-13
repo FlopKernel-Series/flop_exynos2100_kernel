@@ -8,6 +8,7 @@ int is_bpf_spoof_enabled(void);
 const char *get_bpf_spoof_version(void);
 bool is_init_debug_enabled(void);
 bool is_dma_buf_env(void);
+bool is_panel_legacy_mode(void);
 
 #if defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 static inline bool is_aosp_mode(void)

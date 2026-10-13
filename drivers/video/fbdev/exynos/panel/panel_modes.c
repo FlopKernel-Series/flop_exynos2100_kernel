@@ -13,8 +13,15 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
+#include <linux/string.h>
+#include <linux/workarounds.h>
 
 #include "../dpu30/panel_modes.h"
+
+/* panel_legacy_mode: remap HW TE SKIP DT mode to real 60HS values */
+#define R9S_PANEL_TE_SKIP_ID	"1080x2340_60HS_120HS_TE_HW_SKIP_1"
+#define R9S_PANEL_LEGACY_60HS_ID	"1080x2340_60HS"
+#define R9S_PANEL_LEGACY_60HS_CMD_LP_REF	0x1f7e
 
 void panel_mode_debug_printmodeline(const struct panel_display_mode *mode)
 {
@@ -59,6 +66,20 @@ static int of_parse_panel_display_mode(const struct device_node *np,
 	if (ret) {
 		pr_err("%pOF: error reading panel_display_mode mode properties\n", np);
 		return -EINVAL;
+	}
+
+	if (is_panel_legacy_mode() &&
+		pdm->width == 1080 && pdm->height == 2340 &&
+		!strcmp(pdm->name, R9S_PANEL_TE_SKIP_ID)) {
+		strncpy(pdm->name, R9S_PANEL_LEGACY_60HS_ID,
+			PANEL_DISPLAY_MODE_NAME_LEN - 1);
+		pdm->name[PANEL_DISPLAY_MODE_NAME_LEN - 1] = '\0';
+		pdm->refresh_mode = 1; /* REFRESH_MODE_HS */
+		pdm->panel_refresh_rate = 60;
+		pdm->panel_te_hw_skip_count = 0;
+		pdm->cmd_lp_ref = R9S_PANEL_LEGACY_60HS_CMD_LP_REF;
+		pr_info("panel_modes: panel_legacy_mode enabled, remapped %s to %s\n",
+			R9S_PANEL_TE_SKIP_ID, R9S_PANEL_LEGACY_60HS_ID);
 	}
 
 	return 0;
