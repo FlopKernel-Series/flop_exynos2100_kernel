@@ -4,6 +4,7 @@ kernelsu-objs += compat/kernel_compat.o
 kernelsu-objs += feature/kernel_umount.o
 kernelsu-objs += feature/sulog.o
 kernelsu-objs += feature/sucompat.o
+kernelsu-objs += feature/shell_su_adb_only.o
 
 kernelsu-objs += hook/hook_manager.o
 kernelsu-objs += hook/lsm_hooks.o
@@ -92,7 +93,7 @@ $(info -- KernelSU-Next version: $(KSU_VERSION))
 else
 # If there is no .git directory, use default version
 $(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU-Next a git repository!")
-KSU_VERSION_FALLBACK := 33333
+KSU_VERSION_FALLBACK := 33355
 $(info -- KernelSU-Next version fallback: $(KSU_VERSION_FALLBACK))
 KSU_VERSION := $(KSU_VERSION_FALLBACK)
 endif
@@ -112,7 +113,7 @@ ifdef KSU_GIT_VERSION_VALID
 $(eval KSU_VERSION_TAG=$(KSU_GIT_TAG))
 else
 $(warning "KSU_VERSION_TAG not defined! It is better to make KernelSU-Next a git submodule!")
-KSU_VERSION_TAG_FALLBACK := v3.4.1-legacy
+KSU_VERSION_TAG_FALLBACK := v3.4.2-legacy
 KSU_VERSION_TAG=$(KSU_VERSION_TAG_FALLBACK)
 $(info -- KernelSU-Next tag fallback: $(KSU_VERSION_TAG_FALLBACK))
 ccflags-y += -DKSU_VERSION_TAG=\"$(KSU_VERSION_TAG_FALLBACK)\"
