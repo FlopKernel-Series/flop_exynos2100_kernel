@@ -50,6 +50,15 @@
 s64 memstart_addr __ro_after_init = -1;
 EXPORT_SYMBOL(memstart_addr);
 
+#ifdef CONFIG_ARM64_GKI_MEM_ABI_SYMBOLS
+/* Exported by Android common kernels; keep equal to the pgtable.h macros. */
+s64 physvirt_offset __ro_after_init;
+EXPORT_SYMBOL(physvirt_offset);
+
+struct page *vmemmap __ro_after_init;
+EXPORT_SYMBOL(vmemmap);
+#endif
+
 phys_addr_t arm64_dma_phys_limit __ro_after_init;
 
 #ifdef CONFIG_KEXEC_CORE
@@ -504,6 +513,12 @@ void __init arm64_memblock_init(void)
 					 ((range * memstart_offset_seed) >> 16);
 		}
 	}
+
+#ifdef CONFIG_ARM64_GKI_MEM_ABI_SYMBOLS
+	/* memstart_addr is final here.  Keep equal to the pgtable.h macros. */
+	physvirt_offset = PHYS_OFFSET - PAGE_OFFSET;
+	vmemmap = (struct page *)VMEMMAP_START - (memstart_addr >> PAGE_SHIFT);
+#endif
 
 	/*
 	 * Register the kernel text, kernel data, initrd, and initial

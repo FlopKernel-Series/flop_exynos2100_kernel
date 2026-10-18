@@ -22,7 +22,9 @@
 #define VMALLOC_START		(MODULES_END)
 #define VMALLOC_END		(- PUD_SIZE - VMEMMAP_SIZE - SZ_64K)
 
+#ifndef CONFIG_ARM64_GKI_MEM_ABI_SYMBOLS
 #define vmemmap			((struct page *)VMEMMAP_START - (memstart_addr >> PAGE_SHIFT))
+#endif
 
 #define FIRST_USER_ADDRESS	0UL
 
@@ -33,6 +35,10 @@
 #include <linux/mmdebug.h>
 #include <linux/mm_types.h>
 #include <linux/sched.h>
+
+#ifdef CONFIG_ARM64_GKI_MEM_ABI_SYMBOLS
+extern struct page *vmemmap;
+#endif
 
 extern void __pte_error(const char *file, int line, unsigned long val);
 extern void __pmd_error(const char *file, int line, unsigned long val);
