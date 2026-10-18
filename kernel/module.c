@@ -3963,6 +3963,14 @@ static int load_module(struct load_info *info, const char __user *uargs,
 	long err = 0;
 	char *after_dashes;
 
+#ifdef CONFIG_MODULE_STRUCT_GKI_ABI_PAD
+	/* modpost writes init and exit at the offsets of the vendor layout. */
+	BUILD_BUG_ON(offsetof(struct module, name) != 24);
+	BUILD_BUG_ON(offsetof(struct module, init) != 376);
+	BUILD_BUG_ON(offsetof(struct module, arch) != 544);
+	BUILD_BUG_ON(offsetof(struct module, exit) != 824);
+#endif
+
 	/*
 	 * Do the signature check (if any) first. All that
 	 * the signature check needs is info->len, it does

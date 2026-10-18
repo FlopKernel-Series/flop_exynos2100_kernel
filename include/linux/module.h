@@ -370,6 +370,10 @@ struct module {
 #ifdef CONFIG_CFI_CLANG
 	cfi_check_fn cfi_check;
 #endif
+#if defined(CONFIG_MODULE_STRUCT_GKI_ABI_PAD) && !defined(CONFIG_CFI_CLANG)
+	/* Android common kernels built with CFI have cfi_check here. */
+	void *abi_pad;
+#endif
 
 	/* Kernel parameters. */
 #ifdef CONFIG_SYSFS

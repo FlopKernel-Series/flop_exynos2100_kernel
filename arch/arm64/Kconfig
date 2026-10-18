@@ -1725,6 +1725,17 @@ config ARM64_GKI_MEM_ABI_SYMBOLS
 
 	  If unsure, say Y.
 
+config MODULE_STRUCT_GKI_ABI_PAD
+	bool "Reserve the vendor GKI CFI slot in struct module"
+	default y
+	help
+	  Android common kernels are usually built with Clang CFI, which
+	  adds a cfi_check pointer to struct module and shifts init and
+	  exit 8 bytes in.  Reserve the same slot so modules built against
+	  such a kernel do not have their entry points read as NULL.
+
+	  If unsure, say Y.
+
 endmenu
 
 menu "Boot options"
