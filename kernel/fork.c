@@ -1128,6 +1128,32 @@ static inline void __mmput(struct mm_struct *mm)
 	mmdrop(mm);
 }
 
+#ifdef CONFIG_MM_USERS_REFCNT_REPAIR
+/*
+ * mm_users reaches zero only when no task has the mm installed, so a
+ * decrement that gets there while one still does was dropped too often.
+ */
+static bool mm_still_in_use(struct mm_struct *mm)
+{
+	struct task_struct *p;
+	bool in_use = false;
+
+	rcu_read_lock();
+	for_each_process(p) {
+		if (READ_ONCE(p->mm) != mm)
+			continue;
+		task_lock(p);
+		in_use = p->mm == mm;
+		task_unlock(p);
+		if (in_use)
+			break;
+	}
+	rcu_read_unlock();
+
+	return in_use;
+}
+#endif
+
 /*
  * Decrement the use count and release all resources for an mm.
  */
@@ -1135,8 +1161,17 @@ void mmput(struct mm_struct *mm)
 {
 	might_sleep();
 
-	if (atomic_dec_and_test(&mm->mm_users))
+	if (atomic_dec_and_test(&mm->mm_users)) {
+#ifdef CONFIG_MM_USERS_REFCNT_REPAIR
+		if (mm_still_in_use(mm)) {
+			atomic_inc(&mm->mm_users);
+			pr_warn_ratelimited("mm %px: reference dropped for an mm that is still mapped (from %pS)\n",
+					    mm, (void *)_RET_IP_);
+			return;
+		}
+#endif
 		__mmput(mm);
+	}
 }
 EXPORT_SYMBOL_GPL(mmput);
 

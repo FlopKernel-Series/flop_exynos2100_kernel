@@ -866,6 +866,16 @@ config LRU_GEN_STATS
 	  This option has a per-memcg and per-node memory overhead.
 # }
 
+config MM_USERS_REFCNT_REPAIR
+	bool "Repair unbalanced mm_users reference counts"
+	default y
+	help
+	  A module that drops an mm_users reference it never took releases
+	  the address space while a task still has it installed.  Check for
+	  that case and keep the reference instead of freeing the mm.
+
+	  If unsure, say Y.
+
 config HPA
 	bool "High-order Pages Allocator"
 	select CMA
