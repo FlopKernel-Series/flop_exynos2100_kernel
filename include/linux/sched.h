@@ -745,6 +745,18 @@ struct task_struct {
 
 	struct sched_info		sched_info;
 
+#ifdef CONFIG_TASK_STRUCT_GKI_ABI_PAD
+	/*
+	 * Android common kernels place ->tasks 256 bytes further in.  Derive
+	 * the space from the options below; fork_init() pins the offsets.
+	 */
+#define TASK_STRUCT_GKI_ABI_PAD_BYTES	(288				\
+	- 32 * IS_ENABLED(CONFIG_SCHED_INFO)				\
+	- 256 * IS_ENABLED(CONFIG_SCHEDSTATS)				\
+	- 32 * IS_ENABLED(CONFIG_TASKS_TRACE_RCU))
+
+	u8				abi_pad[TASK_STRUCT_GKI_ABI_PAD_BYTES];
+#endif
 	struct list_head		tasks;
 #ifdef CONFIG_SMP
 	struct plist_node		pushable_tasks;

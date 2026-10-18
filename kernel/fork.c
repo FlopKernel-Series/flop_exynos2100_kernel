@@ -829,6 +829,22 @@ void __init fork_init(void)
 			useroffset, usersize, NULL);
 #endif
 
+#ifdef CONFIG_TASK_STRUCT_GKI_ABI_PAD
+	/* Offsets modules built against Android common kernels use directly. */
+	BUILD_BUG_ON(offsetof(struct task_struct, tasks) != 1160);
+	BUILD_BUG_ON(offsetof(struct task_struct, mm) != 1240);
+	BUILD_BUG_ON(offsetof(struct task_struct, restart_block) != 1368);
+	BUILD_BUG_ON(offsetof(struct task_struct, pid) != 1416);
+	BUILD_BUG_ON(offsetof(struct task_struct, tgid) != 1420);
+	BUILD_BUG_ON(offsetof(struct task_struct, real_parent) != 1432);
+	BUILD_BUG_ON(offsetof(struct task_struct, real_start_time) != 1736);
+	BUILD_BUG_ON(offsetof(struct task_struct, real_cred) != 1848);
+	BUILD_BUG_ON(offsetof(struct task_struct, cred) != 1856);
+	BUILD_BUG_ON(offsetof(struct task_struct, comm) != 1872);
+	BUILD_BUG_ON(offsetof(struct task_struct, files) != 1904);
+	BUILD_BUG_ON(offsetof(struct task_struct, signal) != 1920);
+#endif
+
 	/* do the arch specific task caches init */
 	arch_task_cache_init();
 
