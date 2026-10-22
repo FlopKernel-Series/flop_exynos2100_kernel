@@ -58,16 +58,18 @@ extern int avc_ss_reset(struct selinux_avc *avc, u32 seqno);
 // reset avc cache table, otherwise the new rules will not take effect if already denied
 static void reset_avc_cache()
 {
+	u32 seqno = selinux_state.ss ? ++selinux_state.ss->latest_granting : 1;
+
 #if ((!defined(KSU_COMPAT_USE_SELINUX_STATE)) || \
 	LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0))
-    avc_ss_reset(0);
-    selnl_notify_policyload(0);
-    selinux_status_update_policyload(0);
+    avc_ss_reset(seqno);
+    selnl_notify_policyload(seqno);
+    selinux_status_update_policyload(seqno);
 #else
     struct selinux_avc *avc = selinux_state.avc;
-    avc_ss_reset(avc, 0);
-    selnl_notify_policyload(0);
-    selinux_status_update_policyload(&selinux_state, 0);
+    avc_ss_reset(avc, seqno);
+    selnl_notify_policyload(seqno);
+    selinux_status_update_policyload(&selinux_state, seqno);
 #endif
     selinux_xfrm_notify_policyload();
 }
@@ -252,6 +254,7 @@ out_unlock:
 		goto has_current_mm;
 
 	apply_kernelsu_rules_fn((void *)db);
+	ksu_policydb_fixup_len(db, "apply_kernelsu_rules");
 	goto out_unlock;
 
 has_current_mm:
@@ -266,22 +269,19 @@ has_current_mm:
 	apply_kernelsu_rules_fn((void *)db);
 	sched_setscheduler_nocheck(current, old_policy, &old_param); // restore
 
+	ksu_policydb_fixup_len(db, "apply_kernelsu_rules");
+
 out_unlock:
 	preempt_disable();
 	write_unlock(lock);
 	set_cpus_allowed_ptr(current, &old_mask);
-	goto out_flush;
+	goto out_reset_avc;
 
 do_stop_machine:
 	stop_machine(apply_kernelsu_rules_fn, (void *)db, NULL);
-
-out_flush:
-	// Return value ignored: the policy is published either way. Kept here
-	// rather than inside apply_kernelsu_rules_fn(), because that one runs
-	// as a stop_machine() callback with local IRQs disabled, and the
-	// measurement allocates.
 	ksu_policydb_fixup_len(db, "apply_kernelsu_rules");
 
+out_reset_avc:
 	smp_mb();
 	reset_avc_cache();
 #endif
@@ -722,6 +722,8 @@ static int handle_sepolicy_fn(void *data)
 			success_cmd_count++;
 		}
 
+		ret = 0;
+
 		cmd_index++;
 	}
 
@@ -794,6 +796,8 @@ has_current_mm:
 	ret = handle_sepolicy_fn((void *)&ctx);
 	sched_setscheduler_nocheck(current, old_policy, &old_param);
 
+	ksu_policydb_fixup_len(get_policydb(), "handle_sepolicy");
+
 out_unlock:
 	preempt_disable();
 	write_unlock(lock);
@@ -802,14 +806,9 @@ out_unlock:
 
 do_stop_machine:
 	ret = stop_machine(handle_sepolicy_fn, (void *)&ctx, NULL);
-
-out_done:
-	// Return value ignored: the policy is published either way. Outside the
-	// stop_machine() callback for the same reason as in
-	// apply_kernelsu_rules(). get_policydb() is a plain accessor, so call
-	// it here rather than lifting a variable into this branch.
 	ksu_policydb_fixup_len(get_policydb(), "handle_sepolicy");
 
+out_done:
 	if (ret)
 		goto out_free;
 
