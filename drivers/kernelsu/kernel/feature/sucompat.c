@@ -36,6 +36,7 @@
 #include "policy/app_profile.h"
 #include "selinux/selinux.h"
 #include "sulog/event.h"
+#include "util.h"
 
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"
@@ -62,19 +63,6 @@ static const struct ksu_feature_handler su_compat_handler = {
 	.get_handler = su_compat_feature_get,
 	.set_handler = su_compat_feature_set,
 };
-
-static void __user *userspace_stack_buffer(const void *d, size_t len)
-{
-	// Stack Pointer must be 16-byte aligned.
-	// We also subtract a safe margin (256 bytes) 
-	// to avoid corrupting local variables or smth
-	unsigned long sp = current_user_stack_pointer();
-	sp = (sp - len - 256) & ~0xFUL; // Align downwards to nearest 16 bytes
-
-	char __user *p = (char __user *)sp;
-
-	return copy_to_user(p, d, len) ? NULL : p;
-}
 
 static char __user *sh_user_path(void)
 {
@@ -152,7 +140,6 @@ static long ksu_handle_execve_sucompat_common(const char __user **filename_user,
 {
 	const char su[] = SU_PATH;
 	const char __user *fn;
-	const char __user *fn_addr = NULL;
 	struct ksu_sulog_pending_event *pending_sucompat = NULL;
 	char path[sizeof(su) + 1];
 	long ret;
@@ -171,10 +158,7 @@ static long ksu_handle_execve_sucompat_common(const char __user **filename_user,
 	if (!ksu_is_allow_uid_for_current(current_uid().val))
 		goto do_orig_execve;
 
-	if (get_user(fn_addr, filename_user))
-		goto do_orig_execve;
-
-	addr = untagged_addr((unsigned long)fn_addr);
+	addr = untagged_addr((unsigned long)READ_ONCE(*filename_user));
 	fn = (const char __user *)addr;
 	memset(path, 0, sizeof(path));
 
@@ -195,7 +179,7 @@ static long ksu_handle_execve_sucompat_common(const char __user **filename_user,
 	ksu_compat_sulog('x');
 
     pr_info("sys_execve su found\n");
-	pending_sucompat = ksu_sulog_capture_sucompat(fn, argv_user, GFP_KERNEL);
+	pending_sucompat = ksu_sulog_capture_sucompat(*filename_user, argv_user, GFP_KERNEL);
     *filename_user = ksud_user_path();
 
 	ret = escape_with_root_profile();
