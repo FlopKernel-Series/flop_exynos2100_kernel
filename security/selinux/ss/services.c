@@ -92,12 +92,12 @@ static int context_struct_to_string(struct policydb *policydb,
 				    char **scontext,
 				    u32 *scontext_len);
 
-static void context_struct_compute_av(struct policydb *policydb,
-				      struct context *scontext,
-				      struct context *tcontext,
-				      u16 tclass,
-				      struct av_decision *avd,
-				      struct extended_perms *xperms);
+void context_struct_compute_av(struct policydb *policydb,
+			       struct context *scontext,
+			       struct context *tcontext,
+			       u16 tclass,
+			       struct av_decision *avd,
+			       struct extended_perms *xperms);
 
 static int selinux_set_mapping(struct policydb *pol,
 			       struct security_class_mapping *map,
@@ -451,12 +451,12 @@ static int dump_masked_av_helper(void *k, void *d, void *args)
 	return 0;
 }
 
-static void security_dump_masked_av(struct policydb *policydb,
-				    struct context *scontext,
-				    struct context *tcontext,
-				    u16 tclass,
-				    u32 permissions,
-				    const char *reason)
+void security_dump_masked_av(struct policydb *policydb,
+			     struct context *scontext,
+			     struct context *tcontext,
+			     u16 tclass,
+			     u32 permissions,
+			     const char *reason)
 {
 	struct common_datum *common_dat;
 	struct class_datum *tclass_dat;
@@ -525,6 +525,7 @@ out:
 
 	return;
 }
+EXPORT_SYMBOL_GPL(security_dump_masked_av);
 
 /*
  * security_boundary_permission - drops violated permissions
@@ -611,12 +612,12 @@ void services_compute_xperms_drivers(
  * Compute access vectors and extended permissions based on a context
  * structure pair for the permissions in a particular class.
  */
-static void context_struct_compute_av(struct policydb *policydb,
-				      struct context *scontext,
-				      struct context *tcontext,
-				      u16 tclass,
-				      struct av_decision *avd,
-				      struct extended_perms *xperms)
+void context_struct_compute_av(struct policydb *policydb,
+			       struct context *scontext,
+			       struct context *tcontext,
+			       u16 tclass,
+			       struct av_decision *avd,
+			       struct extended_perms *xperms)
 {
 	struct constraint_node *constraint;
 	struct role_allow *ra;
@@ -715,6 +716,7 @@ static void context_struct_compute_av(struct policydb *policydb,
 	type_attribute_bounds_av(policydb, scontext, tcontext,
 				 tclass, avd);
 }
+EXPORT_SYMBOL_GPL(context_struct_compute_av);
 
 static int security_validtrans_handle_fail(struct selinux_state *state,
 					   struct context *ocontext,
