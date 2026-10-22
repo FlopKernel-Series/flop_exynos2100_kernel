@@ -230,51 +230,30 @@ out_unlock:
 	mutex_unlock(&selinux_state.policy_mutex);
 #else
 
-	cpumask_t old_mask;
 	db = get_policydb();
 	rwlock_t *lock = ksu_get_policy_rwlock();
-	
+
 	if (!lock)
 		goto do_stop_machine;
 
 	/*
-	 * HACK: write_lock() is held with preempt enabled. DO NOT let the
-	 * task be migrated to any other CPU than the current CPU. And since
-	 * set_cpus_allowed_ptr() can sleep, use raw_smp_processor_id() to get
-	 * current CPU and bypass preemption checks.
+	 * write_lock() already disables preemption; keep it disabled for the
+	 * whole run. Readers take policy_rwlock with preemption off, so a single
+	 * preemption or sleep while the write side is held deadlocks every CPU
+	 * that reaches security_compute_av() (6-way soft lockup + RCU stall).
+	 * Nothing below may sleep - allocations must be GFP_ATOMIC.
 	 */
-	cpumask_copy(&old_mask, ksu_get_current_cpumask_t());
-	set_cpus_allowed_ptr(current, cpumask_of(raw_smp_processor_id()));
-
 	write_lock(lock);
-	preempt_enable();
-
-    // we do this dance since both kernel and userspace can trigger this
-	if (likely(current && current->mm))
-		goto has_current_mm;
 
 	apply_kernelsu_rules_fn((void *)db);
-	ksu_policydb_fixup_len(db, "apply_kernelsu_rules");
-	goto out_unlock;
 
-has_current_mm:
-	;
-
-    // HACK: raise priority of this to the heavens
-	int old_policy = current->policy;
-	struct sched_param old_param = { .sched_priority = current->rt_priority };
-	struct sched_param new_param = { .sched_priority = 50 };
-
-	sched_setscheduler_nocheck(current, 1, &new_param); // raise, fifo, 50
-	apply_kernelsu_rules_fn((void *)db);
-	sched_setscheduler_nocheck(current, old_policy, &old_param); // restore
-
-	ksu_policydb_fixup_len(db, "apply_kernelsu_rules");
-
-out_unlock:
-	preempt_disable();
 	write_unlock(lock);
-	set_cpus_allowed_ptr(current, &old_mask);
+	/*
+	 * ksu_policydb_fixup_len() takes a GFP_KERNEL kvmalloc(), so it must run
+	 * with the write lock released: sleeping while the write side is held is
+	 * exactly what deadlocks readers in security_compute_av().
+	 */
+	ksu_policydb_fixup_len(db, "apply_kernelsu_rules");
 	goto out_reset_avc;
 
 do_stop_machine:
@@ -734,7 +713,6 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
 	u8 *payload;
 	int ret = 0;
 	int success_cmd_count = 0;
-	cpumask_t old_mask;
 
 	if (!user_data || !data_len)
 		return -EINVAL;
@@ -765,40 +743,19 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
 		goto do_stop_machine;
 
 	/*
-	 * HACK: write_lock() is held with preempt enabled. DO NOT let the
-	 * task be migrated to any other CPU than the current CPU. And since
-	 * set_cpus_allowed_ptr() can sleep, use raw_smp_processor_id() to get
-	 * current CPU and bypass preemption checks.
+	 * write_lock() already disables preemption; keep it disabled for the
+	 * whole batch. Readers take policy_rwlock with preemption off, so a
+	 * single preemption or sleep while the write side is held deadlocks
+	 * every CPU that reaches security_compute_av() (6-way soft lockup +
+	 * RCU stall). Nothing below may sleep - allocations are GFP_ATOMIC.
 	 */
-	cpumask_copy(&old_mask, ksu_get_current_cpumask_t());
-	set_cpus_allowed_ptr(current, cpumask_of(raw_smp_processor_id()));
-
 	write_lock(lock);
-	preempt_enable();
-
-	if (likely(current && current->mm))
-		goto has_current_mm;
 
 	ret = handle_sepolicy_fn((void *)&ctx);
-	goto out_unlock;
 
-has_current_mm:
-	;
-
-	int old_policy = current->policy;
-	struct sched_param old_param = { .sched_priority = current->rt_priority };
-	struct sched_param new_param = { .sched_priority = 50 };
-
-	sched_setscheduler_nocheck(current, 1, &new_param);
-	ret = handle_sepolicy_fn((void *)&ctx);
-	sched_setscheduler_nocheck(current, old_policy, &old_param);
-
-	ksu_policydb_fixup_len(get_policydb(), "handle_sepolicy");
-
-out_unlock:
-	preempt_disable();
 	write_unlock(lock);
-	set_cpus_allowed_ptr(current, &old_mask);
+	/* See apply_kernelsu_rules(): fixup_len may sleep, keep it unlocked. */
+	ksu_policydb_fixup_len(get_policydb(), "handle_sepolicy");
 	goto out_done;
 
 do_stop_machine:
@@ -806,11 +763,17 @@ do_stop_machine:
 	ksu_policydb_fixup_len(get_policydb(), "handle_sepolicy");
 
 out_done:
+	smp_mb();
+	/*
+	 * Always flush. The legacy path applies rules in place with no
+	 * rollback, so a partially failed batch still mutated the policydb and
+	 * a stale AVC cache would keep serving the pre-batch decisions.
+	 */
+	reset_avc_cache();
+
 	if (ret)
 		goto out_free;
 
-	smp_mb();
-	reset_avc_cache();
 	ret = success_cmd_count;
 
 out_free:
