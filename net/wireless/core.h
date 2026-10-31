@@ -557,4 +557,16 @@ void cfg80211_release_pmsr(struct wireless_dev *wdev, u32 portid);
 void cfg80211_pmsr_wdev_down(struct wireless_dev *wdev);
 void cfg80211_pmsr_free_wk(struct work_struct *work);
 
+/*
+ * nexmon-native monitor channel bridge: the bcmdhd module registers these
+ * on load so the cfg80211 wext compat layer (and nl80211) can translate
+ * monitor channel requests on the firmware-monitored netdev into the
+ * "chanspec" iovar, exactly like `nexutil -k`. NULL for any other wifi
+ * hardware; callers must treat NULL as -EOPNOTSUPP.
+ */
+#ifdef CONFIG_CFG80211_WEXT
+extern int (*nexmon_wext_set_channel)(struct net_device *dev, int chan);
+extern int (*nexmon_wext_get_channel)(struct net_device *dev);
+#endif /* CONFIG_CFG80211_WEXT */
+
 #endif /* __NET_WIRELESS_CORE_H */

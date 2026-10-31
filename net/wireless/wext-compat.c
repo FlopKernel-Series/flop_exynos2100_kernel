@@ -23,6 +23,20 @@
 #include "core.h"
 #include "rdev-ops.h"
 
+/*
+ * nexmon-native monitor channel bridge: the bcmdhd module (dhd_bcm4375.ko)
+ * registers these when it loads, so cfg80211's wext compat layer can
+ * translate SIOCSIWFREQ/SIOCGIWFREQ on the firmware-monitored netdev
+ * (nexdev type flipped to ARPHRD_IEEE80211[_RADIOTAP]) into the nexmon
+ * "chanspec" iovar channel set/get, the same path `nexutil -k` uses.
+ * NULL for any other wifi hardware: the nexmon branches simply fall through
+ * to the stock behavior (-EOPNOTSUPP where the type check hits).
+ */
+int (*nexmon_wext_set_channel)(struct net_device *dev, int chan);
+EXPORT_SYMBOL_GPL(nexmon_wext_set_channel);
+int (*nexmon_wext_get_channel)(struct net_device *dev);
+EXPORT_SYMBOL_GPL(nexmon_wext_get_channel);
+
 int cfg80211_wext_giwname(struct net_device *dev,
 			  struct iw_request_info *info,
 			  char *name, char *extra)
@@ -39,6 +53,22 @@ int cfg80211_wext_siwmode(struct net_device *dev, struct iw_request_info *info,
 	struct cfg80211_registered_device *rdev;
 	struct vif_params vifparams;
 	enum nl80211_iftype type;
+
+	/*
+	 * nexmon-native: the only truthful monitor on this driver is the
+	 * firmware monitor armed via nexutil (WLC_SET_MONITOR). On a
+	 * (type-flipped) nexmon monitor device:
+	 *  - asking to become monitor when it already is => no-op success
+	 *    (the driver's change_virtual_intf rejects NL80211 monitor),
+	 *  - asking to leave monitor => refuse; disarming is done by nexutil
+	 *    writing WLC_SET_MONITOR 0, which also restores the netdev type.
+	 */
+	if (dev->type == ARPHRD_IEEE80211 ||
+	    dev->type == ARPHRD_IEEE80211_RADIOTAP) {
+		if (*mode == IW_MODE_MONITOR)
+			return 0;
+		return -EOPNOTSUPP;
+	}
 
 	rdev = wiphy_to_rdev(wdev->wiphy);
 
@@ -75,6 +105,19 @@ int cfg80211_wext_giwmode(struct net_device *dev, struct iw_request_info *info,
 
 	if (!wdev)
 		return -EOPNOTSUPP;
+
+	/*
+	 * nexmon-native: a netdev whose type has been flipped to
+	 * ARPHRD_IEEE80211(_RADIOTAP) is genuinely in nexmon monitor mode
+	 * (firmware monitor armed via WLC_SET_MONITOR); report it truthfully
+	 * instead of the underlying cfg80211 iftype, so airmon/aircrack-ng
+	 * tools see "Mode:Monitor" without userland shims.
+	 */
+	if (dev->type == ARPHRD_IEEE80211 ||
+	    dev->type == ARPHRD_IEEE80211_RADIOTAP) {
+		*mode = IW_MODE_MONITOR;
+		return 0;
+	}
 
 	switch (wdev->iftype) {
 	case NL80211_IFTYPE_AP:
@@ -760,6 +803,31 @@ static int cfg80211_wext_siwfreq(struct net_device *dev,
 	};
 	int freq;
 
+	/*
+	 * nexmon-native: the netdev type is only flipped to
+	 * ARPHRD_IEEE80211(_RADIOTAP) while the nexmon firmware monitor is
+	 * armed; wdev->iftype stays STATION, so the stock switch would take
+	 * the managed-mode scan/connect path. On a nexmon monitor device
+	 * route the frequency into the dhd channel bridge (nexutil -k
+	 * equivalent) instead.
+	 */
+	if (dev->type == ARPHRD_IEEE80211 ||
+	    dev->type == ARPHRD_IEEE80211_RADIOTAP) {
+		struct ieee80211_channel *ch;
+
+		freq = cfg80211_wext_freq(wextfreq);
+		if (freq < 0)
+			return freq;
+		if (freq == 0)
+			return -EINVAL;
+		ch = ieee80211_get_channel(&rdev->wiphy, freq);
+		if (!ch)
+			return -EINVAL;
+		if (!nexmon_wext_set_channel)
+			return -EOPNOTSUPP;
+		return nexmon_wext_set_channel(dev, ch->hw_value);
+	}
+
 	switch (wdev->iftype) {
 	case NL80211_IFTYPE_STATION:
 		return cfg80211_mgd_wext_siwfreq(dev, info, wextfreq, extra);
@@ -800,6 +868,34 @@ static int cfg80211_wext_giwfreq(struct net_device *dev,
 	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wdev->wiphy);
 	struct cfg80211_chan_def chandef = {};
 	int ret;
+
+	/*
+	 * nexmon-native: report the monitor device's actually pinned
+	 * channel from the dhd bridge so airodump-ng and friends display
+	 * the real operating channel.
+	 */
+	if (dev->type == ARPHRD_IEEE80211 ||
+	    dev->type == ARPHRD_IEEE80211_RADIOTAP) {
+		struct ieee80211_channel *ch;
+		int chan;
+
+		if (!nexmon_wext_get_channel)
+			return -EOPNOTSUPP;
+		chan = nexmon_wext_get_channel(dev);
+		if (chan < 0)
+			return chan;
+		ch = ieee80211_get_channel(&rdev->wiphy,
+			ieee80211_channel_to_frequency(chan, NL80211_BAND_2GHZ));
+		if (!ch)
+			ch = ieee80211_get_channel(&rdev->wiphy,
+				ieee80211_channel_to_frequency(chan,
+							       NL80211_BAND_5GHZ));
+		if (!ch)
+			return -EINVAL;
+		freq->m = ch->center_freq;
+		freq->e = 6;
+		return 0;
+	}
 
 	switch (wdev->iftype) {
 	case NL80211_IFTYPE_STATION:
