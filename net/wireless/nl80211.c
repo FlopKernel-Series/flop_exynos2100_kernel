@@ -3255,7 +3255,18 @@ static int nl80211_send_iface(struct sk_buff *msg, u32 portid, u32 seq, int flag
 			      enum nl80211_commands cmd)
 {
 	struct net_device *dev = wdev->netdev;
+	enum nl80211_iftype iftype = wdev->iftype;
 	void *hdr;
+
+	/*
+	 * nexmon-native: report the truth about type-flipped monitor devices.
+	 * wdev->iftype stays STATION (the firmware monitor is armed behind the
+	 * driver's back), so plain `iw dev` / `iw <dev> info` would claim
+	 * "managed" while the interface genuinely captures radiotap frames.
+	 */
+	if (dev && (dev->type == ARPHRD_IEEE80211 ||
+		    dev->type == ARPHRD_IEEE80211_RADIOTAP))
+		iftype = NL80211_IFTYPE_MONITOR;
 
 	WARN_ON(cmd != NL80211_CMD_NEW_INTERFACE &&
 		cmd != NL80211_CMD_DEL_INTERFACE &&
@@ -3271,7 +3282,7 @@ static int nl80211_send_iface(struct sk_buff *msg, u32 portid, u32 seq, int flag
 		goto nla_put_failure;
 
 	if (nla_put_u32(msg, NL80211_ATTR_WIPHY, rdev->wiphy_idx) ||
-	    nla_put_u32(msg, NL80211_ATTR_IFTYPE, wdev->iftype) ||
+	    nla_put_u32(msg, NL80211_ATTR_IFTYPE, iftype) ||
 	    nla_put_u64_64bit(msg, NL80211_ATTR_WDEV, wdev_id(wdev),
 			      NL80211_ATTR_PAD) ||
 	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, wdev_address(wdev)) ||
