@@ -104,27 +104,22 @@ __weak int sprint_symbol_no_offset(char *buffer, unsigned long address) { return
 #endif
 
 #ifdef MODULE // https://elixir.bootlin.com/linux/v7.2-rc4/source/kernel/kprobes.c#L1506
-static noinline __nocfi void ksu_kallsyms_lookup_size_offset(uintptr_t symaddr, unsigned long *sym_size, unsigned long *offset)
+static __nocfi int ksu_kallsyms_lookup_size_offset(uintptr_t symaddr, unsigned long *sym_size, unsigned long *offset)
 {
-	static typeof(kallsyms_lookup_size_offset) *fn __read_mostly;
-	static void *state = &&bootstrap;
-	goto *state;
+	static typeof(ksu_kallsyms_lookup_size_offset) *fn = nullptr;
+	static bool initialized = false;
 
-bootstrap:
-	*(void **)&fn = (void *)kallsyms_lookup_name("kallsyms_lookup_size_offset");
-	if (!!fn)
-		state = &&fn_ok;
-	else
-		state = &&no_fn;
+	if (!initialized) {
+		*(void **)&fn = (void *)kallsyms_lookup_name("kallsyms_lookup_size_offset");
+		initialized = true;
+	}
 
-	goto *state;
-fn_ok:
-	fn(symaddr, sym_size, offset);
-	return;
+	if (fn)
+		return fn(symaddr, sym_size, offset);
 
-no_fn:
 	*sym_size = 0;
 	*offset = 0;
+	return 0;
 }
 #define kallsyms_lookup_size_offset ksu_kallsyms_lookup_size_offset
 #endif
@@ -179,11 +174,15 @@ scan_start:
 	// cut it with these to make sure its a match
 	// .llvm.505034 or .lto_priv.0
 	char *dot_ptr = strchr(symbol_buf, '.');
-	if (!dot_ptr)
-		goto step_up;
+	if (dot_ptr)
+		dot_ptr[0] = '\0';
 
-	// terminate on first dot
-	dot_ptr[0] = '\0';
+	char *dollar_ptr = strchr(symbol_buf, '$');
+	if (dollar_ptr)
+		dollar_ptr[0] = '\0';
+
+	if (!dot_ptr && !dollar_ptr)
+		goto step_up;
 
 	insert_to_kallsyms_array(symbol_buf, curr);
 
@@ -269,6 +268,10 @@ static int kallsyms_on_each_symbol_cb(void *data, const char *name, struct modul
 	char *dot_ptr = strchr(namebuf, '.');
 	if (dot_ptr)
 		dot_ptr[0] = '\0';
+
+	char *dollar_ptr = strchr(namebuf, '$');
+	if (dollar_ptr)
+		dollar_ptr[0] = '\0';
 
 	if (!!strcmp(namebuf, args->target_name))
 		return 0;
