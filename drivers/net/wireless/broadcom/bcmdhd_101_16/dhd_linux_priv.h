@@ -362,6 +362,11 @@ typedef struct dhd_info {
 	struct sk_buff *monitor_skb;
 	uint	monitor_len;
 	uint	monitor_type;   /* monitor pseudo device */
+	/* nexmon-native injection: skbs parked here by .ndo_start_xmit (atomic
+	 * context) and forwarded to the firmware NEX_INJECT_FRAME ioctl by
+	 * nexmon_inj_work (sleepable). */
+	struct sk_buff_head	nexmon_inj_q;
+	struct work_struct	nexmon_inj_w;
 #endif /* WL_MONITOR */
 #if defined(BT_OVER_SDIO)
     struct mutex bus_user_lock; /* lock for sdio bus apis shared between WLAN & BT */

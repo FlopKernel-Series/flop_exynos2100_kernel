@@ -13,6 +13,7 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/list.h>
+#include <linux/if_arp.h>
 #include <linux/if_ether.h>
 #include <linux/ieee80211.h>
 #include <linux/nl80211.h>
@@ -2841,10 +2842,50 @@ static int __nl80211_set_channel(struct cfg80211_registered_device *rdev,
 	return result;
 }
 
+#ifdef CONFIG_CFG80211_WEXT
+/*
+ * nexmon-native: route an nl80211 monitor channel set (NL80211_CMD_SET_WIPHY
+ * / NL80211_CMD_SET_CHANNEL on a type-flipped device) into the dhd chanspec
+ * bridge. Modern aircrack-ng osdep (1.7+) and Termux builds program the
+ * channel via nl80211, which otherwise never reaches the wext layer: the
+ * wdev is a STATION, so the request degrades to the wiphy-wide
+ * set_monitor_channel op the bcmdhd driver does not implement (silently
+ * EOPNOTSUPP for the caller). BW is always pinned to 20 MHz by the bridge.
+ */
+static int nl80211_nexmon_set_channel(struct cfg80211_registered_device *rdev,
+				      struct net_device *netdev,
+				      struct genl_info *info)
+{
+	struct ieee80211_channel *ch;
+	u32 freq;
+
+	if (!info->attrs[NL80211_ATTR_WIPHY_FREQ])
+		return -EINVAL;
+
+	freq = nla_get_u32(info->attrs[NL80211_ATTR_WIPHY_FREQ]);
+	ch = ieee80211_get_channel(&rdev->wiphy, freq);
+	if (!ch)
+		return -EINVAL;
+	if (!nexmon_wext_set_channel)
+		return -EOPNOTSUPP;
+	return nexmon_wext_set_channel(netdev, ch->hw_value);
+}
+#endif /* CONFIG_CFG80211_WEXT */
+
 static int nl80211_set_channel(struct sk_buff *skb, struct genl_info *info)
 {
 	struct cfg80211_registered_device *rdev = info->user_ptr[0];
 	struct net_device *netdev = info->user_ptr[1];
+
+#ifdef CONFIG_CFG80211_WEXT
+	/*
+	 * nexmon-native: on a type-flipped monitor device route the channel
+	 * set into the dhd chanspec bridge (see nl80211_nexmon_set_channel).
+	 */
+	if (netdev && (netdev->type == ARPHRD_IEEE80211 ||
+		       netdev->type == ARPHRD_IEEE80211_RADIOTAP))
+		return nl80211_nexmon_set_channel(rdev, netdev, info);
+#endif /* CONFIG_CFG80211_WEXT */
 
 	return __nl80211_set_channel(rdev, netdev, info);
 }
@@ -2969,6 +3010,19 @@ static int nl80211_set_wiphy(struct sk_buff *skb, struct genl_info *info)
 	}
 
 	if (info->attrs[NL80211_ATTR_WIPHY_FREQ]) {
+#ifdef CONFIG_CFG80211_WEXT
+		/*
+		 * nexmon-native: SET_WIPHY with an ifindex targets the wdev,
+		 * but a STATION-typed monitor device is dropped to wiphy-wide
+		 * handling below (nl80211_can_set_dev_channel() is false for
+		 * STATION) and dies on the unimplemented set_monitor_channel
+		 * op. On a type-flipped device use the dhd bridge directly.
+		 */
+		if (netdev && (netdev->type == ARPHRD_IEEE80211 ||
+			       netdev->type == ARPHRD_IEEE80211_RADIOTAP))
+			return nl80211_nexmon_set_channel(rdev, netdev, info);
+#endif /* CONFIG_CFG80211_WEXT */
+
 		result = __nl80211_set_channel(
 			rdev,
 			nl80211_can_set_dev_channel(wdev) ? netdev : NULL,
@@ -3201,7 +3255,18 @@ static int nl80211_send_iface(struct sk_buff *msg, u32 portid, u32 seq, int flag
 			      enum nl80211_commands cmd)
 {
 	struct net_device *dev = wdev->netdev;
+	enum nl80211_iftype iftype = wdev->iftype;
 	void *hdr;
+
+	/*
+	 * nexmon-native: report the truth about type-flipped monitor devices.
+	 * wdev->iftype stays STATION (the firmware monitor is armed behind the
+	 * driver's back), so plain `iw dev` / `iw <dev> info` would claim
+	 * "managed" while the interface genuinely captures radiotap frames.
+	 */
+	if (dev && (dev->type == ARPHRD_IEEE80211 ||
+		    dev->type == ARPHRD_IEEE80211_RADIOTAP))
+		iftype = NL80211_IFTYPE_MONITOR;
 
 	WARN_ON(cmd != NL80211_CMD_NEW_INTERFACE &&
 		cmd != NL80211_CMD_DEL_INTERFACE &&
@@ -3217,7 +3282,7 @@ static int nl80211_send_iface(struct sk_buff *msg, u32 portid, u32 seq, int flag
 		goto nla_put_failure;
 
 	if (nla_put_u32(msg, NL80211_ATTR_WIPHY, rdev->wiphy_idx) ||
-	    nla_put_u32(msg, NL80211_ATTR_IFTYPE, wdev->iftype) ||
+	    nla_put_u32(msg, NL80211_ATTR_IFTYPE, iftype) ||
 	    nla_put_u64_64bit(msg, NL80211_ATTR_WDEV, wdev_id(wdev),
 			      NL80211_ATTR_PAD) ||
 	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, wdev_address(wdev)) ||

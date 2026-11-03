@@ -66,6 +66,12 @@
 #include <asm/unaligned.h>
 #include <dhd_linux_priv.h>
 
+#ifdef WL_MONITOR
+/* nexmon-native injection (dhd_linux.c): xmit hook forwarder */
+extern netdev_tx_t dhd_nexmon_mon_tx(dhd_info_t *dhd, struct sk_buff *skb,
+	struct net_device *net);
+#endif /* WL_MONITOR */
+
 #include <epivers.h>
 #include <bcmutils.h>
 #include <bcmendian.h>
@@ -511,6 +517,21 @@ BCMFASTPATH(dhd_start_xmit)(struct sk_buff *skb, struct net_device *net)
 #endif /* DHD_MQ && DHD_MQ_STATS */
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
+
+#ifdef WL_MONITOR
+	/*
+	 * nexmon-native injection: the netdev type is only ever flipped to
+	 * ARPHRD_IEEE80211(_RADIOTAP) while the nexmon firmware monitor is
+	 * armed; every packet arriving here on such a dev is a raw monitor
+	 * frame (radiotap header + 802.11) written by tools like
+	 * aireplay-ng to the packet socket. Forward it to the firmware
+	 * NEX_INJECT_FRAME ioctl instead of the Ethernet data path. Takes
+	 * skb ownership. The stock val==1 monitor path keeps ETHER type, so
+	 * it is untouched.
+	 */
+	if (net->type != ARPHRD_ETHER)
+		return dhd_nexmon_mon_tx(dhd, skb, net);
+#endif /* WL_MONITOR */
 
 #if defined(DHD_MQ) && defined(DHD_MQ_STATS)
 	qidx = skb_get_queue_mapping(skb);

@@ -6071,6 +6071,275 @@ dhd_set_monitor(dhd_pub_t *pub, int ifidx, int val)
 	dhd->monitor_type = val;
 	dhd_net_if_unlock_local(dhd);
 }
+
+/*
+ * nexmon-native monitor:
+ *
+ * The nexmon-patched firmware implements monitor mode behind
+ * WLC_SET_MONITOR(108) and its own custom cmd 0x613, and delivers received
+ * 802.11 frames (radiotap-headered) on the normal wlan0 data path. Stock
+ * kernels expect tools to fake the interface type in user space with an
+ * LD_PRELOAD shim that intercepts SIOCGIFHWADDR (libnexmon/"fakeioctl"), so
+ * libpcap & co see ARPHRD_IEEE80211(_RADIOTAP) instead of ARPHRD_ETHER.
+ *
+ * We do that natively here: every successful monitor SET (WLC_SET_MONITOR or
+ * the custom cmd 0x613) is mirrored onto the netdev type.
+ * val bit 2 -> ARPHRD_IEEE80211_RADIOTAP, bit 1 -> ARPHRD_IEEE80211,
+ * 0 -> back to ARPHRD_ETHER. WLC_GET_MONITOR is never intercepted (reads
+ * must not mutate; see the ioctl site below).
+ *
+ * The stock "dhd monitor if" management (dhd_add_monitor_if / dhd_rx_mon_pkt
+ * path) is only reachable through val == 1 (stock Samsung mon-if semantics).
+ * Values >= 2 arm nexmon on this firmware and bypass the monitor-if machinery:
+ * nexmon frames arrive on wlan0 itself and must not be re-routed to a
+ * separate mon dev, and monitor_type must stay 0 so dhd_monitor_enabled()
+ * does not force the 802.11-flagged rx path that nexmon does not use.
+ */
+#define NEXMON_IOCTL_SET_MONITOR 0x613
+
+/* cached monitor chanspec for the wext channel bridge (below) */
+static uint nexmon_cached_chspec;
+
+static void
+dhd_nexmon_set_dev_type(struct net_device *net, int val)
+{
+	unsigned short want;
+	if (val & 2)
+		want = ARPHRD_IEEE80211_RADIOTAP;
+	else if (val & 1)
+		want = ARPHRD_IEEE80211;
+	else
+		want = ARPHRD_ETHER;
+
+	if (net->type != want) {
+		DHD_ERROR(("%s: nexmon: netdev type %d -> %d (mon 0x%x)\n",
+			net->name, net->type, want, val));
+		net->type = want;
+	}
+}
+
+static void
+dhd_nexmon_mon_update(dhd_pub_t *pub, int ifidx, struct net_device *net,
+	int nval)
+{
+	dhd_info_t *dhd = pub->info;
+
+	switch (nval) {
+	case 1:
+		/* stock dhd monitor semantics only pair with the stock
+		 * "monitor if" firmware; leave that flow 1:1 untouched
+		 * (wlan0 keeps ARPHRD_ETHER there). */
+		dhd_set_monitor(pub, ifidx, nval);
+		break;
+	default:
+		/* nexmon arm/disable (0 disables, >=2 selects nexmon mode):
+		 * type mirror only. Do not touch monitor_dev; force
+		 * monitor_type to 0 so the stock 802.11-flagged rx split
+		 * (dhd_monitor_enabled) never re-routes nexmon frames into
+		 * a stale monitor if. */
+		if (dhd->monitor_dev || dhd->monitor_type != 0) {
+			if (dhd->monitor_dev) {
+				dhd_net_if_lock_local(dhd);
+				dhd_del_monitor_if(dhd);
+				dhd_net_if_unlock_local(dhd);
+			}
+			dhd->monitor_type = 0;
+		}
+		if (nval == 0)
+			nexmon_cached_chspec = 0;
+		dhd_nexmon_set_dev_type(net, nval);
+		break;
+	}
+}
+
+/*
+ * nexmon-native injection:
+ *
+ * Tools like aireplay-ng write radiotap+802.11 frames to the packet socket of
+ * the (type-flipped) wlan0. That lands in dhd_start_xmit(), which runs in
+ * atomic context and expects Ethernet frames - so the frame is parked in
+ * nexmon_inj_q here and a sleepable workqueue entry forwards it to the nexmon
+ * firmware via the NEX_INJECT_FRAME (408) ioctl using the exact wire format
+ * the nexmon userspace uses:
+ *   struct inject_frame { u16 len; u8 pad; u8 type; u8 data[len-4] }
+ * with len covering the 4-byte header, type == 1 padding nothing and handing
+ * the captured buffer (radiotap header included, if any) to inject_frame().
+ */
+#define NEXMON_IOCTL_INJECT_FRAME 408
+#define NEXMON_INJECT_MAX_FRAME	4096
+
+struct nexmon_inject_hdr {
+	uint16 len;
+	uint8 pad;
+	uint8 type;
+};
+
+static void
+dhd_nexmon_inject_work(struct work_struct *work)
+{
+	dhd_info_t *dhd = container_of(work, dhd_info_t, nexmon_inj_w);
+	struct sk_buff *skb;
+
+	while ((skb = skb_dequeue(&dhd->nexmon_inj_q))) {
+		uint total = skb->len + sizeof(struct nexmon_inject_hdr);
+		char *payload;
+
+		payload = NULL;
+		if (dhd->pub.up && total <= NEXMON_INJECT_MAX_FRAME)
+			payload = kmalloc(total, GFP_KERNEL);
+		if (payload) {
+			struct nexmon_inject_hdr *hdr =
+				(struct nexmon_inject_hdr *)payload;
+
+			hdr->len = total;
+			hdr->pad = 0;
+			hdr->type = 1;
+			memcpy(payload + sizeof(*hdr), skb->data, skb->len);
+
+			dhd_wl_ioctl_cmd(&dhd->pub, NEXMON_IOCTL_INJECT_FRAME,
+				payload, total, TRUE, 0);
+
+			kfree(payload);
+		} else if (!dhd->pub.up) {
+			DHD_ERROR(("%s: nexmon: dropping frame, iface down\n",
+				dhd->iflist[0] ? dhd->iflist[0]->name : "?"));
+		} else {
+			DHD_ERROR(("%s: nexmon: dropping frame, len %u\n",
+				dhd->iflist[0] ? dhd->iflist[0]->name : "?",
+				skb->len));
+		}
+
+		dev_kfree_skb(skb);
+	}
+
+	if (skb_peek(&dhd->nexmon_inj_q))
+		schedule_work(&dhd->nexmon_inj_w);
+}
+
+/*
+ * .ndo_start_xmit hook for monitor-armed interfaces: called in atomic context
+ * with skb ownership handed over. Queue + wake the inject worker above.
+ */
+netdev_tx_t
+dhd_nexmon_mon_tx(dhd_info_t *dhd, struct sk_buff *skb, struct net_device *net)
+{
+	skb_queue_tail(&dhd->nexmon_inj_q, skb);
+	schedule_work(&dhd->nexmon_inj_w);
+	return NETDEV_TX_OK;
+}
+
+/*
+ * nexmon-native channel bridge for the cfg80211 wext compat layer:
+ * SIOCSIWFREQ/SIOCGIWFREQ on the monitor-armed netdev arrive here through
+ * the nexmon_wext_set_channel/get_channel hooks. Channels are programmed
+ * through the "chanspec" iovar exactly like `nexutil -k` (same encoding:
+ * ch | WL_CHANSPEC_BW_20 | band; 2G band bits 0, 5G 0xc000, 6G 0x4000).
+ */
+extern int (*nexmon_wext_set_channel)(struct net_device *dev, int chan);
+extern int (*nexmon_wext_get_channel)(struct net_device *dev);
+
+static uint
+nexmon_chanspec_enc(uint chan)
+{
+	if (chan >= 1 && chan <= 14)
+		return 0x1000 | chan;		/* 2.4G: ch | BW20 | BAND2G */
+	if (chan >= 32 && chan <= 196)
+		return 0xd000 | chan;		/* 5G: ch | BW20 | BAND5G */
+	return 0;
+}
+
+static uint
+nexmon_chanspec_chan(uint chspec)
+{
+	chspec &= 0xff;
+	if (chspec >= 1 && chspec <= 14)
+		return chspec;
+	if (chspec >= 32 && chspec <= 196)
+		return chspec;
+	return 0;
+}
+
+int
+dhd_nexmon_wext_set_channel(struct net_device *dev, int chan)
+{
+	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	char buf[13];
+	uint chspec;
+	int bcmerror, ifidx;
+
+	/* cfg80211 hands us chan->hw_value, which on this driver is a full
+	 * Broadcom chanspec (CH_TO_CHSPC in wl_cfg80211.h: band/BW bits high,
+	 * channel in the low byte), not a bare channel number. enc() on the
+	 * raw value always missed and the wext set failed with EINVAL. Normalize
+	 * both inputs to the BW20 chanspec `nexutil -k` writes. */
+	chspec = nexmon_chanspec_enc(nexmon_chanspec_chan((uint)chan));
+	if (!chspec)
+		return -EINVAL;
+
+	/* Band-change guard: switching the nexmon monitor stream between
+	 * 2.4G and 5G wedges the firmware (DHD hang, e=-121, chip crash on
+	 * the first 2G->5G chanspec set after arming; the nexmon arm aliases
+	 * are band-specific for the same reason). Reject cross-band sets so
+	 * channel hoppers skip them instead of killing the radio; re-arm via
+	 * nexutil (nexmon_enable2g/5g) to move bands. */
+	if (nexmon_cached_chspec) {
+		uint old = nexmon_chanspec_chan(nexmon_cached_chspec);
+		uint new = nexmon_chanspec_chan(chspec);
+		bool old_2g = old <= 14;
+		bool new_2g = new <= 14;
+
+		if (old && new && old_2g != new_2g) {
+			DHD_ERROR(("%s: nexmon: reject band change %d -> %d (re-arm with nexutil)\n",
+				dev->name, old, new));
+			return -EINVAL;
+		}
+	}
+
+	ifidx = dhd_net2idx(dhd, dev);
+	if (ifidx == DHD_BAD_IF)
+		return -EINVAL;
+
+	memcpy(buf, "chanspec", 9);
+	memcpy(buf + 9, &chspec, sizeof(chspec));
+
+	bcmerror = dhd_wl_ioctl_cmd(&dhd->pub, WLC_SET_VAR, buf,
+		sizeof(buf), TRUE, ifidx);
+	if (!bcmerror)
+		nexmon_cached_chspec = chspec;
+
+	DHD_ERROR(("%s: nexmon: chanspec set 0x%04x -> %d\n",
+		dev->name, chspec, bcmerror));
+	return bcmerror ? -EIO : 0;
+}
+
+int
+dhd_nexmon_wext_get_channel(struct net_device *dev)
+{
+	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	char buf[9];
+	int ifidx;
+	uint chspec = 0;
+
+	ifidx = dhd_net2idx(dhd, dev);
+	if (ifidx == DHD_BAD_IF)
+		return -EINVAL;
+
+	if (nexmon_cached_chspec) {
+		chspec = nexmon_cached_chspec;
+	} else {
+		int bcmerror;
+
+		memcpy(buf, "chanspec", 9);
+		bcmerror = dhd_wl_ioctl_cmd(&dhd->pub, WLC_GET_VAR, buf,
+			sizeof(buf), FALSE, ifidx);
+		if (bcmerror)
+			return -EIO;
+		memcpy(&chspec, buf, sizeof(uint16));
+		nexmon_cached_chspec = chspec;
+	}
+
+	return nexmon_chanspec_chan(chspec) ? : -EIO;
+}
 #endif /* WL_MONITOR */
 
 #if defined(DHD_H2D_LOG_TIME_SYNC)
@@ -6216,19 +6485,31 @@ int dhd_ioctl_process(dhd_pub_t *pub, int ifidx, dhd_ioctl_t *ioc, void *data_bu
 	bcmerror = dhd_wl_ioctl(pub, ifidx, (wl_ioctl_t *)ioc, data_buf, buflen);
 
 #ifdef WL_MONITOR
-	/* Intercept monitor ioctl here, add/del monitor if */
-	if (bcmerror == BCME_OK && ioc->cmd == WLC_SET_MONITOR) {
-		int val = 0;
+	/*
+	 * nexmon-native: intercept the monitor ioctls AFTER the firmware call.
+	 * The nexmon firmware arms/disarms its monitor with WLC_SET_MONITOR(108)
+	 * and the custom cmd 0x613 identically. We mirror the state onto the
+	 * wlan0 netdev type so userspace sees a true radiotap-capable monitor
+	 * interface (replaces the LD_PRELOAD SIOCGIFHWADDR-shims entirely).
+	 *
+	 * WLC_GET_MONITOR is deliberately NOT intercepted: on this firmware it
+	 * always returns the constant 0x80000000 (never the truth), and driving
+	 * the type from it reset the armed radiotap type back to ARPHRD_ETHER
+	 * on every read (libnexmonkali queries it live). Reads must not mutate.
+	 */
+	if (bcmerror == BCME_OK &&
+	    (ioc->cmd == WLC_SET_MONITOR || ioc->cmd == NEXMON_IOCTL_SET_MONITOR)) {
+		int nval = 0;
 		if (data_buf != NULL && buflen != 0) {
 			if (buflen >= 4) {
-				val = *(int*)data_buf;
+				nval = *(int *)data_buf;
 			} else if (buflen >= 2) {
-				val = *(short*)data_buf;
+				nval = *(short *)data_buf;
 			} else {
-				val = *(char*)data_buf;
+				nval = *(char *)data_buf;
 			}
 		}
-		dhd_set_monitor(pub, ifidx, val);
+		dhd_nexmon_mon_update(pub, ifidx, net, nval);
 	}
 #endif /* WL_MONITOR */
 
@@ -8570,6 +8851,12 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	}
 	memset(dhd, 0, sizeof(dhd_info_t));
 	dhd_state |= DHD_ATTACH_STATE_DHD_ALLOC;
+
+#ifdef WL_MONITOR
+	/* nexmon-native injection queue + worker (see dhd_nexmon_mon_tx) */
+	skb_queue_head_init(&dhd->nexmon_inj_q);
+	INIT_WORK(&dhd->nexmon_inj_w, dhd_nexmon_inject_work);
+#endif /* WL_MONITOR */
 
 	dhd->unit = dhd_found + instance_base; /* do not increment dhd_found, yet */
 
@@ -13587,6 +13874,9 @@ void dhd_detach(dhd_pub_t *dhdp)
 #endif /* DHD_DEBUG */
 #ifdef WL_MONITOR
 	dhd_del_monitor_if(dhd);
+	/* stop the nexmon inject worker and drop any parked frames */
+	cancel_work_sync(&dhd->nexmon_inj_w);
+	skb_queue_purge(&dhd->nexmon_inj_q);
 #endif /* WL_MONITOR */
 
 #ifdef DHD_ERPOM
@@ -13764,6 +14054,12 @@ static void __exit
 dhd_module_exit(void)
 {
 	atomic_set(&exit_in_progress, 1);
+#ifdef WL_MONITOR
+	/* nexmon-native: detach the wext channel bridge before the module
+	 * goes away so stray wext ioctls fall back to -EOPNOTSUPP. */
+	nexmon_wext_set_channel = NULL;
+	nexmon_wext_get_channel = NULL;
+#endif /* WL_MONITOR */
 	dhd_module_cleanup();
 	unregister_reboot_notifier(&dhd_reboot_notifier);
 	dhd_destroy_to_notifier_skt();
@@ -13807,6 +14103,13 @@ _dhd_module_init(void)
 			dhd_driver_init_done = TRUE;
 		}
 	}
+#ifdef WL_MONITOR
+	/* nexmon-native: wire the cfg80211 wext compat channel bridge to
+	 * these handlers so SIOCSIWFREQ/SIOCGIWFREQ on the monitor dev
+	 * works like `nexutil -k`. */
+	nexmon_wext_set_channel = dhd_nexmon_wext_set_channel;
+	nexmon_wext_get_channel = dhd_nexmon_wext_get_channel;
+#endif /* WL_MONITOR */
 
 	DHD_ERROR(("%s out\n", __FUNCTION__));
 
