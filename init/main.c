@@ -279,6 +279,59 @@ bool is_usb_sl_disabled(void)
 EXPORT_SYMBOL(is_usb_sl_disabled);
 #endif
 
+static signed char superfloppy_mode;
+static char superfloppy_default_arg[] = "superfloppy=0";
+DEFINE_STATIC_KEY_FALSE(superfloppy_mode_key);
+EXPORT_SYMBOL(superfloppy_mode_key);
+
+static int __init set_superfloppy_mode(char *val)
+{
+	int tmp = superfloppy_mode;
+
+	if (get_option(&val, &tmp)) {
+		/* Only the defined modes are accepted, anything else is stock. */
+		if (tmp < 0 || tmp > 3)
+			tmp = 0;
+		superfloppy_mode = (signed char)tmp;
+	}
+
+	/* Update static branch for hot path optimization */
+	if (superfloppy_mode >= 1)
+		static_branch_enable(&superfloppy_mode_key);
+	else
+		static_branch_disable(&superfloppy_mode_key);
+
+	return 0;
+}
+__setup("superfloppy=", set_superfloppy_mode);
+
+static void __init apply_superfloppy_default(void)
+{
+	char *val;
+
+	val = strchr(superfloppy_default_arg, '=');
+	if (val)
+		set_superfloppy_mode(val + 1);
+}
+
+bool is_superfloppy_mode(void)
+{
+	return superfloppy_mode >= 1;
+}
+EXPORT_SYMBOL(is_superfloppy_mode);
+
+signed char get_superfloppy_mode(void)
+{
+	return superfloppy_mode;
+}
+EXPORT_SYMBOL(get_superfloppy_mode);
+
+bool is_superfloppy_overclock_mode(void)
+{
+	return superfloppy_mode >= 1;
+}
+EXPORT_SYMBOL(is_superfloppy_overclock_mode);
+
 static bool usb_aoffload_disable;
 static char usb_aoffload_disable_default_arg[] = "usb_aoffload_disable=0";
 
@@ -1273,6 +1326,7 @@ asmlinkage __visible void __init start_kernel(void)
 	apply_dma_buf_env_default();
 	apply_panel_legacy_mode_default();
 	apply_mali_version_default();
+	apply_superfloppy_default();
 #if !defined(CONFIG_DEFAULT_SUPPORT_AOSP)
 	apply_aosp_mode_default();
 	apply_usb_sl_disable_default();
@@ -1285,6 +1339,9 @@ asmlinkage __visible void __init start_kernel(void)
 		is_usb_aoffload_disabled() ? "enabled" : "disabled");
 	pr_info("Workaround: dma_buf_env=%s\n",
 		is_dma_buf_env() ? "enabled" : "disabled");
+	pr_info("Workaround: superfloppy=%d (overclock=%s)\n",
+		get_superfloppy_mode(),
+		is_superfloppy_overclock_mode() ? "yes" : "no");
 
 	if (uname_bpf_spoof == 1)
 		pr_info("Workaround: BpfSpoof Partial (from %s to %s)\n", init_utsname()->release, get_bpf_spoof_version());

@@ -10,6 +10,7 @@
 #include <soc/samsung/cal-if.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/workarounds.h>
 
 #include "fvmap.h"
 #include "cmucal.h"
@@ -821,26 +822,37 @@ static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base
 		}
 
 #ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+		{
+			signed char sf_mode = get_superfloppy_mode();
+
+			/*
+			 * The overclock modes use the extra levels burned into
+			 * the ACPM fvmap, so keep their full safety margin by
+			 * not undervolting.
+			 */
+			if (sf_mode < 1) {
 #if CONFIG_SOC_EXYNOS2100_CL0_UV != 0
-		if (vclk->margin_id == MARGIN_CPUCL0)
-			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
-					-CONFIG_SOC_EXYNOS2100_CL0_UV);
+				if (vclk->margin_id == MARGIN_CPUCL0)
+					cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
+							-CONFIG_SOC_EXYNOS2100_CL0_UV);
 #endif
 #if CONFIG_SOC_EXYNOS2100_CL1_UV != 0
-		if (vclk->margin_id == MARGIN_CPUCL1)
-			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
-					-CONFIG_SOC_EXYNOS2100_CL1_UV);
+				if (vclk->margin_id == MARGIN_CPUCL1)
+					cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
+							-CONFIG_SOC_EXYNOS2100_CL1_UV);
 #endif
 #if CONFIG_SOC_EXYNOS2100_CL2_UV != 0
-		if (vclk->margin_id == MARGIN_CPUCL2)
-			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
-					-CONFIG_SOC_EXYNOS2100_CL2_UV);
+				if (vclk->margin_id == MARGIN_CPUCL2)
+					cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
+							-CONFIG_SOC_EXYNOS2100_CL2_UV);
 #endif
 #if CONFIG_SOC_EXYNOS2100_GPU_UV != 0
-		if (vclk->margin_id == MARGIN_G3D)
-			cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
-					-CONFIG_SOC_EXYNOS2100_GPU_UV);
+				if (vclk->margin_id == MARGIN_G3D)
+					cal_dfs_set_volt_margin(i | ACPM_VCLK_TYPE,
+							-CONFIG_SOC_EXYNOS2100_GPU_UV);
 #endif
+			}
+		}
 #endif
 
 		for (j = 0; j < fvmap_header[i].num_of_members; j++) {
@@ -904,26 +916,38 @@ int fvmap_init(void __iomem *sram_base)
 	}
 
 #ifdef CONFIG_SOC_EXYNOS2100_UNDERVOLT
+	{
+		signed char sf_mode = get_superfloppy_mode();
+
+		/* Overclock modes run without undervolting. */
+		if (sf_mode >= 1) {
+			uv_cpucl0_percent = 0;
+			uv_cpucl1_percent = 0;
+			uv_cpucl2_percent = 0;
+			uv_gpu_percent = 0;
+		} else {
 #if CONFIG_SOC_EXYNOS2100_CL0_UV != 0
-	uv_cpucl0_percent = CONFIG_SOC_EXYNOS2100_CL0_UV;
+			uv_cpucl0_percent = CONFIG_SOC_EXYNOS2100_CL0_UV;
 #else
-	uv_cpucl0_percent = 0;
+			uv_cpucl0_percent = 0;
 #endif
 #if CONFIG_SOC_EXYNOS2100_CL1_UV != 0
-	uv_cpucl1_percent = CONFIG_SOC_EXYNOS2100_CL1_UV;
+			uv_cpucl1_percent = CONFIG_SOC_EXYNOS2100_CL1_UV;
 #else
-	uv_cpucl1_percent = 0;
+			uv_cpucl1_percent = 0;
 #endif
 #if CONFIG_SOC_EXYNOS2100_CL2_UV != 0
-	uv_cpucl2_percent = CONFIG_SOC_EXYNOS2100_CL2_UV;
+			uv_cpucl2_percent = CONFIG_SOC_EXYNOS2100_CL2_UV;
 #else
-	uv_cpucl2_percent = 0;
+			uv_cpucl2_percent = 0;
 #endif
 #if CONFIG_SOC_EXYNOS2100_GPU_UV != 0
-	uv_gpu_percent = CONFIG_SOC_EXYNOS2100_GPU_UV;
+			uv_gpu_percent = CONFIG_SOC_EXYNOS2100_GPU_UV;
 #else
-	uv_gpu_percent = 0;
+			uv_gpu_percent = 0;
 #endif
+		}
+	}
 
 	kobj = kobject_create_and_add("exynos_uv", kernel_kobj);
 	if (!kobj) {

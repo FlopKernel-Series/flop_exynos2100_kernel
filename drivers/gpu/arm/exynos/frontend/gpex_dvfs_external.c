@@ -85,6 +85,12 @@ int gpu_dvfs_get_max_freq(void)
 }
 EXPORT_SYMBOL_GPL(gpu_dvfs_get_max_freq);
 
+int gpu_dvfs_get_stock_max_freq(void)
+{
+	return gpex_clock_get_stock_max_clock();
+}
+EXPORT_SYMBOL_GPL(gpu_dvfs_get_stock_max_freq);
+
 int gpu_dvfs_get_max_cooling_freq(void)
 {
 	return gpex_clock_get_unlock_max_clock();

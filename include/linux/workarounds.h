@@ -33,4 +33,16 @@ static inline bool is_aosp_mode_fast(void)
 }
 #endif
 
+bool is_superfloppy_mode(void);
+signed char get_superfloppy_mode(void);
+
+/* Optimized hot path version using static branch */
+extern struct static_key_false superfloppy_mode_key;
+static inline bool is_superfloppy_mode_fast(void)
+{
+	return static_branch_unlikely(&superfloppy_mode_key);
+}
+
+bool is_superfloppy_overclock_mode(void);
+
 #endif /* _WORKAROUNDS_H */

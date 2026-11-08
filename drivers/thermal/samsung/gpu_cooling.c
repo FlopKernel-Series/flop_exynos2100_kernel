@@ -24,6 +24,7 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
+#include <linux/workarounds.h>
 #include <soc/samsung/gpu_cooling.h>
 #include <soc/samsung/tmu.h>
 
@@ -750,6 +751,10 @@ static int parse_ect_cooling_level(struct thermal_cooling_device *cdev,
 	for (i = 0; i < function->num_of_range; ++i) {
 		unsigned long max_level = 0;
 		int level;
+
+		if (is_superfloppy_overclock_mode() &&
+		    function->range_list[i].max_frequency == gpu_dvfs_get_stock_max_freq())
+			function->range_list[i].max_frequency = gpu_dvfs_get_max_cooling_freq();
 
 		temperature = function->range_list[i].lower_bound_temperature;
 		freq = function->range_list[i].max_frequency;

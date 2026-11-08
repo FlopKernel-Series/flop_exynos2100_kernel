@@ -21,6 +21,7 @@
 #include <linux/export.h>
 #include <linux/slab.h>
 #include <linux/binfmts.h>
+#include <linux/workarounds.h>
 
 #include <gpex_clock.h>
 #include <gpex_qos.h>
@@ -99,7 +100,9 @@ static int gpex_clock_update_config_data_from_dt(void)
 	if (!clk_info.gpu_stock_max_clock ||
 	    clk_info.gpu_stock_max_clock > clk_info.gpu_unlock_max_clock)
 		clk_info.gpu_stock_max_clock = clk_info.gpu_unlock_max_clock;
-	clk_info.gpu_max_clock = clk_info.gpu_stock_max_clock;
+	clk_info.gpu_max_clock = is_superfloppy_overclock_mode() ?
+				 clk_info.gpu_unlock_max_clock :
+				 clk_info.gpu_stock_max_clock;
 	clk_info.gpu_min_clock = gpexbe_devicetree_get_int(gpu_min_clock);
 	clk_info.boot_clock = gpexbe_clock_get_boot_freq();
 	clk_info.gpu_max_clock_limit = gpexbe_clock_get_max_freq();

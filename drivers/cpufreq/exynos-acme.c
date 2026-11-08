@@ -25,6 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/sec_pm_cpufreq.h>
 #include <linux/binfmts.h>
+#include <linux/workarounds.h>
 
 #include <soc/samsung/debug-snapshot.h>
 #include <soc/samsung/cal-if.h>
@@ -1084,6 +1085,8 @@ static int init_constraint_table_dt(struct exynos_cpufreq_dm *dm,
 					struct device_node *dn)
 {
 	struct exynos_dm_freq *table;
+	signed char superfloppy_mode = get_superfloppy_mode();
+	const char *table_name;
 	int size, table_size, index, c_index;
 
 	/*
@@ -1091,7 +1094,16 @@ static int init_constraint_table_dt(struct exynos_cpufreq_dm *dm,
 	 * value, the size of a row is 64bytes. Divide size in half when
 	 * table is allocated.
 	 */
-	size = of_property_count_u32_elems(dn, "table");
+	if (superfloppy_mode == 3)
+		table_name = "table_alt3";
+	else if (superfloppy_mode == 2)
+		table_name = "table_alt2";
+	else if (superfloppy_mode == 1)
+		table_name = "table_alt";
+	else
+		table_name = "table";
+
+	size = of_property_count_u32_elems(dn, table_name);
 	if (size < 0)
 		return size;
 
@@ -1100,7 +1112,7 @@ static int init_constraint_table_dt(struct exynos_cpufreq_dm *dm,
 	if (!table)
 		return -ENOMEM;
 
-	of_property_read_u32_array(dn, "table", (unsigned int *)table, size);
+	of_property_read_u32_array(dn, table_name, (unsigned int *)table, size);
 
 	validate_dm_constraint_table(table, table_size,
 			dm->master_cal_id, dm->slave_cal_id);
@@ -1109,7 +1121,7 @@ static int init_constraint_table_dt(struct exynos_cpufreq_dm *dm,
 		unsigned int freq = dm->c.freq_table[index].master_freq;
 
 		for (c_index = 0; c_index < table_size; c_index++) {
-			if (freq == table[c_index].master_freq) {
+			if (freq <= table[c_index].master_freq) {
 				dm->c.freq_table[index].slave_freq
 					= table[c_index].slave_freq;
 				break;
@@ -1456,6 +1468,9 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	unsigned int freq_table[100];
 	struct freq_volt *fv_table;
 	const char *buf;
+	const char *max_freq_name;
+	const char *table_name;
+	signed char superfloppy_mode;
 	int ret;
 
 	/*
@@ -1479,17 +1494,37 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 		return ret;
 
 	/*
-	 * Set min/max frequency.
-	 * If max-freq property exists in device tree, max frequency is
-	 * selected to smaller one between the value defined in device
-	 * tree and CAL. In case of min-freq, min frequency is selected
-	 * to bigger one.
+	 * Set min/max frequency from the device tree. The superfloppy
+	 * overclock modes select an alternate max-freq table so the extra
+	 * frequency levels burned into the ACPM fvmap become reachable.
+	 * The DT value is used directly: the ECT min/max table would clamp
+	 * the overclock levels back to the stock maximum.
 	 */
-	domain->max_freq = cal_dfs_get_max_freq(domain->cal_id);
-	domain->min_freq = cal_dfs_get_min_freq(domain->cal_id);
+	superfloppy_mode = get_superfloppy_mode();
 
-	if (!of_property_read_u32(dn, "max-freq", &val))
-		domain->max_freq = min(domain->max_freq, val);
+	if (domain->id == 0) {
+		/* The little cluster is never overclocked. */
+		max_freq_name = "max-freq";
+	} else {
+		/*
+		 * Big clusters have alt, alt2 and alt3 tiers.
+		 */
+		if (superfloppy_mode == 3)
+			max_freq_name = "max-freq_alt3";
+		else if (superfloppy_mode == 2)
+			max_freq_name = "max-freq_alt2";
+		else if (superfloppy_mode == 1)
+			max_freq_name = "max-freq_alt";
+		else
+			max_freq_name = "max-freq";
+	}
+
+	if (of_property_read_u32(dn, max_freq_name, &domain->max_freq)) {
+		pr_err("%s: %s does not exist\n", __func__, max_freq_name);
+		return -ENODATA;
+	}
+
+	domain->min_freq = cal_dfs_get_min_freq(domain->cal_id);
 	if (!of_property_read_u32(dn, "min-freq", &val))
 		domain->min_freq = max(domain->min_freq, val);
 
@@ -1499,10 +1534,28 @@ static int init_domain(struct exynos_cpufreq_domain *domain,
 	domain->clipped_freq = domain->max_freq;
 
 	/* Get freq-table from device tree and cut the out of range */
-	raw_table_size = of_property_count_u32_elems(dn, "freq-table");
-	if (of_property_read_u32_array(dn, "freq-table",
+	if (domain->id == 0) {
+		table_name = "freq-table";
+	} else {
+		if (superfloppy_mode == 3)
+			table_name = "freq-table_alt3";
+		else if (superfloppy_mode == 2)
+			table_name = "freq-table_alt2";
+		else if (superfloppy_mode == 1)
+			table_name = "freq-table_alt";
+		else
+			table_name = "freq-table";
+	}
+
+	raw_table_size = of_property_count_u32_elems(dn, table_name);
+	if (raw_table_size <= 0) {
+		pr_err("%s: %s does not exist\n", __func__, table_name);
+		return -ENODATA;
+	}
+
+	if (of_property_read_u32_array(dn, table_name,
 				freq_table, raw_table_size)) {
-		pr_err("%s: freq-table does not exist\n", __func__);
+		pr_err("%s: failed to read %s\n", __func__, table_name);
 		return -ENODATA;
 	}
 
