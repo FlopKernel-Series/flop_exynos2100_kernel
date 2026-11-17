@@ -1473,26 +1473,23 @@ static int zram_writeback_fill_page(struct zram *zram, u32 index,
 static void zram_writeback_clear_flag(struct zram *zram, u32 index)
 {
 	unsigned long flags;
-	bool under_wb;
 
 	zram_slot_lock(zram, index);
 	if (zram_allocated(zram, index)) {
-		under_wb = zram_test_flag(zram, index, ZRAM_UNDER_WB);
 		zram_clear_flag(zram, index, ZRAM_UNDER_WB);
 		zram_clear_flag(zram, index, ZRAM_IDLE);
 		zram_clear_flag(zram, index, ZRAM_UNDER_PPR);
 
-		if (under_wb) {
-			spin_lock_irqsave(&zram->list_lock, flags);
-			if (!list_empty(&zram->table[index].lru_list))
-				list_move_tail(&zram->table[index].lru_list, &zram->list);
-			else
-				list_add_tail(&zram->table[index].lru_list, &zram->list);
-			spin_unlock_irqrestore(&zram->list_lock, flags);
-			if (!zram_test_flag(zram, index, ZRAM_LRU)) {
-				zram_set_flag(zram, index, ZRAM_LRU);
-				atomic64_inc(&zram->stats.lru_pages);
-			}
+		/* putback halted entry to zram lru list */
+		spin_lock_irqsave(&zram->list_lock, flags);
+		if (!list_empty(&zram->table[index].lru_list))
+			list_move_tail(&zram->table[index].lru_list, &zram->list);
+		else
+			list_add_tail(&zram->table[index].lru_list, &zram->list);
+		spin_unlock_irqrestore(&zram->list_lock, flags);
+		if (!zram_test_flag(zram, index, ZRAM_LRU)) {
+			zram_set_flag(zram, index, ZRAM_LRU);
+			atomic64_inc(&zram->stats.lru_pages);
 		}
 	}
 	zram_slot_unlock(zram, index);
